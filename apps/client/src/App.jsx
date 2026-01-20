@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 // 우리가 만든 레이아웃 불러오기
 import MainLayout from './layouts/MainLayout';
 import WorkspaceLayout from './layouts/WorkspaceLayout';
+import { DevTest } from '@/pages/DevTest';
 
 // 테스트를 위한 임시 페이지 컴포넌트 (나중에 pages 폴더로 분리하세요)
 const LandingPage = () => <div className="text-2xl font-bold">🏠 랜딩 페이지입니다.</div>;
@@ -28,6 +29,7 @@ function App() {
            {/* 기본 경로일 때 보여줄 내용 */}
            <Route index element={<div className="p-10">워크스페이스 홈</div>} />
         </Route>
+        <Route path="/dev" element={<DevTest />} />
       </Routes>
     </BrowserRouter>
   );
