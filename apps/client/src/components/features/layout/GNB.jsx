@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import useAuthStore from '../../../store/useAuthStore';
 
 const GNB = ({ 
   variant = 'landing',
@@ -8,6 +9,9 @@ const GNB = ({
   activePanel 
 }) => {
   const isWorkspace = variant === 'workspace';
+
+  // 로그인 상태 확인
+  const { isAuthenticated, logout } = useAuthStore();
 
   return (
     <header className="h-16 border-b border-gray-200 px-6 flex items-center justify-between bg-white z-[var(--z-sticky)] flex-shrink-0">
@@ -49,9 +53,22 @@ const GNB = ({
           <>
             <Link to="/about" className="hover:text-[var(--color-green-primary)]">About us</Link>
             <Link to="/contact" className="hover:text-[var(--color-green-primary)]">Contact</Link>
-            <button className="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition">
-              Logout
-            </button>
+            {/* 로그인 상태에 따라 버튼 다르게 보여주기 */}
+            {isAuthenticated ? (
+              <button 
+                onClick={logout}
+                className="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition"
+              >
+                Logout
+              </button>
+            ) : (
+              <Link 
+                to="/login"
+                className="bg-[var(--color-green-primary)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[#059669] transition"
+              >
+                Login
+              </Link>
+            )}
           </>
         )}
       </nav>
