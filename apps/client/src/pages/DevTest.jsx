@@ -1,5 +1,6 @@
 import { Button, IconButton } from '@/components/common/Button';
 import { Input, SearchInput } from '@/components/common/Input';
+import { Modal, ConfirmModal } from '@/components/common/Modal';
 import { Plus, Settings, Trash2, LogOut, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -8,6 +9,12 @@ export function DevTest() {
   const [inputValue, setInputValue] = useState('');
   const [searchValue, setSearchValue] = useState('');
   const [errorInput, setErrorInput] = useState('잘못된 입력');
+
+  // Modal 테스트용 state
+  const [isBasicModalOpen, setIsBasicModalOpen] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [projectName, setProjectName] = useState('');
 
   return (
     <div className="p-8 space-y-12 bg-[var(--bg-app)] min-h-screen">
@@ -30,6 +37,7 @@ export function DevTest() {
             <Button variant="primary">Primary</Button>
             <Button variant="secondary">Secondary</Button>
             <Button variant="danger">Danger</Button>
+            <Button variant="danger-outline">Danger Outline</Button>
             <Button variant="ghost">Ghost</Button>
           </div>
         </div>
@@ -198,11 +206,7 @@ export function DevTest() {
           <h3 className="text-sm font-medium text-[var(--text-secondary)]">
             Disabled
           </h3>
-          <Input
-            label="비활성화"
-            value="수정할 수 없습니다"
-            disabled
-          />
+          <Input label="비활성화" value="수정할 수 없습니다" disabled />
         </div>
       </section>
 
@@ -235,6 +239,112 @@ export function DevTest() {
           <SearchInput size="lg" placeholder="Large 검색..." />
         </div>
       </section>
+
+      {/* ========== Modal Section ========== */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-semibold text-[var(--text-bright)]">
+          Modal
+        </h2>
+
+        {/* Modal Triggers */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Modal Types
+          </h3>
+          <div className="flex flex-wrap gap-4">
+            <Button onClick={() => setIsBasicModalOpen(true)}>
+              Basic Modal
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => setIsConfirmModalOpen(true)}
+            >
+              Confirm Modal
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setIsFormModalOpen(true)}
+            >
+              Form Modal
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ========== Modals ========== */}
+
+      {/* Basic Modal */}
+      <Modal
+        isOpen={isBasicModalOpen}
+        onClose={() => setIsBasicModalOpen(false)}
+        title="프로젝트 관리"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setIsBasicModalOpen(false)}
+            >
+              취소
+            </Button>
+            <Button onClick={() => setIsBasicModalOpen(false)}>저장</Button>
+          </>
+        }
+      >
+        <p className="text-[var(--text-primary)]">
+          이것은 기본 모달입니다. 다양한 내용을 담을 수 있습니다.
+        </p>
+      </Modal>
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={() => {
+          alert('확인되었습니다!');
+          setIsConfirmModalOpen(false);
+        }}
+        title="정말 프로젝트를 떠나시겠습니까?"
+        message="프로젝트를 나가게 되면 '공통 프로젝트'에 더 이상 접속할 수 없으며, 프로젝트 내에 자료들에 대한 접근 권한을 모두 잃습니다."
+        confirmText="나가기"
+        cancelText="취소하기"
+        confirmVariant="danger"
+      />
+
+      {/* Form Modal */}
+      <Modal
+        isOpen={isFormModalOpen}
+        onClose={() => setIsFormModalOpen(false)}
+        title="새 프로젝트 만들기"
+        size="md"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setIsFormModalOpen(false)}
+            >
+              취소
+            </Button>
+            <Button
+              onClick={() => {
+                alert(`프로젝트 "${projectName}" 생성!`);
+                setIsFormModalOpen(false);
+                setProjectName('');
+              }}
+              disabled={!projectName.trim()}
+            >
+              생성하기
+            </Button>
+          </>
+        }
+      >
+        <Input
+          label="프로젝트 이름"
+          placeholder="멋진 프로젝트의 이름을 지어주세요!"
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
+          isRequired
+        />
+      </Modal>
     </div>
   );
 }
