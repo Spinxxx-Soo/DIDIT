@@ -22,6 +22,15 @@ const variantStyles = {
     'active:bg-red-700',
   ].join(' '),
 
+  // 🔶 새로 추가
+  'danger-outline': [
+    'bg-transparent',
+    'text-[var(--color-error)]',
+    'border',
+    'border-[var(--color-error)]',
+    'hover:bg-[var(--error-bg)]',
+  ].join(' '),
+
   ghost: [
     'bg-transparent',
     'text-[var(--text-secondary)]',
