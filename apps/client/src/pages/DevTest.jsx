@@ -1,7 +1,16 @@
 import { Button, IconButton } from '@/components/common/Button';
 import { Input, SearchInput } from '@/components/common/Input';
 import { Modal, ConfirmModal } from '@/components/common/Modal';
-import { Plus, Settings, Trash2, LogOut, X } from 'lucide-react';
+import { Checkbox, CheckboxGroup } from '@/components/common/Checkbox';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/common/Card';
+import { Plus, Settings, Trash2, LogOut, X, Folder } from 'lucide-react';
 import { useState } from 'react';
 
 export function DevTest() {
@@ -15,6 +24,21 @@ export function DevTest() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [projectName, setProjectName] = useState('');
+
+  // Checkbox 테스트용 state
+  const [isChecked, setIsChecked] = useState(false);
+  const [selectedMembers, setSelectedMembers] = useState(['kim']);
+
+  // Card 테스트용 state
+  const [selectedCard, setSelectedCard] = useState(null);
+
+  const memberOptions = [
+    { value: 'kim', label: '김이' },
+    { value: 'lee', label: '이다연' },
+    { value: 'son', label: '손율준' },
+    { value: 'ha', label: '하지연' },
+    { value: 'hong', label: '홍수민' },
+  ];
 
   return (
     <div className="p-8 space-y-12 bg-[var(--bg-app)] min-h-screen">
@@ -68,7 +92,7 @@ export function DevTest() {
               Delete
             </Button>
             <Button variant="danger-outline" leftIcon={<LogOut size={18} />}>
-              exit
+              Exit
             </Button>
             <Button variant="ghost" rightIcon={<X size={18} />}>
               Cancel
@@ -100,12 +124,11 @@ export function DevTest() {
           IconButton
         </h2>
 
-        {/* Variants */}
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Variants
+            Variants & Sizes
           </h3>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <IconButton
               icon={<Settings size={20} />}
               variant="default"
@@ -116,24 +139,10 @@ export function DevTest() {
               variant="ghost"
               aria-label="Close"
             />
-          </div>
-        </div>
-
-        {/* Sizes */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Sizes
-          </h3>
-          <div className="flex flex-wrap items-center gap-4">
             <IconButton
               icon={<Plus size={16} />}
               size="sm"
               aria-label="Add small"
-            />
-            <IconButton
-              icon={<Plus size={20} />}
-              size="md"
-              aria-label="Add medium"
             />
             <IconButton
               icon={<Plus size={24} />}
@@ -150,11 +159,7 @@ export function DevTest() {
           Input
         </h2>
 
-        {/* Basic Input */}
-        <div className="space-y-2 max-w-md">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Basic Input
-          </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
           <Input
             label="이메일"
             type="email"
@@ -162,25 +167,11 @@ export function DevTest() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
           />
-        </div>
-
-        {/* Required Input */}
-        <div className="space-y-2 max-w-md">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Required Input
-          </h3>
           <Input
             label="프로젝트 이름"
             placeholder="프로젝트 이름을 입력하세요"
             isRequired
           />
-        </div>
-
-        {/* Error State */}
-        <div className="space-y-2 max-w-md">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Error State
-          </h3>
           <Input
             label="비밀번호"
             type="password"
@@ -189,23 +180,6 @@ export function DevTest() {
             isError
             errorMessage="비밀번호는 8자 이상이어야 합니다."
           />
-        </div>
-
-        {/* Sizes */}
-        <div className="space-y-4 max-w-md">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Sizes
-          </h3>
-          <Input size="sm" placeholder="Small" />
-          <Input size="md" placeholder="Medium (기본)" />
-          <Input size="lg" placeholder="Large" />
-        </div>
-
-        {/* Disabled */}
-        <div className="space-y-2 max-w-md">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Disabled
-          </h3>
           <Input label="비활성화" value="수정할 수 없습니다" disabled />
         </div>
       </section>
@@ -216,11 +190,7 @@ export function DevTest() {
           SearchInput
         </h2>
 
-        {/* Basic Search */}
-        <div className="space-y-2 max-w-md">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Basic Search
-          </h3>
+        <div className="max-w-md">
           <SearchInput
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
@@ -228,15 +198,144 @@ export function DevTest() {
             placeholder="회의록 검색..."
           />
         </div>
+      </section>
+
+      {/* ========== Checkbox Section ========== */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-semibold text-[var(--text-bright)]">
+          Checkbox
+        </h2>
+
+        {/* Single Checkbox */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Single Checkbox
+          </h3>
+          <div className="flex flex-wrap gap-6">
+            <Checkbox
+              label="동의합니다"
+              isChecked={isChecked}
+              onChange={setIsChecked}
+            />
+            <Checkbox label="비활성화" isDisabled />
+            <Checkbox label="비활성화 (체크됨)" isChecked isDisabled />
+          </div>
+        </div>
 
         {/* Sizes */}
-        <div className="space-y-4 max-w-md">
+        <div className="space-y-2">
           <h3 className="text-sm font-medium text-[var(--text-secondary)]">
             Sizes
           </h3>
-          <SearchInput size="sm" placeholder="Small 검색..." />
-          <SearchInput size="md" placeholder="Medium 검색... (기본)" />
-          <SearchInput size="lg" placeholder="Large 검색..." />
+          <div className="flex flex-wrap gap-6">
+            <Checkbox label="Small" size="sm" isChecked />
+            <Checkbox label="Medium (기본)" size="md" isChecked />
+            <Checkbox label="Large" size="lg" isChecked />
+          </div>
+        </div>
+
+        {/* Checkbox Group */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Checkbox Group (팀장 선택)
+          </h3>
+          <CheckboxGroup
+            label="다음 팀장을 선택해주세요."
+            options={memberOptions}
+            selectedValues={selectedMembers}
+            onChange={setSelectedMembers}
+          />
+          <p className="text-[13px] text-[var(--text-tertiary)] mt-2">
+            선택된 멤버: {selectedMembers.join(', ') || '없음'}
+          </p>
+        </div>
+      </section>
+
+      {/* ========== Card Section ========== */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-semibold text-[var(--text-bright)]">
+          Card
+        </h2>
+
+        {/* Basic Cards */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Variants
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card variant="default">
+              <CardTitle>Default Card</CardTitle>
+              <CardDescription>기본 카드 스타일입니다.</CardDescription>
+            </Card>
+            <Card variant="elevated">
+              <CardTitle>Elevated Card</CardTitle>
+              <CardDescription>그림자가 있는 카드입니다.</CardDescription>
+            </Card>
+            <Card variant="outline">
+              <CardTitle>Outline Card</CardTitle>
+              <CardDescription>테두리만 있는 카드입니다.</CardDescription>
+            </Card>
+          </div>
+        </div>
+
+        {/* Clickable Cards */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Clickable Cards (프로젝트 선택)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+            {['project-1', 'project-2'].map((id) => (
+              <Card
+                key={id}
+                variant="elevated"
+                isClickable
+                isSelected={selectedCard === id}
+                onClick={() => setSelectedCard(id)}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-[var(--success-bg)] rounded-[var(--radius-md)]">
+                    <Folder size={20} className="text-[var(--color-green-primary)]" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle>
+                      {id === 'project-1' ? '프론트엔드 버그 수정' : '모바일 앱 리팩토링'}
+                    </CardTitle>
+                    <CardDescription>
+                      Repository: my-project/{id === 'project-1' ? 'frontend' : 'mobile'}
+                    </CardDescription>
+                    <p className="mt-2 text-[13px] text-[var(--text-tertiary)]">
+                      멤버 4명 • 마지막 활동: 2시간 전
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Full Card */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Full Card with Header & Footer
+          </h3>
+          <Card variant="elevated" className="max-w-md">
+            <CardHeader>
+              <CardTitle>이슈 상세</CardTitle>
+              <CardDescription>이슈 #143에 대한 정보입니다.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-[var(--text-primary)]">
+                로그인 버튼 클릭 시 간헐적으로 오류가 발생합니다. 
+                재현 조건과 로그를 첨부합니다.
+              </p>
+            </CardContent>
+            <CardFooter>
+              <Button variant="secondary" size="sm">
+                취소
+              </Button>
+              <Button size="sm">저장</Button>
+            </CardFooter>
+          </Card>
         </div>
       </section>
 
@@ -246,34 +345,20 @@ export function DevTest() {
           Modal
         </h2>
 
-        {/* Modal Triggers */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Modal Types
-          </h3>
-          <div className="flex flex-wrap gap-4">
-            <Button onClick={() => setIsBasicModalOpen(true)}>
-              Basic Modal
-            </Button>
-            <Button
-              variant="danger"
-              onClick={() => setIsConfirmModalOpen(true)}
-            >
-              Confirm Modal
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setIsFormModalOpen(true)}
-            >
-              Form Modal
-            </Button>
-          </div>
+        <div className="flex flex-wrap gap-4">
+          <Button onClick={() => setIsBasicModalOpen(true)}>
+            Basic Modal
+          </Button>
+          <Button variant="danger" onClick={() => setIsConfirmModalOpen(true)}>
+            Confirm Modal
+          </Button>
+          <Button variant="secondary" onClick={() => setIsFormModalOpen(true)}>
+            Form Modal
+          </Button>
         </div>
       </section>
 
       {/* ========== Modals ========== */}
-
-      {/* Basic Modal */}
       <Modal
         isOpen={isBasicModalOpen}
         onClose={() => setIsBasicModalOpen(false)}
@@ -295,7 +380,6 @@ export function DevTest() {
         </p>
       </Modal>
 
-      {/* Confirm Modal */}
       <ConfirmModal
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
@@ -310,7 +394,6 @@ export function DevTest() {
         confirmVariant="danger"
       />
 
-      {/* Form Modal */}
       <Modal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
