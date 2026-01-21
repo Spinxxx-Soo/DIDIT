@@ -10,7 +10,10 @@ import {
   CardContent,
   CardFooter,
 } from '@/components/common/Card';
-import { Plus, Settings, Trash2, LogOut, X, Folder } from 'lucide-react';
+import { Avatar, AvatarGroup } from '@/components/common/Avatar';
+import { Badge, DotBadge, CountBadge } from '@/components/common/Badge';
+import { Divider } from '@/components/common/Divider';
+import { Plus, Settings, Trash2, X, LogOut, Folder, Circle } from 'lucide-react';
 import { useState } from 'react';
 
 export function DevTest() {
@@ -40,6 +43,15 @@ export function DevTest() {
     { value: 'hong', label: '홍수민' },
   ];
 
+  const sampleAvatars = [
+    { name: '김도연' },
+    { name: '김이' },
+    { name: '이다연' },
+    { name: '손율준' },
+    { name: '하지연' },
+    { name: '홍수민' },
+  ];
+
   return (
     <div className="p-8 space-y-12 bg-[var(--bg-app)] min-h-screen">
       <h1 className="text-3xl font-bold text-[var(--text-bright)]">
@@ -52,7 +64,6 @@ export function DevTest() {
           Button
         </h2>
 
-        {/* Variants */}
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-[var(--text-secondary)]">
             Variants
@@ -66,57 +77,21 @@ export function DevTest() {
           </div>
         </div>
 
-        {/* Sizes */}
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Sizes
+            Sizes & States
           </h3>
           <div className="flex flex-wrap items-center gap-4">
             <Button size="sm">Small</Button>
             <Button size="md">Medium</Button>
             <Button size="lg">Large</Button>
-          </div>
-        </div>
-
-        {/* With Icons */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            With Icons
-          </h3>
-          <div className="flex flex-wrap gap-4">
-            <Button leftIcon={<Plus size={18} />}>Create New</Button>
-            <Button variant="secondary" leftIcon={<Settings size={18} />}>
-              Settings
-            </Button>
-            <Button variant="danger" leftIcon={<Trash2 size={18} />}>
-              Delete
-            </Button>
-            <Button variant="danger-outline" leftIcon={<LogOut size={18} />}>
-              Exit
-            </Button>
-            <Button variant="ghost" rightIcon={<X size={18} />}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-
-        {/* States */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            States
-          </h3>
-          <div className="flex flex-wrap gap-4">
             <Button isLoading>Loading</Button>
             <Button disabled>Disabled</Button>
-            <Button variant="secondary" isLoading>
-              Loading
-            </Button>
-            <Button variant="secondary" disabled>
-              Disabled
-            </Button>
           </div>
         </div>
       </section>
+
+      <Divider />
 
       {/* ========== IconButton Section ========== */}
       <section className="space-y-6">
@@ -124,34 +99,15 @@ export function DevTest() {
           IconButton
         </h2>
 
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Variants & Sizes
-          </h3>
-          <div className="flex flex-wrap items-center gap-4">
-            <IconButton
-              icon={<Settings size={20} />}
-              variant="default"
-              aria-label="Settings"
-            />
-            <IconButton
-              icon={<X size={20} />}
-              variant="ghost"
-              aria-label="Close"
-            />
-            <IconButton
-              icon={<Plus size={16} />}
-              size="sm"
-              aria-label="Add small"
-            />
-            <IconButton
-              icon={<Plus size={24} />}
-              size="lg"
-              aria-label="Add large"
-            />
-          </div>
+        <div className="flex flex-wrap items-center gap-4">
+          <IconButton icon={<Settings size={20} />} aria-label="Settings" />
+          <IconButton icon={<X size={20} />} variant="ghost" aria-label="Close" />
+          <IconButton icon={<Plus size={16} />} size="sm" aria-label="Add" />
+          <IconButton icon={<Plus size={24} />} size="lg" aria-label="Add" />
         </div>
       </section>
+
+      <Divider />
 
       {/* ========== Input Section ========== */}
       <section className="space-y-6">
@@ -184,6 +140,8 @@ export function DevTest() {
         </div>
       </section>
 
+      <Divider />
+
       {/* ========== SearchInput Section ========== */}
       <section className="space-y-6">
         <h2 className="text-xl font-semibold text-[var(--text-bright)]">
@@ -200,16 +158,17 @@ export function DevTest() {
         </div>
       </section>
 
+      <Divider />
+
       {/* ========== Checkbox Section ========== */}
       <section className="space-y-6">
         <h2 className="text-xl font-semibold text-[var(--text-bright)]">
           Checkbox
         </h2>
 
-        {/* Single Checkbox */}
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Single Checkbox
+            Single & Sizes
           </h3>
           <div className="flex flex-wrap gap-6">
             <Checkbox
@@ -217,8 +176,93 @@ export function DevTest() {
               isChecked={isChecked}
               onChange={setIsChecked}
             />
+            <Checkbox label="Small" size="sm" isChecked />
+            <Checkbox label="Large" size="lg" isChecked />
             <Checkbox label="비활성화" isDisabled />
-            <Checkbox label="비활성화 (체크됨)" isChecked isDisabled />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Checkbox Group
+          </h3>
+          <CheckboxGroup
+            label="다음 팀장을 선택해주세요."
+            options={memberOptions}
+            selectedValues={selectedMembers}
+            onChange={setSelectedMembers}
+          />
+        </div>
+      </section>
+
+      <Divider />
+
+      {/* ========== Avatar Section ========== */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-semibold text-[var(--text-bright)]">
+          Avatar
+        </h2>
+
+        {/* Sizes */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Sizes
+          </h3>
+          <div className="flex flex-wrap items-end gap-4">
+            <Avatar size="xs" name="김도연" />
+            <Avatar size="sm" name="김도연" />
+            <Avatar size="md" name="김도연" />
+            <Avatar size="lg" name="김도연" />
+            <Avatar size="xl" name="김도연" />
+            <Avatar size="2xl" name="김도연" />
+          </div>
+        </div>
+
+        {/* With Status */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            With Status
+          </h3>
+          <div className="flex flex-wrap items-center gap-4">
+            <Avatar name="김이" status="online" />
+            <Avatar name="이다연" status="away" />
+            <Avatar name="손율준" status="busy" />
+            <Avatar name="하지연" status="offline" />
+            <Avatar /> {/* Default (no name, no image) */}
+          </div>
+        </div>
+
+        {/* Avatar Group */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Avatar Group
+          </h3>
+          <div className="flex flex-wrap items-center gap-8">
+            <AvatarGroup avatars={sampleAvatars} max={3} size="sm" />
+            <AvatarGroup avatars={sampleAvatars} max={4} size="md" />
+            <AvatarGroup avatars={sampleAvatars} max={5} size="lg" />
+          </div>
+        </div>
+      </section>
+
+      <Divider />
+
+      {/* ========== Badge Section ========== */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-semibold text-[var(--text-bright)]">
+          Badge
+        </h2>
+
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Variants & Sizes
+          </h3>
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="default">Default</Badge>
+            <Badge variant="success">Online</Badge>
+            <Badge variant="warning">Away</Badge>
+            <Badge variant="error">Busy</Badge>
+            <Badge variant="info">Meeting</Badge>
           </div>
         </div>
 
@@ -227,29 +271,123 @@ export function DevTest() {
           <h3 className="text-sm font-medium text-[var(--text-secondary)]">
             Sizes
           </h3>
-          <div className="flex flex-wrap gap-6">
-            <Checkbox label="Small" size="sm" isChecked />
-            <Checkbox label="Medium (기본)" size="md" isChecked />
-            <Checkbox label="Large" size="lg" isChecked />
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge size="sm" variant="success">Small</Badge>
+            <Badge size="md" variant="success">Medium</Badge>
+            <Badge size="lg" variant="success">Large</Badge>
           </div>
         </div>
 
-        {/* Checkbox Group */}
+        {/* With Icon */}
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Checkbox Group (팀장 선택)
+            With Icon
           </h3>
-          <CheckboxGroup
-            label="다음 팀장을 선택해주세요."
-            options={memberOptions}
-            selectedValues={selectedMembers}
-            onChange={setSelectedMembers}
-          />
-          <p className="text-[13px] text-[var(--text-tertiary)] mt-2">
-            선택된 멤버: {selectedMembers.join(', ') || '없음'}
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="success" leftIcon={<Circle size={8} fill="currentColor" />}>
+              온라인
+            </Badge>
+            <Badge variant="error" leftIcon={<Circle size={8} fill="currentColor" />}>
+              오프라인
+            </Badge>
+          </div>
+        </div>
+
+        {/* Dot Badge */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Dot Badge
+          </h3>
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-2">
+              <DotBadge variant="success" />
+              <span className="text-[14px] text-[var(--text-primary)]">Online</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <DotBadge variant="warning" />
+              <span className="text-[14px] text-[var(--text-primary)]">Away</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <DotBadge variant="error" />
+              <span className="text-[14px] text-[var(--text-primary)]">Busy</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Count Badge */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Count Badge
+          </h3>
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="relative">
+              <IconButton icon={<Settings size={20} />} aria-label="Settings" />
+              <span className="absolute -top-1 -right-1">
+                <CountBadge count={3} size="sm" />
+              </span>
+            </div>
+            <div className="relative">
+              <IconButton icon={<Settings size={20} />} aria-label="Settings" />
+              <span className="absolute -top-1 -right-1">
+                <CountBadge count={99} size="md" />
+              </span>
+            </div>
+            <div className="relative">
+              <IconButton icon={<Settings size={24} />} size="lg" aria-label="Settings" />
+              <span className="absolute -top-1 -right-1">
+                <CountBadge count={150} max={99} size="lg" />
+              </span>
+            </div>
+          </div>
         </div>
       </section>
+
+      <Divider />
+
+      {/* ========== Divider Section ========== */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-semibold text-[var(--text-bright)]">
+          Divider
+        </h2>
+
+        {/* Horizontal */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Horizontal
+          </h3>
+          <div className="space-y-4 max-w-md">
+            <Divider variant="subtle" />
+            <Divider variant="default" />
+            <Divider variant="strong" />
+          </div>
+        </div>
+
+        {/* With Label */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            With Label
+          </h3>
+          <div className="max-w-md">
+            <Divider label="또는" />
+          </div>
+        </div>
+
+        {/* Vertical */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+            Vertical
+          </h3>
+          <div className="flex items-center gap-4 h-10">
+            <span className="text-[var(--text-primary)]">항목 1</span>
+            <Divider orientation="vertical" />
+            <span className="text-[var(--text-primary)]">항목 2</span>
+            <Divider orientation="vertical" />
+            <span className="text-[var(--text-primary)]">항목 3</span>
+          </div>
+        </div>
+      </section>
+
+      <Divider />
 
       {/* ========== Card Section ========== */}
       <section className="space-y-6">
@@ -257,87 +395,52 @@ export function DevTest() {
           Card
         </h2>
 
-        {/* Basic Cards */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Variants
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card variant="default">
-              <CardTitle>Default Card</CardTitle>
-              <CardDescription>기본 카드 스타일입니다.</CardDescription>
-            </Card>
-            <Card variant="elevated">
-              <CardTitle>Elevated Card</CardTitle>
-              <CardDescription>그림자가 있는 카드입니다.</CardDescription>
-            </Card>
-            <Card variant="outline">
-              <CardTitle>Outline Card</CardTitle>
-              <CardDescription>테두리만 있는 카드입니다.</CardDescription>
-            </Card>
-          </div>
-        </div>
-
-        {/* Clickable Cards */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Clickable Cards (프로젝트 선택)
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
-            {['project-1', 'project-2'].map((id) => (
-              <Card
-                key={id}
-                variant="elevated"
-                isClickable
-                isSelected={selectedCard === id}
-                onClick={() => setSelectedCard(id)}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-[var(--success-bg)] rounded-[var(--radius-md)]">
-                    <Folder size={20} className="text-[var(--color-green-primary)]" />
-                  </div>
-                  <div className="flex-1">
-                    <CardTitle>
-                      {id === 'project-1' ? '프론트엔드 버그 수정' : '모바일 앱 리팩토링'}
-                    </CardTitle>
-                    <CardDescription>
-                      Repository: my-project/{id === 'project-1' ? 'frontend' : 'mobile'}
-                    </CardDescription>
-                    <p className="mt-2 text-[13px] text-[var(--text-tertiary)]">
-                      멤버 4명 • 마지막 활동: 2시간 전
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Full Card */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-            Full Card with Header & Footer
-          </h3>
-          <Card variant="elevated" className="max-w-md">
-            <CardHeader>
-              <CardTitle>이슈 상세</CardTitle>
-              <CardDescription>이슈 #143에 대한 정보입니다.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-[var(--text-primary)]">
-                로그인 버튼 클릭 시 간헐적으로 오류가 발생합니다. 
-                재현 조건과 로그를 첨부합니다.
-              </p>
-            </CardContent>
-            <CardFooter>
-              <Button variant="secondary" size="sm">
-                취소
-              </Button>
-              <Button size="sm">저장</Button>
-            </CardFooter>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card variant="default">
+            <CardTitle>Default Card</CardTitle>
+            <CardDescription>기본 카드 스타일입니다.</CardDescription>
+          </Card>
+          <Card variant="elevated">
+            <CardTitle>Elevated Card</CardTitle>
+            <CardDescription>그림자가 있는 카드입니다.</CardDescription>
+          </Card>
+          <Card variant="outline">
+            <CardTitle>Outline Card</CardTitle>
+            <CardDescription>테두리만 있는 카드입니다.</CardDescription>
           </Card>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+          {['project-1', 'project-2'].map((id) => (
+            <Card
+              key={id}
+              variant="elevated"
+              isClickable
+              isSelected={selectedCard === id}
+              onClick={() => setSelectedCard(id)}
+            >
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-[var(--success-bg)] rounded-[var(--radius-md)]">
+                  <Folder size={20} className="text-[var(--color-green-primary)]" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>
+                    {id === 'project-1' ? '프론트엔드 버그 수정' : '모바일 앱 리팩토링'}
+                  </CardTitle>
+                  <CardDescription>
+                    Repository: my-project/{id === 'project-1' ? 'frontend' : 'mobile'}
+                  </CardDescription>
+                  <p className="mt-2 text-[13px] text-[var(--text-tertiary)]">
+                    멤버 4명 • 마지막 활동: 2시간 전
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       </section>
+
+      <Divider />
 
       {/* ========== Modal Section ========== */}
       <section className="space-y-6">
@@ -365,10 +468,7 @@ export function DevTest() {
         title="프로젝트 관리"
         footer={
           <>
-            <Button
-              variant="secondary"
-              onClick={() => setIsBasicModalOpen(false)}
-            >
+            <Button variant="secondary" onClick={() => setIsBasicModalOpen(false)}>
               취소
             </Button>
             <Button onClick={() => setIsBasicModalOpen(false)}>저장</Button>
@@ -401,10 +501,7 @@ export function DevTest() {
         size="md"
         footer={
           <>
-            <Button
-              variant="secondary"
-              onClick={() => setIsFormModalOpen(false)}
-            >
+            <Button variant="secondary" onClick={() => setIsFormModalOpen(false)}>
               취소
             </Button>
             <Button
