@@ -11,26 +11,34 @@ import WorkspaceLayout from './layouts/WorkspaceLayout';
 import { DevTest } from '@/pages/DevTest';
 import MyPage from './pages/MyPage';
 import LoginPage from './pages/LoginPage';
+import Dashboard from './pages/Dashboard';
 
 // 임시 컴포넌트
 const LandingPage = () => <div className="text-2xl font-bold p-10">🏠 랜딩 페이지</div>;
 const ProjectList = () => <div className="text-2xl font-bold p-10">📂 내 프로젝트 목록</div>;
-const Dashboard = () => <div className="p-10">워크스페이스 대시보드 (이슈/통계)</div>;
 const MeetingRoom = () => <div className="text-white text-2xl font-bold p-10">🎙 회의실 화면</div>;
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-screen">
+    <div className="text-xl">로딩중...</div>
+  </div>
+);
 
 // 로그인이 필요한 페이지를 감싸는 컴포넌트
 const PrivateRoute = () => {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, error } = useAuthStore();
 
-  if (isLoading) return <div>로딩중...</div>;
+  if (isLoading) return <LoadingFallback />;
+  if (error) return <div className="text-red-500 p-10">오류: {error}</div>;
   return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
 function App() {
-  // 🔧 앱 시작 시 로그인 상태 확인 (딱 한 번만)
+  const checkLoginStatus = useAuthStore(state => state.checkLoginStatus);
+  
   useEffect(() => {
-    useAuthStore.getState().checkLoginStatus();
-  }, []);
+    checkLoginStatus();
+  }, [checkLoginStatus]);
 
   return (
     <BrowserRouter>

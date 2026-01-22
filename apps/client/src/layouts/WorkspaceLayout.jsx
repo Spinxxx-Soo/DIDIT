@@ -19,6 +19,7 @@ import RightSidebar from '../components/features/layout/RightSidebar';
  */
 const WorkspaceLayout = () => {
   const [activePanel, setActivePanel] = useState(null); // 'chat' | 'issue' | null
+  const [selectedIssue, setSelectedIssue] = useState(null);
 
   const handleChatClick = () => {
     setActivePanel(activePanel === 'chat' ? null : 'chat');
@@ -26,6 +27,12 @@ const WorkspaceLayout = () => {
 
   const handleIssueClick = () => {
     setActivePanel(activePanel === 'issue' ? null : 'issue');
+  };
+
+    // ✅ Dashboard에서 호출할 함수
+  const handleOpenIssueDetail = (issue) => {
+    setSelectedIssue(issue);
+    setActivePanel('issue');
   };
 
   return (
@@ -50,9 +57,8 @@ const WorkspaceLayout = () => {
           <ChannelSidebar />
         </aside>
 
-        {/* 3열: 메인 콘텐츠 */}
         <main className="flex-1 overflow-y-auto bg-[var(--bg-app)] p-6">
-          <Outlet />
+          <Outlet context={{ handleOpenIssueDetail }} />
         </main>
 
         {/* 4열: 우측 사이드바 (슬라이드 애니메이션) */}
@@ -64,6 +70,7 @@ const WorkspaceLayout = () => {
           {activePanel && (
             <RightSidebar
               activePanel={activePanel}
+              selectedIssue={selectedIssue}
               onClose={() => setActivePanel(null)}
             />
           )}
