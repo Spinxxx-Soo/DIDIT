@@ -8,6 +8,7 @@ import com.didit.server.data.repository.ProjectRepository;
 import com.didit.server.data.repository.UserRepository;
 import com.didit.server.service.service.MeetingService;
 import com.didit.server.share.result.Result;
+import com.didit.server.share.result.impl.BadRequestError;
 import com.didit.server.share.result.impl.NotFoundError;
 import com.didit.server.share.result.impl.ServerError;
 import lombok.RequiredArgsConstructor;
@@ -29,13 +30,17 @@ public class MeetingServiceImpl implements MeetingService {
                 return Result.fail(new NotFoundError("projectId", projectId));
             }
             var user = userRepository.findById(userId).orElse(null);
-            if (title.isBlank() && title.length() <= 50){
-                return Result.fail(new NotFoundError("title", title));
+            if (user == null){
+                return Result.fail(new NotFoundError("userId", userId));
+            }
+            if (title == null || title.isBlank() || title.length() > 50) {
+                return Result.fail(new BadRequestError("title", "제목은 비어 있을 수 없으며 50자 이하여야 합니다."));
             }
             // 1. 회의실 생성 (세션Id, 회의실상태 고려 필요)
             MeetingEntity meeting = MeetingEntity.builder()
                     .project(project)
                     .createdBy(user)
+                    .sessionId(java.util.UUID.randomUUID().toString())
                     .title(title)
                     .status(MeetingStatus.SCHEDULED)
                     .mode(mode)

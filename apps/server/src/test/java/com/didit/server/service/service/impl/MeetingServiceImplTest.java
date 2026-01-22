@@ -76,7 +76,7 @@ class MeetingServiceImplTest {
 
         // Then
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow().getStatus()).isEqualTo(404);
+        assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(404);
         assertThat(result.getSingleErrorOrThrow().getMessage()).contains("projectId");
     }
 
@@ -96,7 +96,9 @@ class MeetingServiceImplTest {
 
         // Then
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow().getStatus()).isEqualTo(400);
+        assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(400);
+        assertThat(result.getSingleErrorOrThrow().getMessage())
+                .isEqualTo("제목은 비어 있을 수 없으며 50자 이하여야 합니다.");
     }
 
     @Test
@@ -113,7 +115,7 @@ class MeetingServiceImplTest {
 
         // Then
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow().getStatus()).isEqualTo(500);
+        assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(500);
         assertThat(result.getSingleErrorOrThrow().getMessage()).contains("something wrong");
     }
 }
