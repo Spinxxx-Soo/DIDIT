@@ -18,7 +18,7 @@ const MainLayout = () => {
         <aside className="w-[72px] bg-[var(--bg-sidebar)] border-r border-[var(--border-default)] flex-shrink-0 py-4">
           <ProjectSidebar />
         </aside>
-        
+
         {/* 메인 콘텐츠 */}
         <main className="flex-1 overflow-auto">
           <div className="max-w-[1200px] mx-auto px-8 py-8">
@@ -29,5 +29,6 @@ const MainLayout = () => {
     </div>
   );
 };
+
 
 export default MainLayout;

@@ -8,7 +8,7 @@ const MainLayout = () => {
     <div className="min-h-screen bg-[var(--bg-app)] flex flex-col">
       {/* 상단 고정 네비게이션 */}
       <GNB />
-      
+
       {/* 페이지별 콘텐츠가 들어갈 영역 */}
       <main className="flex-1">
         <Outlet />
@@ -16,5 +16,6 @@ const MainLayout = () => {
     </div>
   );
 };
+
 
 export default MainLayout;
