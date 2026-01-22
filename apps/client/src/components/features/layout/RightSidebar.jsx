@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/common/Button';
 import { IconButton } from '@/components/common/Button/IconButton';
 import { Input } from '@/components/common/Input';
@@ -8,6 +9,7 @@ import { Avatar } from '@/components/common/Avatar';
 const RightSidebar = ({ activePanel, onClose }) => {
   const isChat = activePanel === 'chat';
   const title = isChat ? '채팅' : '이슈 트래커';
+  const [chatMessage, setChatMessage] = useState('');
 
   // 임시 이슈 데이터
   const issues = [
@@ -21,12 +23,30 @@ const RightSidebar = ({ activePanel, onClose }) => {
     { id: 2, sender: '나', content: '네, 지금 확인 중입니다. 이슈 탭 애니메이션도 추가할게요.', time: '오후 2:32', isMine: true },
   ];
 
+  // 메시지 전송 핸들러
+  const handleSendMessage = () => {
+    if (chatMessage.trim() === '') return; // 빈 메시지 방지
+    
+    console.log('전송할 메시지:', chatMessage);
+    // TODO: 실제로는 여기서 API 호출하거나 상태에 추가
+    
+    setChatMessage(''); // 입력창 초기화
+  };
+
+  // Enter 키로 전송
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   return (
     <aside className="w-[360px] flex flex-col h-full bg-[var(--bg-panel)]">
       {/* 헤더 영역 */}
       <div className="h-14 flex items-center justify-between px-5 border-b border-[var(--border-default)] flex-shrink-0">
         <h2 className="font-bold text-lg text-[var(--text-bright)] flex items-center gap-2">
-          {isChat ? '💬' : '📋'} {title}
+          {title}
         </h2>
         <IconButton
           variant="ghost"
@@ -93,8 +113,14 @@ const RightSidebar = ({ activePanel, onClose }) => {
       <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-panel)] flex-shrink-0">
         {isChat ? (
           <div className="flex gap-2">
-            <Input placeholder="메시지 입력..." size="md" className="flex-1" />
-            <Button variant="primary" size="md">
+            <Input placeholder="메시지 입력..." 
+            size="md" 
+            className="flex-1"
+            value={chatMessage}
+            onChange={(e) => setChatMessage(e.target.value)}
+            onKeyPress={handleKeyPress}   
+             />
+            <Button variant="primary" size="md" onClick={handleSendMessage} >
               ➤
             </Button>
           </div>

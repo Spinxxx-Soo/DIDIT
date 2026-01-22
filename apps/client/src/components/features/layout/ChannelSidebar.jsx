@@ -1,5 +1,6 @@
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Mic, FileText, Hash, Plus, Mic2, Volume2, Settings } from 'lucide-react';
+import { Home, Mic, FileText, Hash, Plus, Headphones, MicOff, HeadphoneOff, } from 'lucide-react';
 import { Avatar } from '@/components/common/Avatar';
 import { Divider } from '@/components/common/Divider';
 import { IconButton } from '@/components/common/Button/IconButton';
@@ -7,8 +8,11 @@ import { IconButton } from '@/components/common/Button/IconButton';
 const ChannelSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-
   const isActive = (path) => location.pathname.includes(path);
+
+  // 마이크랑 스피커 상태 관리
+  const [isMicOn, setIsMicOn] = useState(false);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
 
   // 디자인 가이드 nav-item 패턴 적용
   const getMenuItemClass = (active) => {
@@ -39,16 +43,17 @@ const ChannelSidebar = () => {
   ];
 
   return (
-    <div className="flex flex-col h-full pt-4 bg-[var(--bg-sidebar)]">
+    <div className="flex flex-col h-full pt-2 bg-[var(--bg-sidebar)]">
       {/* 1. 상단 고정 영역 */}
       <div className="flex-shrink-0 px-4 mb-2">
         {/* 헤더 */}
-        <div className="h-12 flex items-center font-bold text-xl border-b border-[var(--border-default)] mb-6 text-[var(--text-bright)]">
+        <div className="h-12 flex items-center font-bold text-xl" > 
           공통 PJT
         </div>
+        <Divider className="mb-4" />
 
         {/* WORKSPACE 메뉴 */}
-        <div className="mb-8">
+        <div className="mb-4">
           <div className="text-[11px] text-[var(--text-tertiary)] font-semibold mb-3 tracking-wider uppercase">
             WORKSPACE
           </div>
@@ -73,12 +78,13 @@ const ChannelSidebar = () => {
             </li>
           </ul>
         </div>
+        <Divider className="mb-4" />
 
         {/* CHANNELS 메뉴 */}
         <div className="mb-4">
           <div className="flex items-center justify-between text-[11px] text-[var(--text-tertiary)] font-semibold mb-3 tracking-wider uppercase group">
             <span>CHANNELS</span>
-            <button className="text-[var(--text-tertiary)] hover:text-[var(--color-green-primary)] opacity-0 group-hover:opacity-100 transition-opacity">
+            <button className="text-[var(--text-tertiary)] hover:text-[var(--color-green-primary)]">
               <Plus size={14} />
             </button>
           </div>
@@ -96,14 +102,17 @@ const ChannelSidebar = () => {
         </div>
       </div>
 
-      {/* 구분선 */}
-      <Divider className="mx-4 mb-4" />
+      <div className="px-4">
+          <Divider className="mb-4" />
+      </div>
+  
 
+      {/* 구분선 */}
       {/* 2. 하단 스크롤 영역 (MEMBERS 리스트) */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 min-h-0">
         <div className="flex items-center justify-between text-[11px] text-[var(--text-tertiary)] font-semibold mb-3 tracking-wider uppercase group sticky top-0 bg-[var(--bg-sidebar)] py-1 z-10">
           <span>팀원 ({members.length})</span>
-          <button className="text-[var(--text-tertiary)] hover:text-[var(--color-green-primary)] opacity-0 group-hover:opacity-100 transition-opacity">
+          <button className="text-[var(--text-tertiary)] hover:text-[var(--color-green-primary)]">
             <Plus size={14} />
           </button>
         </div>
@@ -125,26 +134,26 @@ const ChannelSidebar = () => {
           ))}
         </ul>
       </div>
+      
+      <Divider />
 
       {/* 3. 하단 컨트롤 바 */}
-      <div className="flex-shrink-0 py-4 border-t border-[var(--border-default)] flex justify-center gap-2 px-4 bg-[var(--bg-sidebar)] mt-auto">
+      <div className="flex-shrink-0 py-4 flex justify-center gap-2 px-4 bg-[var(--bg-sidebar)] mt-auto">
         <IconButton
-          icon={<Mic2 size={18} />}
+          icon={isMicOn ? <Mic size={18} /> : <MicOff size={18} />}
           variant="ghost"
           size="sm"
-          title="마이크"
+          title={isMicOn ? "마이크 끄기" : "마이크 켜기"}
+          onClick={() => setIsMicOn(!isMicOn)} // 상태 변경
+          className={!isMicOn ? "text-[var(--color-error)] hover:text-[var(--color-error)]" : ""} // 꺼졌을 때 빨간색 처리
         />
         <IconButton
-          icon={<Volume2 size={18} />}
+          icon={isSpeakerOn ? <Headphones size={18} /> : <HeadphoneOff size={18} />}
           variant="ghost"
           size="sm"
-          title="스피커"
-        />
-        <IconButton
-          icon={<Settings size={18} />}
-          variant="ghost"
-          size="sm"
-          title="설정"
+          title={isSpeakerOn ? "음소거" : "음소거 해제"}
+          onClick={() => setIsSpeakerOn(!isSpeakerOn)} // 상태 변경
+          className={!isSpeakerOn ? "text-[var(--color-error)] hover:text-[var(--color-error)]" : ""} // 꺼졌을 때 빨간색 처리
         />
       </div>
     </div>

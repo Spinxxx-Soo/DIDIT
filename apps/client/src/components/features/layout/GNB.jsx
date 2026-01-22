@@ -19,8 +19,8 @@ const GNB = ({
       <Link to="/" className="flex items-center gap-2">
         <img
           src={logo}
-          alt="PJT 로고"
-          className="h-8 w-auto"
+          alt="로고"
+          className="h-10 w-auto"
         />
       </Link>
 
@@ -51,18 +51,6 @@ const GNB = ({
         ) : (
           // [기본 모드] 기존 랜딩 페이지 메뉴
           <>
-            <Link
-              to="/about"
-              className="text-[var(--text-secondary)] hover:text-[var(--color-green-primary)] transition-colors duration-200"
-            >
-              About us
-            </Link>
-            <Link
-              to="/contact"
-              className="text-[var(--text-secondary)] hover:text-[var(--color-green-primary)] transition-colors duration-200"
-            >
-              Contact
-            </Link>
             {isAuthenticated ? (
               <Button variant="secondary" size="sm" onClick={logout}>
                 Logout
