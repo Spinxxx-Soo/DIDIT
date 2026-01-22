@@ -1,72 +1,77 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import useAuthStore from '../../../store/useAuthStore';
+import logo from '@/assets/didit_logo.png';
+import { MessageCircle, ClipboardList } from 'lucide-react';
+import useAuthStore from '@/store/useAuthStore';
+import { Button } from '@/components/common/Button';
 
-const GNB = ({ 
+const GNB = ({
   variant = 'landing',
-  onChatClick, 
+  onChatClick,
   onIssueClick,
-  activePanel 
+  activePanel
 }) => {
   const isWorkspace = variant === 'workspace';
-
-  // 로그인 상태 확인
   const { isAuthenticated, logout } = useAuthStore();
 
   return (
-    <header className="h-16 border-b border-gray-200 px-6 flex items-center justify-between bg-white z-[var(--z-sticky)] flex-shrink-0">
+    <header className="h-16 border-b border-[var(--border-default)] px-6 flex items-center justify-between bg-[var(--bg-panel)] flex-shrink-0">
       {/* 로고 영역 */}
-      <Link to="/" className="text-2xl font-bold flex items-center gap-2">
-        <span className="text-3xl">PJT</span> {/* 로고 이미지 대체 */}
+      <Link to="/" className="flex items-center gap-2">
+        <img
+          src={logo}
+          alt="PJT 로고"
+          className="h-8 w-auto"
+        />
       </Link>
 
       {/* 네비게이션 영역 */}
-      <nav className="flex items-center gap-4 text-[15px]">
+      <nav className="flex items-center gap-3 text-[15px]">
         {isWorkspace ? (
           // [워크스페이스 모드] 채팅, 이슈 버튼
           <>
-            <button 
+            <Button
+              variant={activePanel === 'chat' ? 'secondary' : 'ghost'}
+              size="sm"
+              leftIcon={<MessageCircle size={16} />}
               onClick={onChatClick}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md transition font-medium ${
-                activePanel === 'chat' 
-                  ? 'bg-gray-100 text-[var(--color-green-primary)]' 
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
+              className={activePanel === 'chat' ? 'border-[var(--color-green-primary)] text-[var(--color-green-primary)]' : ''}
             >
-              <span>💬</span> 
-              <span>채팅</span>
-            </button>
-            <button 
+              채팅
+            </Button>
+            <Button
+              variant={activePanel === 'issue' ? 'secondary' : 'ghost'}
+              size="sm"
+              leftIcon={<ClipboardList size={16} />}
               onClick={onIssueClick}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md transition font-medium ${
-                activePanel === 'issue' 
-                  ? 'bg-gray-100 text-[var(--color-green-primary)]' 
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
+              className={activePanel === 'issue' ? 'border-[var(--color-green-primary)] text-[var(--color-green-primary)]' : ''}
             >
-              <span>📋</span> 
-              <span>이슈</span>
-            </button>
+              이슈
+            </Button>
           </>
         ) : (
           // [기본 모드] 기존 랜딩 페이지 메뉴
           <>
-            <Link to="/about" className="hover:text-[var(--color-green-primary)]">About us</Link>
-            <Link to="/contact" className="hover:text-[var(--color-green-primary)]">Contact</Link>
-            {/* 로그인 상태에 따라 버튼 다르게 보여주기 */}
+            <Link
+              to="/about"
+              className="text-[var(--text-secondary)] hover:text-[var(--color-green-primary)] transition-colors duration-200"
+            >
+              About us
+            </Link>
+            <Link
+              to="/contact"
+              className="text-[var(--text-secondary)] hover:text-[var(--color-green-primary)] transition-colors duration-200"
+            >
+              Contact
+            </Link>
             {isAuthenticated ? (
-              <button 
-                onClick={logout}
-                className="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition"
-              >
+              <Button variant="secondary" size="sm" onClick={logout}>
                 Logout
-              </button>
+              </Button>
             ) : (
-              <Link 
-                to="/login"
-                className="bg-[var(--color-green-primary)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[#059669] transition"
-              >
-                Login
+              <Link to="/login">
+                <Button variant="primary" size="sm">
+                  Login
+                </Button>
               </Link>
             )}
           </>
