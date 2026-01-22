@@ -1,19 +1,20 @@
 import { create } from 'zustand';
+import { authApi } from '@/api/auth.js';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
-const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true'; // env로 mock 버전 설정
+const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true'; 
 
 const useAuthStore = create((set, get) => ({
   user: null,          
   isAuthenticated: false,
-  isLoading: false,
+  // 앱 시작 시엔 "확인 중"이어야 하므로 true로 설정해놓음 일단
+  isLoading: true, 
   error: null,
 
   // ------------------------------------------------------------------
   // [1] 로그인 요청
   // ------------------------------------------------------------------
   loginWithGithub: () => {
-    // 테스트
     if (IS_MOCK) {
       const mockUser = {
         userId: 1,
@@ -31,20 +32,19 @@ const useAuthStore = create((set, get) => ({
       set({ user: mockUser, isAuthenticated: true });
       alert("GitHub 로그인 성공! (Mock Mode)");
     } else {
-      // 실제 백엔드 연동
-      window.location.href = `${BACKEND_URL}/api/v1/auth/login`;
+      window.location.href = authApi.LOGIN_URL;
     }
   },
 
   // ------------------------------------------------------------------
-  // [2] 로그인 콜백 처리 (OAuth redirect 후)
+  // [2] 로그인 콜백 처리
   // ------------------------------------------------------------------
   completeLogin: async (token) => {
     set({ isLoading: true, error: null });
     
     try {
       localStorage.setItem('accessToken', token);
-      await get().fetchCurrentUser(); // 내 정보 조회
+      await get().fetchCurrentUser(); 
     } catch (error) {
       set({ error: error.message, isAuthenticated: false });
       localStorage.removeItem('accessToken');
@@ -57,66 +57,49 @@ const useAuthStore = create((set, get) => ({
   // [3] 내 정보 조회
   // ------------------------------------------------------------------
   fetchCurrentUser: async () => {
-    if (IS_MOCK) {
-      // 테스트 데이터 반환
-      set({ 
-        user: { 
-          userId: 1, 
-          githubLogin: "jiyeon_dev",
-          name: "하지연", 
-          avatarUrl: "https://via.placeholder.com/150"
-        },
-        isAuthenticated: true 
-      });
-      return;
-    }
-
-    // 실제 API 호출
-    set({ isLoading: true });
-    
-    try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) throw new Error('토큰 없음');
-
-      const response = await fetch(`${BACKEND_URL}/api/v1/users/me`, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('사용자 정보 조회 실패');
+      // Mock 모드
+      if (IS_MOCK) {
+        set({ 
+          user: { 
+            userId: 1, 
+            githubLogin: "jiyeon_dev",
+            name: "하지연", 
+            avatarUrl: "https://via.placeholder.com/150"
+          },
+          isAuthenticated: true,
+          isLoading: false
+        });
+        return;
       }
 
-      const userData = await response.json();
-      set({ user: userData, isAuthenticated: true, error: null });
-    } catch (error) {
-      console.error('fetchCurrentUser 에러:', error);
-      set({ user: null, isAuthenticated: false, error: error.message });
-      localStorage.removeItem('accessToken');
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+      set({ isLoading: true });
+      
+      try {
+        // authApi
+        const response = await authApi.getMe();
+        set({ user: response.data, isAuthenticated: true, error: null });
+      } catch (error) {
+        console.error('내 정보 조회 실패:', error);
+        set({ user: null, isAuthenticated: false, error: '로그인 세션 만료' });
+        localStorage.removeItem('accessToken');
+      } finally {
+        // 성공하든 실패하든 로딩 종료
+        set({ isLoading: false });
+      }
+    },
 
   // ------------------------------------------------------------------
   // [4] 로그아웃
   // ------------------------------------------------------------------
   logout: async () => {
+
+    set({ isLoading: true });
+
     if (!IS_MOCK) {
-      // 실제 백엔드에 로그아웃 요청
       try {
-        const token = localStorage.getItem('accessToken');
-        await fetch(`${BACKEND_URL}/api/v1/auth/logout`, { 
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      } catch (e) { 
-        console.error('로그아웃 요청 실패:', e); 
+        await authApi.logout();
+      } catch (e) {
+        console.warn('로그아웃 실패:', e);
       }
     }
 
@@ -131,15 +114,16 @@ const useAuthStore = create((set, get) => ({
   // ------------------------------------------------------------------
   // [5] 새로고침 시 상태 복구
   // ------------------------------------------------------------------
-  checkLoginStatus: async () => { // async 추가
-    let token;
-    try {
-      token = localStorage.getItem('accessToken');
-    } catch (e) { return; }
+  checkLoginStatus: async () => {
+    const token = localStorage.getItem('accessToken');
 
-    if (!token) return;
+    // 토근 없을 시 실패
+    if (!token) {
+      set({ user: null, isAuthenticated: false, isLoading: false });
+      return;
+    }
 
-    // Mock 모드 또는 실제 모드 자동 처리
+    // 토큰 있으면 검증 시작
     await get().fetchCurrentUser();
   }
 }));
