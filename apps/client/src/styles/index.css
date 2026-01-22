@@ -44,52 +44,78 @@
    LIGHT MODE (기본)
    ======================================== */
 :root {
+  /* Background */
   --bg-app: #F9FAFB;
+  --bg-sidebar: #FFFFFF;
   --bg-panel: #FFFFFF;
+  --bg-elevated: #FFFFFF;
   --bg-input: #F3F4F6;
   --bg-hover: #F3F4F6;
 
+  /* Text */
   --text-bright: #111827;
   --text-primary: #374151;
   --text-secondary: #6B7280;
   --text-tertiary: #9CA3AF;
   --text-disabled: #D1D5DB;
 
+  /* Border */
   --border-default: #E5E7EB;
+  --border-subtle: #F3F4F6;
   --border-strong: #D1D5DB;
+  --border-focus: #10B981;
 
+  /* Semantic */
   --success-bg: #D1FAE5;
+  --success-text: #065F46;
   --warning-bg: #FEF3C7;
+  --warning-text: #92400E;
   --error-bg: #FEE2E2;
+  --error-text: #991B1B;
   --info-bg: #DBEAFE;
+  --info-text: #1E40AF;
 }
 
 /* ========================================
    DARK MODE
    ======================================== */
 [data-theme="dark"] {
+  /* Background */
   --bg-app: #1A1D1F;
+  --bg-sidebar: #14161A;
   --bg-panel: #242629;
+  --bg-elevated: #2A2D31;
   --bg-input: #2F3237;
   --bg-hover: #282B2F;
 
+  /* Text */
   --text-bright: #FFFFFF;
   --text-primary: #E5E7EB;
   --text-secondary: #9CA3AF;
   --text-tertiary: #6B7280;
   --text-disabled: #4B5563;
 
+  /* Border */
   --border-default: #2D3035;
+  --border-subtle: #24262A;
   --border-strong: #3E4147;
 
+  /* Semantic (Dark - Transparent Backgrounds) */
   --success-bg: rgba(16, 185, 129, 0.15);
+  --success-text: #34D399;
   --warning-bg: rgba(245, 158, 11, 0.15);
+  --warning-text: #FBBF24;
   --error-bg: rgba(239, 68, 68, 0.15);
+  --error-text: #F87171;
   --info-bg: rgba(59, 130, 246, 0.15);
+  --info-text: #60A5FA;
 
+  /* Shadows */
   --shadow-sm: none;
   --shadow-md: none;
   --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-focus: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
 /* ========================================
