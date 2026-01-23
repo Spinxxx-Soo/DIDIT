@@ -12,11 +12,11 @@ import WorkspaceLayout from './layouts/WorkspaceLayout';
 import { DevTest } from '@/pages/DevTest';
 import MyPage from './pages/MyPage';
 import LoginPage from './pages/LoginPage';
+import Lounge from './pages/Lounge';
 
 // 임시 컴포넌트
 const LandingPage = () => <div className="text-2xl font-bold p-10">🏠 랜딩 페이지</div>;
 const ProjectList = () => <div className="text-2xl font-bold p-10">📂 내 프로젝트 목록</div>;
-const Dashboard = () => <div className="p-10">워크스페이스 대시보드 (이슈/통계)</div>;
 const MeetingRoom = () => <div className="text-white text-2xl font-bold p-10">🎙 회의실 화면</div>;
 
 // 로그인이 필요한 페이지를 감싸는 컴포넌트
@@ -55,7 +55,7 @@ function App() {
           </Route>
 
           <Route path="/workspace/:roomId" element={<WorkspaceLayout />}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Lounge />} />
             <Route path="meeting" element={<MeetingRoom />} />
             <Route path="minutes" element={<div>회의록 목록</div>} />
           </Route>

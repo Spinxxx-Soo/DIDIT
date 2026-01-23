@@ -1,36 +1,33 @@
-import { useState } from 'react';
+import React from 'react';
 import { Outlet } from 'react-router-dom';
 import GNB from '../components/features/layout/GNB';
 import ProjectSidebar from '../components/features/layout/ProjectSidebar';
 import ChannelSidebar from '../components/features/layout/ChannelSidebar';
 import RightSidebar from '../components/features/layout/RightSidebar';
+import useLoungeStore from '@/store/useLoungeStore';
 
-/**
- * WorkspaceLayout - 프로젝트 내부 전체 레이아웃
- * 사용: 홈, 회의, 회의록 등 프로젝트 내부 페이지
- *
- * 구조:
- * ┌──────────────────────────────────────────┐
- * │              GNB (전체 상단)              │
- * ├──────┬────────┬────────────────┬─────────┤
- * │ Proj │Channel │    Content     │  Right  │
- * │ 72px │ 240px  │    flex-1      │  360px  │
- * └──────┴────────┴────────────────┴─────────┘
- */
 const WorkspaceLayout = () => {
-  const [activePanel, setActivePanel] = useState(null); // 'chat' | 'issue' | null
+  // ★ resetToIssueList를 스토어에서 꺼내옵니다.
+  const { activePanel, setActivePanel, closeSidebar, resetToIssueList } = useLoungeStore();
 
   const handleChatClick = () => {
     setActivePanel(activePanel === 'chat' ? null : 'chat');
   };
 
   const handleIssueClick = () => {
-    setActivePanel(activePanel === 'issue' ? null : 'issue');
+    // 1. 현재 '이슈 목록(issue)'이 이미 열려있다면 -> 닫기 (토글 기능)
+    if (activePanel === 'issue') {
+      closeSidebar();
+    } 
+    // 2. 그 외의 모든 경우 (닫혀있음, 채팅 중, 이슈 상세/수정 보는 중)
+    // -> 싹 초기화하고 '이슈 목록'을 보여줌
+    else {
+      resetToIssueList();
+    }
   };
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-[var(--bg-app)]">
-      {/* 최상단 GNB - 전체 너비 */}
       <GNB
         variant="workspace"
         activePanel={activePanel}
@@ -38,24 +35,22 @@ const WorkspaceLayout = () => {
         onIssueClick={handleIssueClick}
       />
 
-      {/* 하단 영역: 사이드바들 + 콘텐츠 */}
       <div className="flex flex-1 overflow-hidden">
-        {/* 1열: 프로젝트 선택 바 */}
+        {/* 사이드바들... */}
         <aside className="w-[72px] bg-[var(--bg-sidebar)] border-r border-[var(--border-default)] flex-shrink-0 flex flex-col items-center py-4">
           <ProjectSidebar />
         </aside>
 
-        {/* 2열: 채널 사이드바 */}
         <aside className="w-[240px] bg-[var(--bg-sidebar)] border-r border-[var(--border-default)] flex-shrink-0 flex flex-col">
           <ChannelSidebar />
         </aside>
 
-        {/* 3열: 메인 콘텐츠 */}
+        {/* 메인 콘텐츠 */}
         <main className="flex-1 overflow-y-auto bg-[var(--bg-app)] p-6">
           <Outlet />
         </main>
 
-        {/* 4열: 우측 사이드바 (슬라이드 애니메이션) */}
+        {/* 우측 사이드바 */}
         <aside
           className={`flex-shrink-0 border-l border-[var(--border-default)] bg-[var(--bg-panel)] transition-all duration-300 ease-in-out overflow-hidden ${
             activePanel ? 'w-[360px]' : 'w-0 border-none'
@@ -64,7 +59,7 @@ const WorkspaceLayout = () => {
           {activePanel && (
             <RightSidebar
               activePanel={activePanel}
-              onClose={() => setActivePanel(null)}
+              onClose={closeSidebar}
             />
           )}
         </aside>
