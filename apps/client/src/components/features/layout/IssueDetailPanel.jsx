@@ -1,0 +1,418 @@
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, X, AlertCircle, CheckCircle2, Clock, Trash2 } from 'lucide-react';
+import { IconButton } from '@/components/common/Button/IconButton';
+import { Button } from '@/components/common/Button';
+import { Input } from '@/components/common/Input';
+import { Badge } from '@/components/common/Badge';
+import { Avatar } from '@/components/common/Avatar';
+import { Divider } from '@/components/common/Divider';
+import useLoungeStore from '@/store/useLoungeStore';
+
+// Priority 설정
+const PRIORITY_CONFIG = {
+  high: { 
+    label: 'High', 
+    variant: 'error',
+    icon: <AlertCircle size={14} />
+  },
+  medium: { 
+    label: 'Medium', 
+    variant: 'warning',
+    icon: <Clock size={14} />
+  },
+  low: { 
+    label: 'Low', 
+    variant: 'info',
+    icon: <CheckCircle2 size={14} />
+  },
+};
+
+// Status 설정
+const STATUS_CONFIG = {
+  open: { label: 'Open', variant: 'warning' },
+  closed: { label: 'Closed', variant: 'success' },
+};
+
+const IssueDetailPanel = () => {
+  const { 
+    selectedIssueId, 
+    closeSidebar, 
+    setActivePanel,
+    getIssueById,
+    addIssue,
+    updateIssue,
+    deleteIssue
+  } = useLoungeStore();
+  
+  const isCreateMode = selectedIssueId === null;
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ 
+    title: '', 
+    body: '', 
+    status: 'open', 
+    priority: 'medium',
+    assignees: []
+  });
+  const [assigneeInput, setAssigneeInput] = useState('');
+
+  useEffect(() => {
+    if (isCreateMode) {
+      setFormData({ 
+        title: '', 
+        body: '', 
+        status: 'open', 
+        priority: 'medium',
+        assignees: []
+      });
+      setIsEditing(true); 
+    } else {
+      const found = getIssueById(selectedIssueId);
+      if (found) {
+        setFormData(found);
+      } else {
+        setFormData({ 
+          title: '', 
+          body: '', 
+          status: 'open', 
+          priority: 'medium',
+          assignees: []
+        });
+      }
+      setIsEditing(false);
+    }
+  }, [selectedIssueId, isCreateMode, getIssueById]);
+
+  const handleSave = () => {
+    if (!formData.title.trim()) {
+      alert('제목을 입력해주세요.');
+      return;
+    }
+
+    if (isCreateMode) {
+      // 새 이슈 추가
+      addIssue({
+        title: formData.title,
+        body: formData.body,
+        status: formData.status,
+        priority: formData.priority,
+        assignees: formData.assignees,
+      });
+      alert(`✅ 새 이슈가 등록되었습니다!`);
+    } else {
+      // 기존 이슈 수정
+      updateIssue(selectedIssueId, {
+        title: formData.title,
+        body: formData.body,
+        status: formData.status,
+        priority: formData.priority,
+        assignees: formData.assignees,
+      });
+      alert(`✅ 이슈가 수정되었습니다!`);
+      setIsEditing(false);
+    }
+  };
+
+  const handleDelete = () => {
+    if (!confirm('정말 이 이슈를 삭제하시겠습니까?')) return;
+    deleteIssue(selectedIssueId);
+    alert('🗑️ 이슈가 삭제되었습니다.');
+  };
+
+  const handleBack = () => {
+    if (isCreateMode && (formData.title || formData.body)) {
+        if(!confirm("작성 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
+    }
+    if (isEditing && !isCreateMode) {
+      if(!confirm("수정 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
+    }
+    setActivePanel('issue');
+  };
+
+  const handleAddAssignee = () => {
+    if (!assigneeInput.trim()) return;
+    if (formData.assignees.includes(assigneeInput.trim())) {
+      alert('이미 추가된 담당자입니다.');
+      return;
+    }
+    setFormData({
+      ...formData,
+      assignees: [...formData.assignees, assigneeInput.trim()]
+    });
+    setAssigneeInput('');
+  };
+
+  const handleRemoveAssignee = (name) => {
+    setFormData({
+      ...formData,
+      assignees: formData.assignees.filter(a => a !== name)
+    });
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white">
+      {/* 헤더 */}
+      <div className="h-14 flex items-center justify-between px-4 border-b border-[var(--border-default)] flex-shrink-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <IconButton
+            variant="ghost"
+            size="sm"
+            icon={<ArrowLeft size={18} />}
+            onClick={handleBack}
+            title="목록으로 돌아가기"
+          />
+          <h2 className="font-bold text-base truncate">
+            {isCreateMode ? '새 이슈 생성' : `이슈 #${selectedIssueId}`}
+          </h2>
+        </div>
+        <IconButton
+          variant="ghost"
+          size="sm"
+          icon={<X size={18} />}
+          onClick={closeSidebar}
+          title="닫기"
+        />
+      </div>
+
+      {/* 컨텐츠 */}
+      <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        {/* 제목 */}
+        <div>
+          <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+            제목 <span className="text-[var(--color-error)]">*</span>
+          </label>
+          {isEditing ? (
+            <Input 
+              placeholder="이슈 제목을 입력하세요"
+              value={formData.title}
+              onChange={(e) => setFormData({...formData, title: e.target.value})}
+              size="md"
+              autoFocus={isCreateMode}
+            />
+          ) : (
+            <div className="text-lg font-semibold text-[var(--text-bright)] break-words">
+              {formData.title}
+            </div>
+          )}
+        </div>
+
+        <Divider />
+
+        {/* 상태 & Priority */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Status */}
+          <div>
+            <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+              상태
+            </label>
+            {isEditing ? (
+              <select 
+                value={formData.status}
+                onChange={(e) => setFormData({...formData, status: e.target.value})}
+                className="w-full h-10 px-3 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--color-green-primary)] focus:ring-3 focus:ring-[var(--color-green-primary)]/20"
+              >
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
+              </select>
+            ) : (
+              <Badge variant={STATUS_CONFIG[formData.status].variant} size="md">
+                {STATUS_CONFIG[formData.status].label}
+              </Badge>
+            )}
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+              우선순위
+            </label>
+            {isEditing ? (
+              <select 
+                value={formData.priority}
+                onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                className="w-full h-10 px-3 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--color-green-primary)] focus:ring-3 focus:ring-[var(--color-green-primary)]/20"
+              >
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            ) : (
+              <Badge 
+                variant={PRIORITY_CONFIG[formData.priority].variant} 
+                size="md"
+                leftIcon={PRIORITY_CONFIG[formData.priority].icon}
+              >
+                {PRIORITY_CONFIG[formData.priority].label}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <Divider />
+
+        {/* 담당자 */}
+        <div>
+          <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+            담당자
+          </label>
+          
+          {isEditing ? (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="이름 입력 후 Enter"
+                  value={assigneeInput}
+                  onChange={(e) => setAssigneeInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddAssignee();
+                    }
+                  }}
+                  size="sm"
+                />
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={handleAddAssignee}
+                >
+                  추가
+                </Button>
+              </div>
+              
+              {formData.assignees.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {formData.assignees.map((name, idx) => (
+                    <div 
+                      key={idx}
+                      className="flex items-center gap-2 pl-3 pr-2 py-1.5 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-full text-sm"
+                    >
+                      <Avatar name={name} size="xs" />
+                      <span className="text-[var(--text-primary)]">{name}</span>
+                      <button
+                        onClick={() => handleRemoveAssignee(name)}
+                        className="text-[var(--text-tertiary)] hover:text-[var(--color-error)] transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              {formData.assignees.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {formData.assignees.map((name, idx) => (
+                    <div 
+                      key={idx}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-input)] rounded-full text-sm"
+                    >
+                      <Avatar name={name} size="xs" />
+                      <span className="text-[var(--text-primary)]">{name}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-sm text-[var(--text-tertiary)]">담당자 없음</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <Divider />
+
+        {/* 내용 */}
+        <div>
+          <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+            내용
+          </label>
+          {isEditing ? (
+            <textarea 
+              rows={10}
+              placeholder="이슈 내용을 자세히 적어주세요."
+              value={formData.body}
+              onChange={(e) => setFormData({...formData, body: e.target.value})}
+              className="w-full px-4 py-3 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--color-green-primary)] focus:ring-3 focus:ring-[var(--color-green-primary)]/20 resize-none"
+            />
+          ) : (
+            <div className="bg-[var(--bg-app)] p-4 rounded-[var(--radius-lg)] text-sm text-[var(--text-primary)] min-h-[200px] whitespace-pre-wrap border border-[var(--border-default)]">
+              {formData.body || '내용이 없습니다.'}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 푸터 */}
+      <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-panel)] flex justify-between gap-2">
+        {/* 삭제 버튼 (수정 모드일 때만) */}
+        {!isCreateMode && (
+          <Button 
+            variant="danger-outline"
+            size="sm"
+            leftIcon={<Trash2 size={16} />}
+            onClick={handleDelete}
+          >
+            삭제
+          </Button>
+        )}
+        
+        {/* 우측 버튼들 */}
+        <div className="flex gap-2 ml-auto">
+          {isCreateMode ? (
+            <>
+              <Button 
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+              >
+                취소
+              </Button>
+              <Button 
+                variant="primary"
+                size="sm"
+                onClick={handleSave}
+              >
+                등록하기
+              </Button>
+            </>
+          ) : (
+            isEditing ? (
+              <>
+                <Button 
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const found = getIssueById(selectedIssueId);
+                    if (found) setFormData(found);
+                    setIsEditing(false);
+                  }}
+                >
+                  취소
+                </Button>
+                <Button 
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSave}
+                >
+                  저장하기
+                </Button>
+              </>
+            ) : (
+              <Button 
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+                className="w-full"
+              >
+                수정하기
+              </Button>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default IssueDetailPanel;
