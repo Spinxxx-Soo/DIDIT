@@ -32,10 +32,9 @@ const ProjectSidebar = () => {
 
   return (
     <>
-      <div className="flex flex-col items-center gap-3 w-full h-full py-3 bg-[var(--bg-sidebar)]">
-        
+      <div className="flex flex-col items-center gap-3 w-full h-full bg-[var(--bg-sidebar)]">
         {/* === 1. 프로젝트 리스트 === */}
-        <div className="flex flex-col gap-3 w-full items-center flex-1 overflow-y-auto min-h-0 scrollbar-hide">
+        <div className="flex flex-col gap-3 w-full items-center flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-hide pt-3">
           {projects.map((project) => {
             const isActive = roomId === project.id;
 
@@ -72,19 +71,20 @@ const ProjectSidebar = () => {
               </div>
             );
           })}
+                    {/* === 3. 프로젝트 추가 버튼 === */}
+          <div className="relative group">
+            <IconButton
+              icon={<Plus size={20} />}
+              variant="ghost"
+              size="md"
+              onClick={handleAddProject}
+              className="rounded-[12px] bg-[var(--bg-input)] text-[var(--color-green-primary)] hover:bg-[var(--color-green-primary)] hover:text-white transition-all duration-200 hover:scale-105"
+              title="새 프로젝트 만들기"
+            />
+          </div>
         </div>
         
-        {/* === 3. 프로젝트 추가 버튼 === */}
-        <div className="relative group">
-          <IconButton
-            icon={<Plus size={20} />}
-            variant="ghost"
-            size="md"
-            onClick={handleAddProject}
-            className="rounded-[12px] bg-[var(--bg-input)] text-[var(--color-green-primary)] hover:bg-[var(--color-green-primary)] hover:text-white transition-all duration-200 hover:scale-105"
-            title="새 프로젝트 만들기"
-          />
-        </div>
+
 
         {/* === 4. 로그아웃 버튼 (하단 고정) === */}
         <div className="mt-auto mb-2">
