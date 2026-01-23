@@ -2,7 +2,7 @@ package com.didit.server.api.controller;
 
 import com.didit.server.api.request.AddProjectInviteRequest;
 import com.didit.server.api.request.AddProjectRequest;
-import com.didit.server.api.response.FindProjectResponse;
+import com.didit.server.api.response.ProjectResponse;
 import com.didit.server.api.response.UserResponse;
 import com.didit.server.api.security.CustomOAuth2User;
 import com.didit.server.service.command.AddProjectCommand;
@@ -34,7 +34,7 @@ public class ProjectController {
         }
 
         var entities = findResult.getOrThrow();
-        var responses = entities.stream().map(FindProjectResponse::fromEntity)
+        var responses = entities.stream().map(ProjectResponse::fromEntity)
                 .toList();
 
         return ResponseEntity.ok(responses);
@@ -86,7 +86,7 @@ public class ProjectController {
             return new ResponseEntity<>(err, err.getStatusCode());
         }
         var entity = findResult.getValue().get();
-        return ResponseEntity.ok(FindProjectResponse.fromEntity(entity));
+        return ResponseEntity.ok(ProjectResponse.fromEntity(entity));
     }
 
     @PostMapping("invites/{inviteCode}")

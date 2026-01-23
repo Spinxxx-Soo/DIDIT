@@ -1,7 +1,13 @@
 package com.didit.server.service.service;
 
+import ch.qos.logback.core.status.Status;
+import com.didit.server.data.entity.MeetingEntity;
 import com.didit.server.data.entity.enums.MeetingMode;
+import com.didit.server.data.entity.enums.MeetingStatus;
 import com.didit.server.share.result.Result;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 public interface MeetingService {
 
@@ -25,4 +31,21 @@ public interface MeetingService {
      * - <500>: 데이터베이스 저장 중 예상치 못한 런타임 예외 발생
      */
     Result<Long> createMeeting(long projectId, long userId, String title, MeetingMode mode);
+
+    /**
+     * Action: 특정 프로젝트 내의 회의를 커서 기반 페이지네이션으로 반환함
+     * Input:
+     * - long projectId: 조회할 프로젝트 ID
+     * - long cursor: 직전 페이지의 마지막 아이템 ID (첫 페이지는 0)
+     * - Pageable pageable: 한 페이지 사이즈 및 정렬 규격
+     * Success:
+     * - ok(Slice<MeetingEntity>)
+     * Auth/Permission:
+     * - (누구나 또는 프로젝트 참여자)
+     * Persistence:
+     * - (찾기)
+     * Failures:
+     * - <404>: 존재하지 않는 projectId
+     */
+    Result<List<MeetingEntity>> GetMeetingList(long projectId, MeetingStatus status, long cursor, Pageable pageable);
 }
