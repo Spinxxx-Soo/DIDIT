@@ -29,6 +29,7 @@ public class UserResponse {
     private LocalDateTime createdAt;
     private LocalDateTime lastLoginAt;
 
+
     public static UserResponse fromEntity(UserEntity entity){
         return UserResponse.builder()
                 .id(entity.getId())

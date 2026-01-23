@@ -167,4 +167,22 @@ public class ProjectServiceImpl implements ProjectService {
 
         return Result.ok(list);
     }
+
+    @Override
+    public Result<ProjectUserEntity> FindProjectUser(long userId, long projectId) {
+        var user = _UserRepository.findById(userId);
+        if(user.isEmpty()){
+            return Result.fail(new NotFoundError("userId", userId));
+        }
+        var project = _ProjectRepository.findById(projectId);
+        if(project.isEmpty()){
+            return Result.fail(new NotFoundError("projectId", projectId));
+        }
+        var projectUser =_ProjectUserRepository.findByProject_IdAndUser_Id(projectId, userId);
+        if(projectUser.isEmpty()){
+            return Result.fail(new NotFoundError("userId", userId));
+        }
+
+        return Result.ok(projectUser.get());
+    }
 }

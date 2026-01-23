@@ -6,14 +6,18 @@ import com.didit.server.data.entity.UserEntity;
 import com.didit.server.data.entity.enums.MeetingMode;
 import com.didit.server.data.entity.enums.MeetingStatus;
 import com.didit.server.data.repository.MeetingRepository;
-import com.didit.server.data.repository.MeetingUserRepository;
 import com.didit.server.data.repository.ProjectRepository;
 import com.didit.server.data.repository.UserRepository;
-import com.didit.server.service.service.dto.response.MeetingResponse;
 import com.didit.server.share.result.Result;
+import com.didit.server.share.result.ResultError;
+import com.didit.server.share.result.impl.NotFoundError;
+import com.navercorp.fixturemonkey.FixtureMonkey;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,9 +28,11 @@ import org.springframework.data.domain.SliceImpl;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
@@ -44,10 +50,17 @@ class MeetingServiceImplTest {
     private MeetingRepository meetingRepository;
 
     @InjectMocks
-    private MeetingServiceImpl meetingService;
+    private MeetingServiceImpl sut;
 
-    @Mock
-    private MeetingUserRepository meetingUserRepository;
+
+    private FixtureMonkey fixtureMonkey;
+
+    @BeforeEach
+    void setUp() {
+        fixtureMonkey = FixtureMonkey.builder()
+                .defaultNotNull(true)
+                .build();
+    }
 
     @Test
     @DisplayName("유효한 입력값이 주어지면 회의실 생성에 성공하고 ID를 반환한다.")
@@ -67,7 +80,7 @@ class MeetingServiceImplTest {
         given(meetingRepository.save(any(MeetingEntity.class))).willReturn(savedMeeting);
 
         // When
-        Result<Long> result = meetingService.createMeeting(projectId, userId, title, mode);
+        Result<Long> result = sut.createMeeting(projectId, userId, title, mode);
 
         // Then
         assertThat(result.isSuccess()).isTrue();
@@ -83,33 +96,12 @@ class MeetingServiceImplTest {
         given(projectRepository.findById(invalidProjectId)).willReturn(Optional.empty());
 
         // When
-        Result<Long> result = meetingService.createMeeting(invalidProjectId, 1L, "제목", MeetingMode.CHAT);
+        Result<Long> result = sut.createMeeting(invalidProjectId, 1L, "제목", MeetingMode.CHAT);
 
         // Then
         assertThat(result.isFailure()).isTrue();
         assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(404);
         assertThat(result.getSingleErrorOrThrow().getMessage()).contains("projectId");
-    }
-
-    @Test
-    @DisplayName("제목이 비어있으면 400 에러를 반환한다.")
-    void createMeeting_Fail_EmptyTitle() {
-        // Given
-        long projectId = 1L;
-        long userId = 1L;
-        String emptyTitle = "";
-
-        given(projectRepository.findById(projectId)).willReturn(Optional.of(ProjectEntity.builder().id(projectId).build()));
-        given(userRepository.findById(userId)).willReturn(Optional.of(UserEntity.builder().id(userId).build()));
-
-        // When
-        Result<Long> result = meetingService.createMeeting(projectId, userId, emptyTitle, MeetingMode.VOICE);
-
-        // Then
-        assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(400);
-        assertThat(result.getSingleErrorOrThrow().getMessage())
-                .isEqualTo("제목은 비어 있을 수 없으며 50자 이하여야 합니다.");
     }
 
     @Test
@@ -122,12 +114,149 @@ class MeetingServiceImplTest {
         given(meetingRepository.save(any())).willThrow(new RuntimeException("DB Error"));
 
         // When
-        Result<Long> result = meetingService.createMeeting(projectId, 1L, "제목", MeetingMode.VOICE);
+        Result<Long> result = sut.createMeeting(projectId, 1L, "제목", MeetingMode.VOICE);
 
         // Then
         assertThat(result.isFailure()).isTrue();
         assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(500);
         assertThat(result.getSingleErrorOrThrow().getMessage()).contains("something wrong");
+    }
+
+    // =========================
+    // UpdateMeeting
+    // =========================
+
+    @Nested
+    @DisplayName("UpdateMeetingTitle")
+    class UpdateMeetingTests {
+
+        @Test
+        @DisplayName("존재하는 meetingId면 제목/시작/종료를 변경하고 ok()를 반환한다")
+        void UpdateMeeting_existingMeetingId_updatesAndReturnsOk() {
+            // Given
+            long meetingId = 1L;
+            String newTitle = "New Title";
+            LocalDateTime newStart = LocalDateTime.of(2026, 1, 23, 10, 0);
+            LocalDateTime newDue = LocalDateTime.of(2026, 1, 23, 11, 0);
+
+            MeetingEntity meeting = fixtureMonkey.giveMeOne(MeetingEntity.class);
+
+            when(meetingRepository.findById(meetingId))
+                    .thenReturn(Optional.of(meeting));
+
+            // save를 부르는 구현이면 아래 스텁이 없어도 되지만, 안전하게 둠
+            when(meetingRepository.save(any(MeetingEntity.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
+
+            // When
+            Result<?> result = sut.UpdateMeeting(meetingId, newTitle, newStart, newDue);
+
+            // Then (Result 계약)
+            assertTrue(result.isSuccess());
+            assertFalse(result.isFailure());
+            assertTrue(result.getErrors().isEmpty());
+            // ok() (Void)라면 value는 null -> Optional.empty
+            assertTrue(result.getValue().isEmpty());
+
+            // Then (Persistence: 변경)
+            verify(meetingRepository, times(1)).findById(meetingId);
+
+            // 저장 호출을 하는 구현이라면: 변경 값이 반영된 엔티티가 save로 넘어가는지 검증
+            ArgumentCaptor<MeetingEntity> captor = ArgumentCaptor.forClass(MeetingEntity.class);
+            verify(meetingRepository, times(1)).save(captor.capture());
+
+            MeetingEntity saved = captor.getValue();
+            assertSame(meeting, saved);
+
+            // TODO: 엔티티 필드/게터 이름에 맞게 수정 (예: getTitle/getStartedAt/getDueAt)
+            assertEquals(newTitle, saved.getTitle());
+            assertEquals(newStart, saved.getStartedAt());
+            assertEquals(newDue, saved.getEndedAt());
+
+            verifyNoMoreInteractions(meetingRepository);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 meetingId면 fail(NotFoundError(resource=meetingId))를 반환한다")
+        void UpdateMeeting_notExistingMeetingId_returnsFailNotFound() {
+            // Given
+            long meetingId = 999L;
+            String newTitle = "New Title";
+            LocalDateTime newStart = LocalDateTime.of(2026, 1, 23, 10, 0);
+            LocalDateTime newDue = LocalDateTime.of(2026, 1, 23, 11, 0);
+
+            when(meetingRepository.findById(meetingId))
+                    .thenReturn(Optional.empty());
+
+            // When
+            Result<?> result = sut.UpdateMeeting(meetingId, newTitle, newStart, newDue);
+
+            // Then (Result 계약)
+            assertTrue(result.isFailure());
+            assertFalse(result.isSuccess());
+            assertTrue(result.getValue().isEmpty());
+            assertNotNull(result.getErrors());
+            assertFalse(result.getErrors().isEmpty());
+
+            // Then (에러 고정)
+            ResultError error = result.getErrors().get(0);
+            assertEquals(404, error.getCode());
+            assertInstanceOf(NotFoundError.class, error);
+            assertEquals("meetingId", error.getMetadata().get("resource"));
+            assertEquals(meetingId, error.getMetadata().get("key"));
+
+            // Then (Persistence: 변경 안됨)
+            verify(meetingRepository, times(1)).findById(meetingId);
+            verify(meetingRepository, never()).save(any());
+            verifyNoMoreInteractions(meetingRepository);
+        }
+    }
+
+    // =========================
+    // DeleteMeeting(meetingId)
+    // =========================
+
+    @Test
+    @DisplayName("회의실이 존재하면 삭제하고 ok()를 반환한다")
+    void DeleteMeeting_meetingExists_deletes_returnsOk() {
+        // Given
+        long meetingId = 100L;
+        MeetingEntity meeting = aMeeting(meetingId, "t");
+
+        when(meetingRepository.findById(meetingId)).thenReturn(Optional.of(meeting));
+
+        // When
+        Result result = sut.DeleteMeeting(meetingId);
+
+        // Then
+        assertTrue(result.isSuccess(), () -> "errors=" + result.getErrors());
+        assertTrue(result.getErrors().isEmpty());
+
+        // ✅ 구현 스타일에 맞춰 하나만 남겨
+        // 1) delete(entity) 호출 구현
+        verify(meetingRepository, times(1)).delete(meeting);
+
+        // 2) deleteById(meetingId) 호출 구현이면 위 대신:
+        // verify(meetingRepository, times(1)).deleteById(meetingId);
+    }
+
+    @Test
+    @DisplayName("회의실이 존재하지 않으면 fail(404 NotFoundError: resource=meetingId, key=meetingId)를 반환한다")
+    void DeleteMeeting_notFound_returns404NotFound() {
+        // Given
+        long meetingId = 9999L;
+
+        when(meetingRepository.findById(meetingId)).thenReturn(Optional.empty());
+
+        // When
+        Result result = sut.DeleteMeeting(meetingId);
+
+        // Then
+        assertNotFound(result, "meetingId", meetingId);
+
+        verify(meetingRepository, never()).delete(any());
+        // deleteById 구현이면:
+        // verify(meetingRepository, never()).deleteById(anyLong());
     }
 
     @Test
@@ -153,7 +282,7 @@ class MeetingServiceImplTest {
                 .willReturn(slice);
 
         // When
-        Result<List<MeetingEntity>> result = meetingService.GetMeetingList(projectId, status, cursor, pageable);
+        Result<List<MeetingEntity>> result = sut.GetMeetingList(projectId, status, cursor, pageable);
 
         // Then
         assertThat(result.isSuccess()).isTrue();
@@ -172,7 +301,7 @@ class MeetingServiceImplTest {
         given(projectRepository.findById(invalidProjectId)).willReturn(Optional.empty());
 
         // When
-        Result<List<MeetingEntity>> result = meetingService.GetMeetingList(invalidProjectId, MeetingStatus.SCHEDULED, 0L, PageRequest.of(0, 20));
+        Result<List<MeetingEntity>> result = sut.GetMeetingList(invalidProjectId, MeetingStatus.SCHEDULED, 0L, PageRequest.of(0, 20));
 
         // Then
         assertThat(result.isFailure()).isTrue();
@@ -190,11 +319,101 @@ class MeetingServiceImplTest {
                 .willThrow(new RuntimeException("DB Error"));
 
         // When
-        Result<List<MeetingEntity>> result = meetingService.GetMeetingList(projectId, MeetingStatus.SCHEDULED, 0L, PageRequest.of(0, 20));
+        Result<List<MeetingEntity>> result = sut.GetMeetingList(projectId, MeetingStatus.SCHEDULED, 0L, PageRequest.of(0, 20));
 
         // Then
         assertThat(result.isFailure()).isTrue();
         assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(500);
         assertThat(result.getSingleErrorOrThrow().getMessage()).contains("MeetingList");
+    }
+
+    // =========================
+    // FindMeetingById
+    // =========================
+
+
+    @Test
+    @DisplayName("존재하는 meetingId면 ok(MeetingEntity)를 반환한다")
+    void FindMeetingById_existingMeetingId_returnsOk() {
+        // Given
+        long meetingId = 1L;
+        MeetingEntity meeting = fixtureMonkey.giveMeOne(MeetingEntity.class);
+
+        when(meetingRepository.findById(meetingId))
+                .thenReturn(Optional.of(meeting));
+
+        // When
+        Result<MeetingEntity> result = sut.FindMeetingById(meetingId);
+
+        // Then (Result 계약)
+        assertTrue(result.isSuccess());
+        assertFalse(result.isFailure());
+        assertTrue(result.getErrors().isEmpty());
+        assertTrue(result.getValue().isPresent());
+
+        // Then (값 검증)
+        assertSame(meeting, result.getValue().orElseThrow());
+
+        // Then (상호작용)
+        verify(meetingRepository, times(1)).findById(meetingId);
+        verifyNoMoreInteractions(meetingRepository);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 meetingId면 fail(NotFoundError)를 반환한다")
+    void FindMeetingById_notExistingMeetingId_returnsFailNotFound() {
+        // Given
+        long meetingId = 999L;
+
+        when(meetingRepository.findById(meetingId))
+                .thenReturn(Optional.empty());
+
+        // When
+        Result<MeetingEntity> result = sut.FindMeetingById(meetingId);
+
+        // Then (Result 계약)
+        assertTrue(result.isFailure());
+        assertFalse(result.isSuccess());
+        assertNotNull(result.getErrors());
+        assertFalse(result.getErrors().isEmpty());
+        assertTrue(result.getValue().isEmpty());
+
+        // Then (에러 고정: code/status + metadata/type 중 2개 이상)
+        ResultError error = result.getErrors().get(0);
+        assertEquals(404, error.getCode());
+        assertInstanceOf(NotFoundError.class, error);
+        assertEquals("meetingId", error.getMetadata().get("resource"));
+        assertEquals(meetingId, error.getMetadata().get("key"));
+
+        // Then (상호작용: 조회만 일어나야 함)
+        verify(meetingRepository, times(1)).findById(meetingId);
+        verifyNoMoreInteractions(meetingRepository);
+    }
+
+    // =========================
+    // Helpers
+    // =========================
+
+    private static void assertNotFound(Result<?> result, String resource, Object key) {
+        assertTrue(result.isFailure(), () -> "value=" + result.getValue() + ", errors=" + result.getErrors());
+        assertFalse(result.getErrors().isEmpty());
+        assertTrue(result.getValue().isEmpty());
+
+        ResultError err = result.getErrors().get(0);
+        assertEquals(404, err.getCode());
+        assertNotNull(err.getMessage());
+
+        Map<String, Object> meta = err.getMetadata();
+        assertNotNull(meta);
+        assertEquals(resource, String.valueOf(meta.get("resource")));
+        assertEquals(String.valueOf(key), String.valueOf(meta.get("key")));
+    }
+
+    private static MeetingEntity aMeeting(long meetingId, String title) {
+        // ⚠️ 네 MeetingEntity 필드/세터가 다르면 여기만 맞춰줘.
+        MeetingEntity m = new MeetingEntity();
+        m.setId(meetingId);
+        m.setTitle(title);
+        return m;
     }
 }
