@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import useAuthStore from './store/useAuthStore';
+import { ToastContainer } from '@/components/common/Toast';
 
 // 레이아웃
 import BaseLayout from './layouts/BaseLayout';
@@ -34,6 +35,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ToastContainer />
       <Routes>
         {/* === 1. 공개 라우트 === */}
         <Route path="/login" element={<LoginPage />} />

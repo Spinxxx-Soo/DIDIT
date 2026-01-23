@@ -20,7 +20,7 @@ const useAuthStore = create((set, get) => ({
         userId: 1,
         githubLogin: "jiyeon_dev",
         name: "하지연",
-        avatarUrl: "https://via.placeholder.com/150",
+        avatarUrl: null,
       };
       
       try {
@@ -60,11 +60,11 @@ const useAuthStore = create((set, get) => ({
       // Mock 모드
       if (IS_MOCK) {
         set({ 
-          user: { 
-            userId: 1, 
+          user: {
+            userId: 1,
             githubLogin: "jiyeon_dev",
-            name: "하지연", 
-            avatarUrl: "https://via.placeholder.com/150"
+            name: "하지연",
+            avatarUrl: null
           },
           isAuthenticated: true,
           isLoading: false
@@ -125,7 +125,58 @@ const useAuthStore = create((set, get) => ({
 
     // 토큰 있으면 검증 시작
     await get().fetchCurrentUser();
-  }
+  },
+
+  // ------------------------------------------------------------------
+  // [6] 프로필 이미지 수정
+  // ------------------------------------------------------------------
+  updateProfileImage: async ({ imageFile, removeImage }) => {
+    set({ isLoading: true, error: null });
+
+    // Mock 모드
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const currentUser = get().user;
+      let newAvatarUrl = currentUser?.avatarUrl;
+
+      if (removeImage) {
+        newAvatarUrl = null;
+      } else if (imageFile) {
+        newAvatarUrl = URL.createObjectURL(imageFile);
+      }
+
+      set({
+        user: { ...currentUser, avatarUrl: newAvatarUrl },
+        isLoading: false,
+      });
+
+      return { success: true };
+    }
+
+    try {
+      const formData = new FormData();
+
+      if (removeImage) {
+        formData.append('removeAvatar', 'true');
+      } else if (imageFile) {
+        formData.append('avatar', imageFile);
+      }
+
+      const response = await authApi.updateProfile(formData);
+
+      set(state => ({
+        user: { ...state.user, avatarUrl: response.data?.avatarUrl },
+        isLoading: false,
+      }));
+
+      return { success: true };
+    } catch (error) {
+      console.error('프로필 이미지 수정 실패:', error);
+      set({ error: '프로필 이미지 수정에 실패했습니다', isLoading: false });
+      return { success: false, error: error.message };
+    }
+  },
 }));
 
 export default useAuthStore;
