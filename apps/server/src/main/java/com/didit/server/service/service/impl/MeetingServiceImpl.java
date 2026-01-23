@@ -1,6 +1,5 @@
 package com.didit.server.service.service.impl;
 
-import ch.qos.logback.core.status.Status;
 import com.didit.server.data.entity.MeetingEntity;
 import com.didit.server.data.entity.enums.MeetingMode;
 import com.didit.server.data.entity.enums.MeetingStatus;
@@ -9,9 +8,7 @@ import com.didit.server.data.repository.MeetingUserRepository;
 import com.didit.server.data.repository.ProjectRepository;
 import com.didit.server.data.repository.UserRepository;
 import com.didit.server.service.service.MeetingService;
-import com.didit.server.service.service.dto.response.MeetingResponse;
 import com.didit.server.share.result.Result;
-import com.didit.server.share.result.impl.BadRequestError;
 import com.didit.server.share.result.impl.NotFoundError;
 import com.didit.server.share.result.impl.ServerError;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +16,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -41,9 +40,6 @@ public class MeetingServiceImpl implements MeetingService {
             if (user == null){
                 return Result.fail(new NotFoundError("userId", userId));
             }
-            if (title == null || title.isBlank() || title.length() > 50) {
-                return Result.fail(new BadRequestError("title", "제목은 비어 있을 수 없으며 50자 이하여야 합니다."));
-            }
             // 1. 회의실 생성 (세션Id, 회의실상태 고려 필요)
             MeetingEntity meeting = MeetingEntity.builder()
                     .project(project)
@@ -57,6 +53,34 @@ public class MeetingServiceImpl implements MeetingService {
         } catch (Exception e) {
             return Result.fail(new ServerError("MeetingEntity", projectId));
         }
+    }
+	
+	    @Override
+    public Result UpdateMeeting(long meetingId, String title, LocalDateTime start, LocalDateTime due) {
+        var meeting = meetingRepository.findById(meetingId);
+        if (meeting.isEmpty()){
+            return Result.fail(new NotFoundError("meetingId", meetingId));
+        }
+
+        var entity = meeting.get();
+        entity.setTitle(title);
+        entity.setStartedAt(start);
+        entity.setEndedAt(due);
+        meetingRepository.save(entity);
+        return Result.ok();
+    }
+
+    @Override
+    public Result DeleteMeeting(long meetingId) {
+        var meeting = meetingRepository.findById(meetingId);
+        if (meeting.isEmpty()){
+            return Result.fail(new NotFoundError("meetingId", meetingId));
+        }
+
+        var entity = meeting.get();
+        meetingRepository.delete(entity);
+        meetingRepository.flush();
+        return Result.ok();
     }
 
     @Override
@@ -73,4 +97,13 @@ public class MeetingServiceImpl implements MeetingService {
         }
     }
 
+    @Override
+    public Result<MeetingEntity> FindMeetingById(long meetingId) {
+        var meeting = meetingRepository.findById(meetingId);
+        if (meeting.isEmpty()){
+            return Result.fail(new NotFoundError("meetingId", meetingId));
+        }
+
+        return Result.ok(meeting.get());
+    }
 }

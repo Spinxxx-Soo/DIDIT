@@ -1,6 +1,5 @@
 package com.didit.server.service.service;
 
-import ch.qos.logback.core.status.Status;
 import com.didit.server.data.entity.MeetingEntity;
 import com.didit.server.data.entity.enums.MeetingMode;
 import com.didit.server.data.entity.enums.MeetingStatus;
@@ -8,6 +7,8 @@ import com.didit.server.share.result.Result;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+
+import java.time.LocalDateTime;
 
 public interface MeetingService {
 
@@ -32,6 +33,54 @@ public interface MeetingService {
      */
     Result<Long> createMeeting(long projectId, long userId, String title, MeetingMode mode);
 
+    /**
+     * Action: 프로젝트 내에 회의실의 이름, 시작시간, 종료시간을 변경한다.
+     * Input:
+     * - long meetingId: 회의실 Id
+     * - String title: 수정할 제목
+     * - LocalDateTime start : 수정할 시작시간
+     * - LocalDateTime due: 수정할 종료시간
+     * Success:
+     * - ok()
+     * Auth/Permission:
+     * - (어드민)
+     * Persistence:
+     * - (변경)
+     * Failures:
+     * - <404>: 존재하지 않는 meetingId - resource = meetingId
+     */
+    Result UpdateMeeting(long meetingId, String title, LocalDateTime start, LocalDateTime due);
+
+    /**
+     * Action: 프로젝트 내에 회의실을 삭제.
+     * Input:
+     * - long meetingId: 회의실 Id
+     * Success:
+     * - ok()
+     * Auth/Permission:
+     * - (로그인 필요 / 해당 프로젝트의 멤버여야 함)
+     * Persistence:
+     * - (삭제)
+     * Failures:
+     * - <404>: 존재하지 않는 meetingId - resource = meetingId
+     */
+    Result DeleteMeeting(long meetingId);
+
+
+    /**
+     * Action: 회의실을 회의실ID로 찾음
+     * Input:
+     * - long meetingId: 회의실 Id
+     * Success:
+     * - ok()
+     * Auth/Permission:
+     * - (로그인 필요 / 해당 프로젝트의 멤버여야 함)
+     * Persistence:
+     * - (삭제)
+     * Failures:
+     * - <404>: 존재하지 않는 meetingId - resource = meetingId
+     */
+    Result<MeetingEntity> FindMeetingById(long meetingId);
     /**
      * Action: 특정 프로젝트 내의 회의를 커서 기반 페이지네이션으로 반환함
      * Input:

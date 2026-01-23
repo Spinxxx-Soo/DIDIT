@@ -2,13 +2,20 @@ package com.didit.server.api.controller;
 
 import com.didit.server.api.request.AddProjectInviteRequest;
 import com.didit.server.api.request.AddProjectRequest;
+import com.didit.server.api.request.CreateMeetingRequest;
+import com.didit.server.api.response.MeetingResponse;
 import com.didit.server.api.response.ProjectResponse;
 import com.didit.server.api.response.UserResponse;
 import com.didit.server.api.security.CustomOAuth2User;
+import com.didit.server.data.entity.enums.MeetingStatus;
 import com.didit.server.service.command.AddProjectCommand;
+import com.didit.server.service.service.MeetingService;
 import com.didit.server.service.service.ProjectService;
+import com.didit.server.share.result.Result;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +28,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ProjectController {
     private final ProjectService _ProjectService;
+    private final MeetingService _MeetingService;
 
     //[Feature][Rooms] 방 목록 조회 + 사이드바 연동 (GET /api/v1/rooms)
     @GetMapping()
@@ -137,6 +145,58 @@ public class ProjectController {
                 .createdAt(x.getCreatedAt())
                 .lastLoginAt(x.getLastLoginAt())
                 .build()).toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{projectId}/add-channel")
+    public ResponseEntity<?> createMeeting(@AuthenticationPrincipal CustomOAuth2User user,
+                                           @PathVariable Long projectId,
+                                           @RequestBody @Valid CreateMeetingRequest request){
+        Result<Long> result = _MeetingService.createMeeting(
+                projectId,
+                user.getId(),
+                request.title(),
+                request.mode()
+        );
+        if(result.isFailure()){
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+
+        return ResponseEntity.ok(result.getOrThrow());
+    }
+
+    // [Feature][Meetings] 라운지 회의 조회 API GET /api/v1/projects/{id}/meetings
+    @GetMapping("/{projectId}/channels")
+    public ResponseEntity<?> GetAllMeetings(@PathVariable Long projectId,
+                                            @RequestParam(required = false) MeetingStatus status,
+                                            @RequestParam(required = false) Long cursor,
+                                            @PageableDefault(size = 20) Pageable pageable) {
+
+        var result = _MeetingService.GetMeetingList(projectId, status, cursor, pageable);
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow();
+            var response = err.getResponse();
+            return new ResponseEntity<>(response, response.getStatusCode());
+        }
+
+        var entities = result.getOrThrow();
+
+        var response = entities.stream().map(x -> MeetingResponse.builder()
+                .id(x.getId())
+                .project(ProjectResponse.fromEntity(x.getProject()))
+                .createdBy(UserResponse.fromEntity(x.getCreatedBy()))
+                .sessionId(x.getSessionId())
+                .title(x.getTitle())
+                .status(x.getStatus())
+                .mode(x.getMode())
+                .startedAt(x.getStartedAt())
+                .endedAt(x.getEndedAt())
+                .createdAt(x.getCreatedAt())
+                .updatedAt(x.getUpdatedAt())
+                .build()).toList();
+
 
         return ResponseEntity.ok(response);
     }
