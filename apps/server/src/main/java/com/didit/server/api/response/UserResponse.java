@@ -1,5 +1,6 @@
 package com.didit.server.api.response;
 
+import com.didit.server.data.entity.UserEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,4 +28,16 @@ public class UserResponse {
     private String avatarUrl;
     private LocalDateTime createdAt;
     private LocalDateTime lastLoginAt;
+
+    public static UserResponse fromEntity(UserEntity entity){
+        return UserResponse.builder()
+                .id(entity.getId())
+                .githubId(entity.getGithubId())
+                .githubLogin(entity.getGithubLogin())
+                .name(entity.getName())
+                .avatarUrl(entity.getAvatarUrl())
+                .createdAt(entity.getCreatedAt())
+                .lastLoginAt(entity.getLastLoginAt())
+                .build();
+    }
 }

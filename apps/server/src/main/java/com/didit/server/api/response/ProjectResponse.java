@@ -1,18 +1,10 @@
 package com.didit.server.api.response;
 
 import com.didit.server.data.entity.ProjectEntity;
-import com.didit.server.data.entity.UserEntity;
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.Generated;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.generator.EventType;
-import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -20,7 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class FindProjectResponse {
+public class ProjectResponse {
     private Long id;
     private String name;
     private Long ownerId;
@@ -30,7 +22,7 @@ public class FindProjectResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public static FindProjectResponse fromEntity(ProjectEntity entity){
+    public static ProjectResponse fromEntity(ProjectEntity entity){
         return builder()
                 .id(entity.getId())
                 .name(entity.getName())
