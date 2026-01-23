@@ -36,10 +36,10 @@ const WorkspaceLayout = () => {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* 사이드바들... */}
-        <aside className="w-[72px] bg-[var(--bg-sidebar)] border-r border-[var(--border-default)] flex-shrink-0 flex flex-col items-center py-4">
-          <ProjectSidebar />
-        </aside>
+        {/* 1열: 프로젝트 선택 바 */}
+        <aside className="w-[72px] bg-[var(--bg-sidebar)] border-r border-[var(--border-default)] flex-shrink-0">
+        <ProjectSidebar />
+      </aside>
 
         <aside className="w-[240px] bg-[var(--bg-sidebar)] border-r border-[var(--border-default)] flex-shrink-0 flex flex-col">
           <ChannelSidebar />
