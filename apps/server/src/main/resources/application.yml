@@ -3,9 +3,9 @@ spring:
     name: server
 
   datasource:
-    url: jdbc:mysql://localhost:3306/didit?serverTimezone=Asia/Seoul&characterEncoding=utf8
-    username: ssafy
-    password: ssafy
+    url: jdbc:mysql://${MYSQL_HOST:db}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:default}?serverTimezone=Asia/Seoul&characterEncoding=utf8
+    username: ${MYSQL_USER:defaultId}
+    password: ${MYSQL_PASSWORD:defaultPassword}
 
   jpa:
     hibernate:
