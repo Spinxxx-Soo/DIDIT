@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: didit-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      TZ: Asia/Seoul
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: didit
+      MYSQL_USER: ssafy
+      MYSQL_PASSWORD: password
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+09:00
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-ppassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  server:
+    image: ghcr.io/pjtdidit/server-image:latest
+    container_name: didit-server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Asia/Seoul
+
+      MYSQL_DATABASE: didit
+      MYSQL_USER: ssafy
+      MYSQL_PASSWORD: password
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-defaultId}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-defaultSecret}
+
+volumes:
+  mysql-data:

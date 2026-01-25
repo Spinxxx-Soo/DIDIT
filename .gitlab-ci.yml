@@ -1,0 +1,27 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+    - when: never
+
+stages:
+  - test
+  - build
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_BUILDKIT: "1"
+
+.docker-dind:
+  image: docker:24
+  services:
+    - docker:24-dind
+
+.ghcr-login:
+  before_script:
+    - echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+include:
+  - local: .gitlab/ci/server.yml
+  # - local: .gitlab/ci/client.yml
+  # - local: .gitlab/ci/ai.yml

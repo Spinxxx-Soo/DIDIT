@@ -1,0 +1,43 @@
+test_server:
+  stage: test
+  tags: ["test"]
+  image: eclipse-temurin:21-jdk
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - apps/server/**/*
+        - .gitlab/ci/server.yml
+        - .gitlab-ci.yml
+  cache:
+    key: gradle-server
+    paths:
+      - apps/server/.gradle/
+  script:
+    - cd apps/server
+    - chmod +x gradlew
+    - ./gradlew --no-daemon test
+  artifacts:
+    when: always
+    reports:
+      junit: apps/server/build/test-results/test/*.xml
+
+build_push_server:
+  stage: build
+  tags: ["docker"]
+  extends: [ .docker-dind, .ghcr-login ]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+      changes:
+        - apps/server/**/*
+        - .gitlab/ci/server.yml
+        - .gitlab-ci.yml
+  variables:
+    SERVER_IMAGE: "ghcr.io/pjtdidit/server-image"
+  script:
+    - docker pull "$SERVER_IMAGE:latest" || true
+    - docker build --pull --cache-from "$SERVER_IMAGE:latest" \
+        -t "$SERVER_IMAGE:$CI_COMMIT_SHA" \
+        -t "$SERVER_IMAGE:latest" \
+        -f apps/server/Dockerfile apps/server
+    - docker push "$SERVER_IMAGE:$CI_COMMIT_SHA"
+    - docker push "$SERVER_IMAGE:latest"
