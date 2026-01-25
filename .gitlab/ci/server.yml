@@ -24,20 +24,17 @@ test_server:
 build_push_server:
   stage: build
   tags: ["docker"]
-  extends: [ .docker-dind, .ghcr-login ]
+  image: docker:24
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       changes:
         - apps/server/**/*
-        - .gitlab/ci/server.yml
+        - .gitlab/ci/server/server.yaml
         - .gitlab-ci.yml
-  variables:
-    SERVER_IMAGE: "ghcr.io/pjtdidit/server-image"
+  before_script:
+    - echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
   script:
-    - docker pull "$SERVER_IMAGE:latest" || true
-    - docker build --pull --cache-from "$SERVER_IMAGE:latest" \
-        -t "$SERVER_IMAGE:$CI_COMMIT_SHA" \
-        -t "$SERVER_IMAGE:latest" \
-        -f apps/server/Dockerfile apps/server
-    - docker push "$SERVER_IMAGE:$CI_COMMIT_SHA"
-    - docker push "$SERVER_IMAGE:latest"
+    - docker build -t ghcr.io/pjtdidit/server-image:$CI_COMMIT_SHA -t ghcr.io/pjtdidit/server-image:latest -f apps/server/Dockerfile apps/server
+    - docker push ghcr.io/pjtdidit/server-image:$CI_COMMIT_SHA
+    - docker push ghcr.io/pjtdidit/server-image:latest
+
