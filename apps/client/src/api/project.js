@@ -2,58 +2,76 @@
 import api from './axios';
 
 export const projectApi = {
-  /**
-   * 프로젝트 목록 조회
-   * @returns {Promise}
-   */
-  getProjects: () => api.get('/api/projects'),
+  // ------------------------------------------------------------------
+  // 프로젝트 관리
+  // ------------------------------------------------------------------
 
   /**
-   * 프로젝트 상세 조회
-   * @param {number} projectId
-   * @returns {Promise}
+   * 프로젝트 목록 조회
+   * @returns {Promise<ProjectResponse[]>}
    */
-  getProject: (projectId) => api.get(`/api/projects/${projectId}`),
+  getProjects: () => api.get('/api/v1/projects'),
 
   /**
    * 프로젝트 생성
-   * @param {FormData} formData - name, image(optional), githubRepo(optional)
+   * @param {Object} data - { projectName: string, githubUrl: string }
    * @returns {Promise}
    */
-  createProject: (formData) => api.post('/api/projects', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  createProject: (data) => api.post('/api/v1/projects', data),
+
+  // ------------------------------------------------------------------
+  // 초대 관리
+  // ------------------------------------------------------------------
 
   /**
-   * 프로젝트 이름 중복 체크
-   * @param {string} name
-   * @returns {Promise<{isDuplicate: boolean}>}
+   * 초대 코드 생성
+   * @param {Object} data - { projectId: number, expireDate?: string }
+   * @returns {Promise<string>} - UUID 초대 코드
    */
-  checkNameDuplicate: (name) => api.get('/api/projects/check-name', {
-    params: { name },
-  }),
+  createInvite: (data) => api.post('/api/v1/projects/invites', data),
 
   /**
-   * GitHub 저장소 검증
-   * @param {string} repo - "organization/repository" 형식
-   * @returns {Promise<{success: boolean, error?: string}>}
+   * 초대 코드로 프로젝트 조회
+   * @param {string} inviteCode - UUID
+   * @returns {Promise<ProjectResponse>}
    */
-  validateGithubRepo: (repo) => api.post('/api/projects/validate-repo', { repo }),
+  getProjectByInvite: (inviteCode) => api.get(`/api/v1/projects/invites/${inviteCode}`),
 
   /**
-   * 프로젝트 수정
+   * 초대 코드로 프로젝트 참여
+   * @param {string} inviteCode - UUID
+   * @returns {Promise}
+   */
+  joinByInvite: (inviteCode) => api.post(`/api/v1/projects/invites/${inviteCode}`),
+
+  // ------------------------------------------------------------------
+  // 참여자 관리
+  // ------------------------------------------------------------------
+
+  /**
+   * 프로젝트 참여자 목록 조회
    * @param {number} projectId
-   * @param {FormData} formData
-   * @returns {Promise}
+   * @returns {Promise<UserResponse[]>}
    */
-  updateProject: (projectId, formData) => api.patch(`/api/projects/${projectId}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  getParticipants: (projectId) => api.get(`/api/v1/projects/${projectId}/participants`),
+
+  // ------------------------------------------------------------------
+  // 회의 채널 관리
+  // ------------------------------------------------------------------
 
   /**
-   * 프로젝트 삭제
+   * 회의 채널 생성
    * @param {number} projectId
-   * @returns {Promise}
+   * @param {Object} data - { title: string, mode: 'CHAT' | 'VOICE' }
+   * @returns {Promise<number>} - 회의 ID
    */
-  deleteProject: (projectId) => api.delete(`/api/projects/${projectId}`),
+  createChannel: (projectId, data) => api.post(`/api/v1/projects/${projectId}/add-channel`, data),
+
+  /**
+   * 프로젝트 회의 채널 목록 조회 (페이지네이션)
+   * @param {number} projectId
+   * @param {Object} params - { status?: 'SCHEDULED'|'RUNNING'|'ENDED', cursor?: number, page?: number, size?: number, sort?: string }
+   * @returns {Promise<MeetingResponse[]>}
+   */
+  getChannels: (projectId, params) => api.get(`/api/v1/projects/${projectId}/channels`, { params }),
 };

@@ -9,7 +9,7 @@ import useAuthStore from '@/store/useAuthStore';
 
 const ProjectSidebar = () => {
   const navigate = useNavigate();
-  const { roomId } = useParams();
+  const { projectId } = useParams();
   const { logout } = useAuthStore();
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -21,8 +21,8 @@ const ProjectSidebar = () => {
     { id: '3', name: '자율 프로젝트', color: '#F59E0B' },
   ];
 
-  const handleProjectClick = (projectId) => {
-    navigate(`/workspace/${projectId}`);
+  const handleProjectClick = (id) => {
+    navigate(`/workspace/${id}`);
   };
 
   const handleAddProject = () => {
@@ -36,7 +36,7 @@ const ProjectSidebar = () => {
         {/* === 1. 프로젝트 리스트 === */}
         <div className="flex flex-col gap-3 w-full items-center flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-hide pt-3">
           {projects.map((project) => {
-            const isActive = roomId === project.id;
+            const isActive = projectId === project.id;
 
             return (
               <div key={project.id} className="relative group">
