@@ -3,17 +3,17 @@ import api from './axios';
 export const issueApi = {
   // --- [이슈] ---
   // 진행중인 이슈 5개 불러오기
-  getActiveIssues: (roomId) => api.get(`/api/v1/rooms/${roomId}/issues/active`),
+  getActiveIssues: (projectId) => api.get(`/api/v1/rooms/${projectId}/issues/active`),
 
   // 이슈 생성
-  createIssue: (roomId, data) => api.post(`/api/v1/rooms/${roomId}/issues`, data),
+  createIssue: (projectId, data) => api.post(`/api/v1/rooms/${projectId}/issues`, data),
 
   // 이슈 목록/검색 (권장)
-  getIssues: (roomId, params) => api.get(`/api/v1/rooms/${roomId}/issues`, { params }),
+  getIssues: (projectId, params) => api.get(`/api/v1/rooms/${projectId}/issues`, { params }),
 
   // --- [캘린더] ---
   // 캘린더 생성 (예약)
-  createCalendar: (roomId, data) => api.post(`/api/v1/rooms/${roomId}/calendar`, data),
+  createCalendar: (projectId, data) => api.post(`/api/v1/rooms/${projectId}/calendar`, data),
 
   // 캘린더 수정
   updateCalendar: (calendarId, data) => api.patch(`/api/v1/calendar/${calendarId}`, data),
@@ -25,7 +25,7 @@ export const issueApi = {
 // src/api/chat.js
 export const chatApi = {
   // 텍스트 채팅 불러오기
-  getChats: (roomId, params) => api.get(`/api/v1/rooms/${roomId}/chats`, { params }),
+  getChats: (projectId, params) => api.get(`/api/v1/rooms/${projectId}/chats`, { params }),
   
   // 채팅 수정
   updateChat: (chatId, data) => api.patch(`/api/v1/chats/${chatId}`, data),

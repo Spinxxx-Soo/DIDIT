@@ -14,10 +14,12 @@ import MyPage from './pages/MyPage';
 import LoginPage from './pages/LoginPage';
 import Lounge from './pages/Lounge';
 
+// 회의 컴포넌트
+import MeetingRoom from '@/components/features/meeting/MeetingRoom';
+
 // 임시 컴포넌트
 const LandingPage = () => <div className="text-2xl font-bold p-10">🏠 랜딩 페이지</div>;
 const ProjectList = () => <div className="text-2xl font-bold p-10">📂 내 프로젝트 목록</div>;
-const MeetingRoom = () => <div className="text-white text-2xl font-bold p-10">🎙 회의실 화면</div>;
 
 // 로그인이 필요한 페이지를 감싸는 컴포넌트
 const PrivateRoute = () => {
@@ -54,9 +56,9 @@ function App() {
             <Route path="/projects" element={<ProjectList />} />
           </Route>
 
-          <Route path="/workspace/:roomId" element={<WorkspaceLayout />}>
+          <Route path="/workspace/:projectId" element={<WorkspaceLayout />}>
             <Route index element={<Lounge />} />
-            <Route path="meeting" element={<MeetingRoom />} />
+            <Route path="meeting/:channelId" element={<MeetingRoom />} />
             <Route path="minutes" element={<div>회의록 목록</div>} />
           </Route>
 

@@ -1,0 +1,174 @@
+import { create } from 'zustand';
+
+const useMeetingStore = create((set, get) => ({
+  // 회의 상태
+  isInMeeting: false,
+  meetingId: null,
+  sessionId: null,
+  openviduUrl: null,
+  token: null,
+  meetingTitle: '',
+
+  // 현재 선택된 채널 정보
+  currentChannelId: null,
+  currentChannelName: '',
+
+  // 미디어 상태
+  isMicOn: false,
+  isSpeakerOn: true,
+  isScreenSharing: false,
+  isRecording: false,
+
+  // 참가자 목록
+  participants: [],
+
+  // 화면 공유 스트림
+  screenShareStream: null,
+  screenShareUser: null,
+
+  // 로딩/에러 상태
+  isLoading: false,
+  error: null,
+
+  // ------------------------------------------------------------------
+  // 회의 참가/퇴장
+  // ------------------------------------------------------------------
+  joinMeeting: (data) => {
+    set({
+      isInMeeting: true,
+      meetingId: data.meetingId,
+      sessionId: data.sessionId,
+      openviduUrl: data.openviduUrl,
+      token: data.token,
+      meetingTitle: data.title || '',
+      error: null,
+    });
+  },
+
+  leaveMeeting: () => {
+    set({
+      isInMeeting: false,
+      meetingId: null,
+      sessionId: null,
+      openviduUrl: null,
+      token: null,
+      meetingTitle: '',
+      currentChannelId: null,
+      currentChannelName: '',
+      isMicOn: false,
+      isSpeakerOn: true,
+      isScreenSharing: false,
+      isRecording: false,
+      participants: [],
+      screenShareStream: null,
+      screenShareUser: null,
+    });
+  },
+
+  // ------------------------------------------------------------------
+  // 채널 선택
+  // ------------------------------------------------------------------
+  setCurrentChannel: (channelId, channelName, sessionId) => {
+    set({
+      currentChannelId: channelId,
+      currentChannelName: channelName,
+      sessionId: sessionId,
+      meetingTitle: channelName,
+    });
+  },
+
+  // ------------------------------------------------------------------
+  // 미디어 토글
+  // NOTE: toggleMic/toggleSpeaker 미사용 - useOpenVidu.js의 함수 사용
+  // 스토어 함수는 상태만 변경, useOpenVidu 함수는 상태 + OpenVidu 스트림 제어
+  // 향후 필요시 활성화
+  // ------------------------------------------------------------------
+  // toggleMic: () => {
+  //   set((state) => ({ isMicOn: !state.isMicOn }));
+  // },
+
+  setMicOn: (value) => {
+    set({ isMicOn: value });
+  },
+
+  // toggleSpeaker: () => {
+  //   set((state) => ({ isSpeakerOn: !state.isSpeakerOn }));
+  // },
+
+  setSpeakerOn: (value) => {
+    set({ isSpeakerOn: value });
+  },
+
+  // ------------------------------------------------------------------
+  // 화면 공유
+  // ------------------------------------------------------------------
+  setScreenSharing: (isSharing) => {
+    set({ isScreenSharing: isSharing });
+  },
+
+  setScreenShareStream: (stream, userName) => {
+    set({
+      screenShareStream: stream,
+      screenShareUser: userName,
+    });
+  },
+
+  clearScreenShare: () => {
+    set({
+      screenShareStream: null,
+      screenShareUser: null,
+      isScreenSharing: false,
+    });
+  },
+
+  // ------------------------------------------------------------------
+  // 녹음
+  // ------------------------------------------------------------------
+  setRecording: (isRecording) => {
+    set({ isRecording });
+  },
+
+  // ------------------------------------------------------------------
+  // 참가자 관리
+  // ------------------------------------------------------------------
+  addParticipant: (participant) => {
+    set((state) => ({
+      participants: [...state.participants, participant],
+    }));
+  },
+
+  removeParticipant: (participantId) => {
+    set((state) => ({
+      participants: state.participants.filter((p) => p.id !== participantId),
+    }));
+  },
+
+  updateParticipant: (participantId, updates) => {
+    set((state) => ({
+      participants: state.participants.map((p) =>
+        p.id === participantId ? { ...p, ...updates } : p
+      ),
+    }));
+  },
+
+  setParticipants: (participants) => {
+    set({ participants });
+  },
+
+  // ------------------------------------------------------------------
+  // 로딩/에러
+  // ------------------------------------------------------------------
+  setLoading: (isLoading) => {
+    set({ isLoading });
+  },
+
+  setError: (error) => {
+    set({ error });
+  },
+
+  clearError: () => {
+    set({ error: null });
+  },
+}));
+
+export default useMeetingStore;
