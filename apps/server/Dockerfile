@@ -17,6 +17,8 @@ RUN --mount=type=cache,target=/root/.gradle \
 # 소스 복사
 COPY . .
 
+RUN chmod +x gradlew && sed -i 's/\r$//' gradlew
+
 # 테스트 제외하고 bootJar 생성 (원하면 -x test 제거)
 RUN --mount=type=cache,target=/root/.gradle \
     ./gradlew --no-daemon clean bootJar -x test
