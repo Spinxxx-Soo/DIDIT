@@ -12,7 +12,7 @@ variables:
   DOCKER_BUILDKIT: "1"
 
 .docker-sock:
-  image: docker:24
+  image: docker:29.0-cli
   variables:
     DOCKER_HOST: "unix:///var/run/docker.sock"
 
