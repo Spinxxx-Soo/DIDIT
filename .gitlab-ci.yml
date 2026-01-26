@@ -7,6 +7,7 @@ workflow:
 stages:
   - test
   - build
+  - deploy
 
 variables:
   DOCKER_BUILDKIT: "1"
@@ -21,6 +22,9 @@ variables:
     - echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
 include:
+  #ci
   - local: .gitlab/ci/server.yml
   # - local: .gitlab/ci/client.yml
   # - local: .gitlab/ci/ai.yml
+  #cd
+  - local: .gitlab/deploy.yml
