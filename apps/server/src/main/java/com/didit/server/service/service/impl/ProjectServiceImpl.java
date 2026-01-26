@@ -1,9 +1,6 @@
 package com.didit.server.service.service.impl;
 
-import com.didit.server.data.entity.ProjectEntity;
-import com.didit.server.data.entity.ProjectInviteEntity;
-import com.didit.server.data.entity.ProjectUserEntity;
-import com.didit.server.data.entity.UserEntity;
+import com.didit.server.data.entity.*;
 import com.didit.server.data.entity.enums.ProjectUserRole;
 import com.didit.server.data.entity.enums.ProjectUserStatus;
 import com.didit.server.data.repository.*;
@@ -13,6 +10,7 @@ import com.didit.server.share.result.Result;
 import com.didit.server.share.result.impl.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,6 +23,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final UserRepository _UserRepository;
     private final ProjectRepository _ProjectRepository;
     private final ProjectInviteRepository _ProjectInviteRepository;
+    private final ProjectRecentRepository _ProjectRecentRepository;
 
     @Override
     public Result<List<ProjectEntity>> findProjectsByUserId(long userId) {
@@ -184,5 +183,35 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         return Result.ok(projectUser.get());
+    }
+
+    @Override
+    public Result<List<ProjectRecentEntity>> GetRecentProjects(long userId){
+        try {
+            var user = _UserRepository.findById(userId);
+            if (user.isEmpty()){
+                return Result.fail(new NotFoundError("userId", userId));
+            }
+            var list = _ProjectRecentRepository.findTop4ByUser_IdOrderByLastViewedAtDesc(userId);
+            return Result.ok(list);
+        } catch (Exception e) {
+            return Result.fail(new ServerError("ProjectRecentList", userId));
+        }
+    }
+
+    @Override
+    @Transactional
+    public void UpdateRecentView(long projectId, long userId){
+        _ProjectRecentRepository.upsertRecentView(userId, projectId);
+    }
+
+    @Override
+    public Result<ProjectEntity> FindProjectById(long projectId){
+        try {
+            var project = _ProjectRepository.findById(projectId);
+            return project.map(Result::ok).orElseGet(() -> Result.fail(new NotFoundError("projectId", projectId)));
+        } catch (Exception e) {
+            return Result.fail(new ServerError("ProjectDetail", projectId));
+        }
     }
 }
