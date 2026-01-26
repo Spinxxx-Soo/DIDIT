@@ -42,7 +42,8 @@ const WorkspaceLayout = () => {
         activePanel={activePanel}
         onChatClick={handleChatClick}
         onIssueClick={handleIssueClick}
-        showChat={!!channelId} // 채널 안에 있을 때만 채팅 버튼 노출
+        showChat={!!channelId}
+        projectId={projectId}
       />
 
       <div className="flex flex-1 overflow-hidden">

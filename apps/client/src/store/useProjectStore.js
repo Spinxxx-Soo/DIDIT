@@ -213,7 +213,50 @@ const useProjectStore = create((set, get) => ({
   },
 
   // ------------------------------------------------------------------
-  // [7] 에러 초기화
+  // [7] 프로젝트 GitHub 저장소 업데이트
+  // ------------------------------------------------------------------
+  updateProjectRepo: async (projectId, githubRepo) => {
+    set({ isLoading: true, error: null });
+
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === Number(projectId) ? { ...p, githubRepo } : p
+        ),
+        currentProject: state.currentProject?.id === Number(projectId)
+          ? { ...state.currentProject, githubRepo }
+          : state.currentProject,
+        isLoading: false,
+      }));
+
+      return { success: true };
+    }
+
+    try {
+      await projectApi.updateProjectRepo(projectId, githubRepo);
+
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === Number(projectId) ? { ...p, githubRepo } : p
+        ),
+        currentProject: state.currentProject?.id === Number(projectId)
+          ? { ...state.currentProject, githubRepo }
+          : state.currentProject,
+        isLoading: false,
+      }));
+
+      return { success: true };
+    } catch (error) {
+      console.error('저장소 업데이트 실패:', error);
+      set({ error: '저장소 연결에 실패했습니다', isLoading: false });
+      return { success: false, error: error.message };
+    }
+  },
+
+  // ------------------------------------------------------------------
+  // [8] 에러 초기화
   // ------------------------------------------------------------------
   clearError: () => set({ error: null }),
 }));

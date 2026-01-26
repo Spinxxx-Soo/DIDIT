@@ -18,6 +18,7 @@ const MeetingRoom = () => {
     setCurrentChannel,
     setLoading,
     setError,
+    setParticipants,
     error,
     isLoading,
   } = useMeetingStore();
@@ -63,7 +64,14 @@ const MeetingRoom = () => {
       });
 
       // 3. OpenVidu 세션 연결 (Mock 모드에서는 스킵)
-      if (!useMock) {
+      if (useMock) {
+        // Mock 모드: 테스트용 참가자 추가
+        setParticipants([
+          { id: 'mock-1', name: '나', isSpeaking: false },
+          { id: 'mock-2', name: '팀원1', isSpeaking: false },
+          { id: 'mock-3', name: '팀원2', isSpeaking: false },
+        ]);
+      } else {
         const result = await joinSession(token, openviduUrl);
         if (!result.success) {
           throw new Error('OpenVidu 세션 연결 실패');
@@ -76,7 +84,7 @@ const MeetingRoom = () => {
     } finally {
       setLoading(false);
     }
-  }, [projectId, channelId, currentChannelName, isInMeeting, joinMeeting, joinSession, setLoading, setError]);
+  }, [projectId, channelId, currentChannelName, isInMeeting, joinMeeting, joinSession, setLoading, setError, setParticipants]);
 
   // URL에서 channelId가 바뀌면 스토어에도 반영 + hasJoined 리셋 (채널 변경 대응)
   useEffect(() => {

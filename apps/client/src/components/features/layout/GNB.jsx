@@ -1,29 +1,58 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import logo from '@/assets/didit_logo.png';
 import { MessageCircle, ClipboardList } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
+import useProjectStore from '@/store/useProjectStore';
 import { Button } from '@/components/common/Button';
+import { GithubRepoSection } from './GithubRepoSection';
 
 const GNB = ({
   variant = 'landing',
   onChatClick,
   onIssueClick,
   activePanel,
-  showChat = false, // 기본값 false
+  showChat = false,
+  projectId,
 }) => {
   const isWorkspace = variant === 'workspace';
   const { isAuthenticated, logout } = useAuthStore();
+  const {
+    currentProject,
+    fetchProject,
+    validateGithubRepo,
+    updateProjectRepo,
+  } = useProjectStore();
+
+  // projectId 변경 시 프로젝트 정보 fetch
+  useEffect(() => {
+    if (projectId) {
+      fetchProject(projectId);
+    }
+  }, [projectId, fetchProject]);
 
   return (
     <header className="h-16 border-b border-[var(--border-default)] px-6 flex items-center justify-between bg-[var(--bg-panel)] flex-shrink-0">
-      {/* 로고 영역 */}
-      <Link to="/" className="flex items-center gap-2">
-        <img
-          src={logo}
-          alt="로고"
-          className="h-10 w-auto"
-        />
-      </Link>
+      {/* 로고 + 저장소 영역 */}
+      <div className="flex items-center gap-4">
+        <Link to="/" className="flex items-center gap-2">
+          <img
+            src={logo}
+            alt="로고"
+            className="h-10 w-auto"
+          />
+        </Link>
+
+        {/* workspace 모드에서 저장소 정보 표시 */}
+        {isWorkspace && projectId && (
+          <GithubRepoSection
+            githubRepo={currentProject?.githubRepo}
+            projectId={projectId}
+            onValidateRepo={validateGithubRepo}
+            onUpdateRepo={updateProjectRepo}
+          />
+        )}
+      </div>
 
       {/* 네비게이션 영역 */}
       <nav className="flex items-center gap-3 text-[15px]">

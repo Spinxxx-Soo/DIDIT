@@ -92,7 +92,7 @@ export function MyPage() {
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {projects.map((project) => (
+          {projects.slice(0, 4).map((project) => (
             <Card
               key={project.id}
               variant="elevated"
