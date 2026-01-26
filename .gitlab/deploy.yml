@@ -1,0 +1,20 @@
+# .gitlab/ci/deploy.yml
+
+deploy_portainer:
+  stage: deploy
+  image: curlimages/curl:8.5.0
+  needs: ["build_push_server"]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - when: never
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - |
+      set -eu
+      if [ -z "${PORTAINER_WEBHOOK_URL:-}" ]; then
+        echo "ERROR: PORTAINER_WEBHOOK_URL is not set"
+        exit 1
+      fi
+      curl -fsS -X POST "$PORTAINER_WEBHOOK_URL"
+      echo "Portainer redeploy triggered."

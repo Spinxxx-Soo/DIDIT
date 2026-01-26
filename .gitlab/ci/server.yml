@@ -27,6 +27,10 @@ build_push_server:
   tags: ["docker"]
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+        - apps/server/**/*
+        - .gitlab/ci/server.yml
+        - .gitlab-ci.yml
   script:
     - docker info
     - docker build -t ghcr.io/pjtdidit/server-image:$CI_COMMIT_SHA -t ghcr.io/pjtdidit/server-image:latest -f apps/server/Dockerfile apps/server
