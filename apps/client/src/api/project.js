@@ -13,6 +13,19 @@ export const projectApi = {
   getProjects: () => api.get('/api/v1/projects'),
 
   /**
+   * 프로젝트 상세 조회 (Added)
+   * @param {number} projectId
+   * @returns {Promise<ProjectResponse>}
+   */
+  getProject: (projectId) => api.get(`/api/v1/projects/${projectId}`),
+
+  /**
+   * 최근 조회 프로젝트 목록 (Added)
+   * @returns {Promise<ProjectRecentResponse[]>}
+   */
+  getRecentProjects: () => api.get('/api/v1/projects/recents'),
+
+  /**
    * 프로젝트 생성
    * @param {Object} data - { projectName: string, githubUrl: string }
    * @returns {Promise}
@@ -62,16 +75,38 @@ export const projectApi = {
   /**
    * 회의 채널 생성
    * @param {number} projectId
-   * @param {Object} data - { title: string, mode: 'CHAT' | 'VOICE' }
+   * @param {Object} data - { title: string, mode: 'chat' | 'voice' }
    * @returns {Promise<number>} - 회의 ID
    */
   createChannel: (projectId, data) => api.post(`/api/v1/projects/${projectId}/add-channel`, data),
 
   /**
-   * 프로젝트 회의 채널 목록 조회 (페이지네이션)
+   * 프로젝트 회의 채널 목록 조회
    * @param {number} projectId
-   * @param {Object} params - { status?: 'SCHEDULED'|'RUNNING'|'ENDED', cursor?: number, page?: number, size?: number, sort?: string }
+   * @param {Object} params - { status?, cursor?, page?, size?, sort? }
    * @returns {Promise<MeetingResponse[]>}
    */
   getChannels: (projectId, params) => api.get(`/api/v1/projects/${projectId}/channels`, { params }),
+
+  /**
+   * 회의 채널 상세 조회
+   * @param {number} channelId
+   * @returns {Promise<MeetingResponse>}
+   */
+  getChannel: (channelId) => api.get(`/api/v1/channels/${channelId}`),
+
+  /**
+   * 회의 채널 수정 (제목, 시간 등)
+   * @param {number} channelId
+   * @param {Object} params - Query Params: { title?, start?, due? }
+   * @returns {Promise}
+   */
+  updateChannel: (channelId, params) => api.patch(`/api/v1/channels/${channelId}`, null, { params }),
+
+  /**
+   * 회의 채널 삭제
+   * @param {number} channelId
+   * @returns {Promise}
+   */
+  deleteChannel: (channelId) => api.delete(`/api/v1/channels/${channelId}`),
 };
