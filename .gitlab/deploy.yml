@@ -2,6 +2,7 @@
 
 deploy_portainer:
   stage: deploy
+  tags: ["deploy"]
   image: curlimages/curl:8.5.0
   needs: ["build_push_server"]
   rules:
