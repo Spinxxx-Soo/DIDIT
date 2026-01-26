@@ -2,6 +2,7 @@ package com.didit.server.api.controller;
 
 import com.didit.server.api.request.AddProjectInviteRequest;
 import com.didit.server.api.request.AddProjectRequest;
+import com.didit.server.api.request.BookMeetingRequest;
 import com.didit.server.api.request.CreateMeetingRequest;
 import com.didit.server.api.response.MeetingResponse;
 import com.didit.server.api.response.ProjectRecentResponse;
@@ -11,6 +12,7 @@ import com.didit.server.api.security.CustomOAuth2User;
 import com.didit.server.data.entity.ProjectEntity;
 import com.didit.server.data.entity.enums.MeetingStatus;
 import com.didit.server.service.command.AddProjectCommand;
+import com.didit.server.service.command.BookMeetingCommand;
 import com.didit.server.service.service.MeetingService;
 import com.didit.server.service.service.ProjectService;
 import com.didit.server.share.result.Result;
@@ -22,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.awt.print.Book;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -34,11 +37,11 @@ public class ProjectController {
 
     //[Feature][Rooms] 방 목록 조회 + 사이드바 연동 (GET /api/v1/rooms)
     @GetMapping()
-    public ResponseEntity<?> findProjects(@AuthenticationPrincipal CustomOAuth2User user){
+    public ResponseEntity<?> findProjects(@AuthenticationPrincipal CustomOAuth2User user) {
         var userId = user.getId();
 
         var findResult = _ProjectService.findProjectsByUserId(userId);
-        if(findResult.isFailure()){
+        if (findResult.isFailure()) {
             var err = findResult.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
@@ -53,11 +56,11 @@ public class ProjectController {
     //[Feature][Rooms] 방 생성 + 생성 즉시 목록 반영 (POST /api/v1/rooms) #5
     @PostMapping()
     public ResponseEntity<?> AddProject(@AuthenticationPrincipal CustomOAuth2User user,
-                                        @RequestBody @Valid AddProjectRequest request){
+                                        @RequestBody @Valid AddProjectRequest request) {
         var userId = user.getId();
 
         var addResult = _ProjectService.AddProject(new AddProjectCommand(userId, request.projectName(), request.githubUrl()));
-        if(addResult.isFailure()){
+        if (addResult.isFailure()) {
             var err = addResult.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
@@ -68,11 +71,11 @@ public class ProjectController {
     //[Feature][Invites] 초대 코드/링크 생성 (POST /api/v1/projects/{id}/invites)
     @PostMapping("/invites")
     public ResponseEntity<?> AddInvite(@AuthenticationPrincipal CustomOAuth2User user,
-                                       @RequestBody @Valid AddProjectInviteRequest request){
+                                       @RequestBody @Valid AddProjectInviteRequest request) {
         var userId = user.getId();
         var expire = request.expireDate() == null ? LocalDateTime.now().plusYears(1000) : request.expireDate();
         var addResult = _ProjectService.AddInviteCode(userId, request.projectId(), expire);
-        if(addResult.isFailure()){
+        if (addResult.isFailure()) {
             var err = addResult.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
@@ -82,16 +85,15 @@ public class ProjectController {
 
     //[Feature][Join] 초대 코드로 방 참여 (POST /api/v1/rooms/projects/{inviteCode})
     @GetMapping("/invites/{inviteCode}")
-    public ResponseEntity<?> GetProjectByInviteCode(@PathVariable String inviteCode){
+    public ResponseEntity<?> GetProjectByInviteCode(@PathVariable String inviteCode) {
         UUID uuid;
-        try{
+        try {
             uuid = UUID.fromString(inviteCode);
-        }
-        catch (IllegalArgumentException exception){
+        } catch (IllegalArgumentException exception) {
             return ResponseEntity.badRequest().build();
         }
         var findResult = _ProjectService.FindProjectByInviteCode(uuid);
-        if(findResult.isFailure()){
+        if (findResult.isFailure()) {
             var err = findResult.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
@@ -101,17 +103,16 @@ public class ProjectController {
 
     @PostMapping("invites/{inviteCode}")
     public ResponseEntity<?> AddProjectUserByInviteCode(@AuthenticationPrincipal CustomOAuth2User user,
-                                                        @PathVariable String inviteCode){
+                                                        @PathVariable String inviteCode) {
         UUID uuid;
-        try{
+        try {
             uuid = UUID.fromString(inviteCode);
-        }
-        catch (IllegalArgumentException exception){
+        } catch (IllegalArgumentException exception) {
             return ResponseEntity.badRequest().build();
         }
 
         var findResult = _ProjectService.FindProjectByInviteCode(uuid);
-        if(findResult.isFailure()){
+        if (findResult.isFailure()) {
             var err = findResult.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
@@ -120,7 +121,7 @@ public class ProjectController {
         var entity = findResult.getValue().get();
 
         var addResult = _ProjectService.AddProjectUser(userId, entity.getId());
-        if(addResult.isFailure()){
+        if (addResult.isFailure()) {
             var err = addResult.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
@@ -130,9 +131,9 @@ public class ProjectController {
 
     //[Feature][Participants] 방 참여자 목록 조회 (GET /api/v1/projects/{id}/participants) #8
     @GetMapping("/{projectId}/participants")
-    public ResponseEntity<?> findUsersInProject(@PathVariable Long projectId){
+    public ResponseEntity<?> findUsersInProject(@PathVariable Long projectId) {
         var findResult = _ProjectService.FindUsersInProject(projectId);
-        if(findResult.isFailure()){
+        if (findResult.isFailure()) {
             var err = findResult.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
@@ -154,14 +155,34 @@ public class ProjectController {
     @PostMapping("/{projectId}/add-channel")
     public ResponseEntity<?> createMeeting(@AuthenticationPrincipal CustomOAuth2User user,
                                            @PathVariable Long projectId,
-                                           @RequestBody @Valid CreateMeetingRequest request){
+                                           @RequestBody @Valid CreateMeetingRequest request) {
         Result<Long> result = _MeetingService.createMeeting(
                 projectId,
                 user.getId(),
                 request.title(),
                 request.mode()
         );
-        if(result.isFailure()){
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+
+        return ResponseEntity.ok(result.getOrThrow());
+    }
+
+    @PostMapping("/{projectId}/book-channel")
+    public ResponseEntity<?> bookMeeting(@AuthenticationPrincipal CustomOAuth2User user,
+                                         @PathVariable Long projectId,
+                                         @RequestBody @Valid BookMeetingRequest request) {
+        if (request.start().isAfter(request.end())) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        var cmd = new BookMeetingCommand(projectId, user.getId(), request.title(), request.start(), request.end());
+        Result<Long> result = _MeetingService.bookMeeting(
+                cmd
+        );
+        if (result.isFailure()) {
             var err = result.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
@@ -203,11 +224,53 @@ public class ProjectController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{projectId}/channels/date")
+    public ResponseEntity<?> GetAllMeetingsByDate(
+            @AuthenticationPrincipal CustomOAuth2User user,
+            @PathVariable Long projectId,
+            @RequestParam(required = true) LocalDateTime start,
+            @RequestParam(required = true) LocalDateTime end) {
+
+        var userId = user.getId();
+        var userFindResult = _ProjectService.FindProjectUser(userId, projectId);
+        if (userFindResult.isFailure()){
+            var err = userFindResult.getSingleErrorOrThrow();
+            var response = err.getResponse();
+            return new ResponseEntity<>(response, response.getStatusCode());
+        }
+
+        var result = _MeetingService.GetMeetingListByDate(projectId, start, end);
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow();
+            var response = err.getResponse();
+            return new ResponseEntity<>(response, response.getStatusCode());
+        }
+
+        var entities = result.getOrThrow();
+
+        var response = entities.stream().map(x -> MeetingResponse.builder()
+                .id(x.getId())
+                .project(ProjectResponse.fromEntity(x.getProject()))
+                .createdBy(UserResponse.fromEntity(x.getCreatedBy()))
+                .sessionId(x.getSessionId())
+                .title(x.getTitle())
+                .status(x.getStatus())
+                .mode(x.getMode())
+                .startedAt(x.getStartedAt())
+                .endedAt(x.getEndedAt())
+                .createdAt(x.getCreatedAt())
+                .updatedAt(x.getUpdatedAt())
+                .build()).toList();
+
+
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/recents")
-    public ResponseEntity<?> GetRecentProjects(@AuthenticationPrincipal CustomOAuth2User user){
+    public ResponseEntity<?> GetRecentProjects(@AuthenticationPrincipal CustomOAuth2User user) {
         var userId = user.getId();
         var recentProjects = _ProjectService.GetRecentProjects(userId);
-        if (recentProjects.isFailure()){
+        if (recentProjects.isFailure()) {
             var err = recentProjects.getSingleErrorOrThrow();
             var response = err.getResponse();
             return new ResponseEntity<>(response, response.getStatusCode());
@@ -220,7 +283,7 @@ public class ProjectController {
 
     @GetMapping("/{projectId}")
     public ResponseEntity<?> GetProjectDetail(@PathVariable long projectId,
-                                              @AuthenticationPrincipal CustomOAuth2User user){
+                                              @AuthenticationPrincipal CustomOAuth2User user) {
         var userId = user.getId();
         var findUser = _ProjectService.FindProjectUser(userId, projectId);
         if (findUser.isFailure()) {
@@ -228,7 +291,7 @@ public class ProjectController {
             return new ResponseEntity<>(err, err.getStatusCode());
         }
         var findResult = _ProjectService.FindProjectById(projectId);
-        if(findResult.isFailure()){
+        if (findResult.isFailure()) {
             var err = findResult.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }

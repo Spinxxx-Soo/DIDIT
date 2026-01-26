@@ -2,14 +2,19 @@ package com.didit.server.service.service.impl;
 
 import com.didit.server.data.entity.MeetingEntity;
 import com.didit.server.data.entity.ProjectEntity;
+import com.didit.server.data.entity.ProjectUserEntity;
 import com.didit.server.data.entity.UserEntity;
 import com.didit.server.data.entity.enums.MeetingMode;
 import com.didit.server.data.entity.enums.MeetingStatus;
+import com.didit.server.data.entity.enums.ProjectUserRole;
 import com.didit.server.data.repository.MeetingRepository;
 import com.didit.server.data.repository.ProjectRepository;
+import com.didit.server.data.repository.ProjectUserRepository;
 import com.didit.server.data.repository.UserRepository;
+import com.didit.server.service.command.BookMeetingCommand;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.ResultError;
+import com.didit.server.share.result.impl.ForbiddenError;
 import com.didit.server.share.result.impl.NotFoundError;
 import com.navercorp.fixturemonkey.FixtureMonkey;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +35,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -49,6 +55,9 @@ class MeetingServiceImplTest {
     @Mock
     private MeetingRepository meetingRepository;
 
+    @Mock
+    private ProjectUserRepository projectUserRepository;
+
     @InjectMocks
     private MeetingServiceImpl sut;
 
@@ -63,64 +72,326 @@ class MeetingServiceImplTest {
     }
 
     @Test
-    @DisplayName("유효한 입력값이 주어지면 회의실 생성에 성공하고 ID를 반환한다.")
-    void createMeeting_Success() {
+    @DisplayName("정상(프로젝트/유저 존재 + ADMIN)이면 ok(meetingId)를 반환하고 MeetingEntity를 RUNNING으로 저장한다")
+    void createMeeting_success_admin_returnsOkId_andSavesRunningMeeting() {
         // Given
-        long projectId = 1L;
-        long userId = 1L;
-        String title = "데브코스 1회차 회의";
-        MeetingMode mode = MeetingMode.VOICE;
+        long projectId = 10L;
+        long userId = 7L;
+        String title = "Daily Sync";
+        MeetingMode mode = MeetingMode.CHAT;
 
-        ProjectEntity project = ProjectEntity.builder().id(projectId).build();
-        UserEntity user = UserEntity.builder().id(userId).build();
-        MeetingEntity savedMeeting = MeetingEntity.builder().id(100L).build();
+        ProjectEntity project = mock(ProjectEntity.class);
+        when(project.getId()).thenReturn(projectId);
 
-        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
-        given(userRepository.findById(userId)).willReturn(Optional.of(user));
-        given(meetingRepository.save(any(MeetingEntity.class))).willReturn(savedMeeting);
+        UserEntity user = mock(UserEntity.class);
+        when(user.getId()).thenReturn(userId);
+
+        ProjectUserEntity projectUser = mock(ProjectUserEntity.class);
+        when(projectUser.getRole()).thenReturn(ProjectUserRole.ADMIN);
+
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(projectUserRepository.findByProject_IdAndUser_Id(projectId, userId))
+                .thenReturn(Optional.of(projectUser));
+
+        when(meetingRepository.save(any(MeetingEntity.class))).thenAnswer(inv -> {
+            MeetingEntity e = inv.getArgument(0);
+            e.setId(123L);
+            return e;
+        });
 
         // When
         Result<Long> result = sut.createMeeting(projectId, userId, title, mode);
 
-        // Then
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getValue().get()).isEqualTo(100L);
-        verify(meetingRepository, times(1)).save(any(MeetingEntity.class));
+        // Then (Result 계약)
+        assertTrue(result.isSuccess());
+        assertTrue(result.getErrors().isEmpty());
+        assertEquals(123L, result.getValue().orElseThrow());
+
+        // Then (저장 엔티티 검증)
+        ArgumentCaptor<MeetingEntity> captor = ArgumentCaptor.forClass(MeetingEntity.class);
+        verify(meetingRepository).save(captor.capture());
+        MeetingEntity saved = captor.getValue();
+
+        assertSame(project, saved.getProject());
+        assertSame(user, saved.getCreatedBy());
+        assertEquals(title, saved.getTitle());
+        assertEquals(MeetingStatus.RUNNING, saved.getStatus());
+        assertEquals(mode, saved.getMode());
+        assertNotNull(saved.getSessionId());
+        assertDoesNotThrow(() -> UUID.fromString(saved.getSessionId())); // UUID 형식
+
+        // Then (호출 검증)
+        verify(projectRepository).findById(projectId);
+        verify(userRepository).findById(userId);
+        verify(projectUserRepository).findByProject_IdAndUser_Id(projectId, userId);
+        verifyNoMoreInteractions(projectRepository, userRepository, projectUserRepository, meetingRepository);
     }
 
     @Test
-    @DisplayName("존재하지 않는 projectId가 주어지면 NotFoundError를 반환한다.")
-    void createMeeting_Fail_InvalidProjectId() {
+    @DisplayName("projectId가 없으면 fail(404 NotFoundError(resource=projectId))")
+    void createMeeting_projectNotFound_returns404() {
         // Given
-        long invalidProjectId = 999L;
-        given(projectRepository.findById(invalidProjectId)).willReturn(Optional.empty());
+        long projectId = 999L;
+        long userId = 7L;
+
+        when(projectRepository.findById(projectId)).thenReturn(Optional.empty());
 
         // When
-        Result<Long> result = sut.createMeeting(invalidProjectId, 1L, "제목", MeetingMode.CHAT);
+        Result<Long> result = sut.createMeeting(projectId, userId, "t", MeetingMode.VOICE);
 
         // Then
-        assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(404);
-        assertThat(result.getSingleErrorOrThrow().getMessage()).contains("projectId");
+        assertTrue(result.isFailure());
+        assertTrue(result.getValue().isEmpty());
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertEquals(404, error.getCode());
+        assertInstanceOf(NotFoundError.class, error);
+        assertEquals("projectId", error.getMetadata().get("resource"));
+        assertEquals(projectId, error.getMetadata().get("key"));
+
+        verify(projectRepository).findById(projectId);
+        verifyNoInteractions(userRepository, projectUserRepository, meetingRepository);
+        verifyNoMoreInteractions(projectRepository);
     }
 
     @Test
-    @DisplayName("데이터베이스 저장 중 예외가 발생하면 ServerError(500)를 반환한다.")
-    void createMeeting_Fail_InternalServerError() {
+    @DisplayName("userId가 없으면 fail(404 NotFoundError(resource=userId))")
+    void createMeeting_userNotFound_returns404() {
         // Given
-        long projectId = 1L;
-        given(projectRepository.findById(projectId)).willReturn(Optional.of(ProjectEntity.builder().id(projectId).build()));
-        given(userRepository.findById(anyLong())).willReturn(Optional.of(UserEntity.builder().id(1L).build()));
-        given(meetingRepository.save(any())).willThrow(new RuntimeException("DB Error"));
+        long projectId = 10L;
+        long userId = 999L;
+
+        ProjectEntity project = mock(ProjectEntity.class);
+
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         // When
-        Result<Long> result = sut.createMeeting(projectId, 1L, "제목", MeetingMode.VOICE);
+        Result<Long> result = sut.createMeeting(projectId, userId, "t", MeetingMode.VOICE);
 
         // Then
-        assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(500);
-        assertThat(result.getSingleErrorOrThrow().getMessage()).contains("something wrong");
+        assertTrue(result.isFailure());
+        assertTrue(result.getValue().isEmpty());
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertEquals(404, error.getCode());
+        assertInstanceOf(NotFoundError.class, error);
+        assertEquals("userId", error.getMetadata().get("resource"));
+        assertEquals(userId, error.getMetadata().get("key"));
+
+        verify(projectRepository).findById(projectId);
+        verify(userRepository).findById(userId);
+        verifyNoInteractions(projectUserRepository, meetingRepository);
+        verifyNoMoreInteractions(projectRepository, userRepository);
     }
+
+    @Test
+    @DisplayName("프로젝트 유저가 없거나 ADMIN이 아니면 fail(403 ForbiddenError)")
+    void createMeeting_notAdmin_returns403() {
+        // Given
+        long projectId = 10L;
+        long userId = 7L;
+
+        ProjectEntity project = mock(ProjectEntity.class);
+        when(project.getId()).thenReturn(projectId);
+
+        UserEntity user = mock(UserEntity.class);
+        when(user.getId()).thenReturn(userId);
+
+        ProjectUserEntity projectUser = mock(ProjectUserEntity.class);
+        when(projectUser.getRole()).thenReturn(ProjectUserRole.MEMBER);
+
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(projectUserRepository.findByProject_IdAndUser_Id(projectId, userId))
+                .thenReturn(Optional.of(projectUser));
+
+        // When
+        Result<Long> result = sut.createMeeting(projectId, userId, "t", MeetingMode.CHAT);
+
+        // Then
+        assertTrue(result.isFailure());
+        assertTrue(result.getValue().isEmpty());
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertEquals(403, error.getCode());
+        assertInstanceOf(ForbiddenError.class, error);
+
+        verify(projectRepository).findById(projectId);
+        verify(userRepository).findById(userId);
+        verify(projectUserRepository).findByProject_IdAndUser_Id(projectId, userId);
+        verifyNoInteractions(meetingRepository);
+        verifyNoMoreInteractions(projectRepository, userRepository, projectUserRepository);
+    }
+
+
+    @Test
+    @DisplayName("정상(프로젝트/유저 존재 + ADMIN)이면 ok(meetingId)를 반환하고 MeetingEntity를 SCHEDULED로 저장한다")
+    void bookMeeting_success_admin_returnsOkId_andSavesScheduledMeeting() {
+        // Given
+        long projectId = 10L;
+        long userId = 7L;
+        String title = "예약 회의";
+        LocalDateTime start = LocalDateTime.of(2026, 2, 1, 10, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 2, 1, 11, 0);
+
+        BookMeetingCommand cmd = new BookMeetingCommand(projectId, userId, title, start, end);
+
+        ProjectEntity project = mock(ProjectEntity.class);
+        when(project.getId()).thenReturn(projectId);
+
+        UserEntity user = mock(UserEntity.class);
+        when(user.getId()).thenReturn(userId);
+
+        ProjectUserEntity projectUser = mock(ProjectUserEntity.class);
+        when(projectUser.getRole()).thenReturn(ProjectUserRole.ADMIN);
+
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(projectUserRepository.findByProject_IdAndUser_Id(projectId, userId))
+                .thenReturn(Optional.of(projectUser));
+
+        when(meetingRepository.save(any(MeetingEntity.class))).thenAnswer(inv -> {
+            MeetingEntity e = inv.getArgument(0);
+            e.setId(456L);
+            return e;
+        });
+
+        // When
+        Result<Long> result = sut.bookMeeting(cmd);
+
+        // Then (Result 계약)
+        assertTrue(result.isSuccess());
+        assertTrue(result.getErrors().isEmpty());
+        assertEquals(456L, result.getValue().orElseThrow());
+
+        // Then (저장 엔티티 검증)
+        ArgumentCaptor<MeetingEntity> captor = ArgumentCaptor.forClass(MeetingEntity.class);
+        verify(meetingRepository).save(captor.capture());
+        MeetingEntity saved = captor.getValue();
+
+        assertSame(project, saved.getProject());
+        assertSame(user, saved.getCreatedBy());
+        assertEquals(title, saved.getTitle());
+        assertEquals(MeetingStatus.SCHEDULED, saved.getStatus());
+        assertEquals(MeetingMode.VOICE, saved.getMode()); // 구현에서 VOICE 고정
+        assertEquals(start, saved.getStartedAt());
+        assertEquals(end, saved.getEndedAt());
+        assertNotNull(saved.getSessionId());
+        assertDoesNotThrow(() -> UUID.fromString(saved.getSessionId()));
+
+        verify(projectRepository).findById(projectId);
+        verify(userRepository).findById(userId);
+        verify(projectUserRepository).findByProject_IdAndUser_Id(projectId, userId);
+        verifyNoMoreInteractions(projectRepository, userRepository, projectUserRepository, meetingRepository);
+    }
+
+    @Test
+    @DisplayName("projectId가 없으면 fail(404 NotFoundError(resource=projectId))")
+    void bookMeeting_projectNotFound_returns404() {
+        // Given
+        long projectId = 999L;
+        BookMeetingCommand cmd = new BookMeetingCommand(projectId, 7L, "t",
+                LocalDateTime.of(2026, 2, 1, 10, 0),
+                LocalDateTime.of(2026, 2, 1, 11, 0));
+
+        when(projectRepository.findById(projectId)).thenReturn(Optional.empty());
+
+        // When
+        Result<Long> result = sut.bookMeeting(cmd);
+
+        // Then
+        assertTrue(result.isFailure());
+        assertTrue(result.getValue().isEmpty());
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertEquals(404, error.getCode());
+        assertInstanceOf(NotFoundError.class, error);
+        assertEquals("projectId", error.getMetadata().get("resource"));
+        assertEquals(projectId, error.getMetadata().get("key"));
+
+        verify(projectRepository).findById(projectId);
+        verifyNoInteractions(userRepository, projectUserRepository, meetingRepository);
+        verifyNoMoreInteractions(projectRepository);
+    }
+
+    @Test
+    @DisplayName("userId가 없으면 fail(404 NotFoundError(resource=userId))")
+    void bookMeeting_userNotFound_returns404() {
+        // Given
+        long projectId = 10L;
+        long userId = 999L;
+        BookMeetingCommand cmd = new BookMeetingCommand(projectId, userId, "t",
+                LocalDateTime.of(2026, 2, 1, 10, 0),
+                LocalDateTime.of(2026, 2, 1, 11, 0));
+
+        ProjectEntity project = mock(ProjectEntity.class);
+
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        // When
+        Result<Long> result = sut.bookMeeting(cmd);
+
+        // Then
+        assertTrue(result.isFailure());
+        assertTrue(result.getValue().isEmpty());
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertEquals(404, error.getCode());
+        assertInstanceOf(NotFoundError.class, error);
+        assertEquals("userId", error.getMetadata().get("resource"));
+        assertEquals(userId, error.getMetadata().get("key"));
+
+        verify(projectRepository).findById(projectId);
+        verify(userRepository).findById(userId);
+        verifyNoInteractions(projectUserRepository, meetingRepository);
+        verifyNoMoreInteractions(projectRepository, userRepository);
+    }
+
+    @Test
+    @DisplayName("프로젝트 유저가 없거나 ADMIN이 아니면 fail(403 ForbiddenError)")
+    void bookMeeting_notAdmin_returns403() {
+        // Given
+        long projectId = 10L;
+        long userId = 7L;
+        BookMeetingCommand cmd = new BookMeetingCommand(projectId, userId, "t",
+                LocalDateTime.of(2026, 2, 1, 10, 0),
+                LocalDateTime.of(2026, 2, 1, 11, 0));
+
+        ProjectEntity project = mock(ProjectEntity.class);
+        when(project.getId()).thenReturn(projectId);
+
+        UserEntity user = mock(UserEntity.class);
+        when(user.getId()).thenReturn(userId);
+
+        ProjectUserEntity projectUser = mock(ProjectUserEntity.class);
+        when(projectUser.getRole()).thenReturn(ProjectUserRole.MEMBER);
+
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(projectUserRepository.findByProject_IdAndUser_Id(projectId, userId))
+                .thenReturn(Optional.of(projectUser));
+
+        // When
+        Result<Long> result = sut.bookMeeting(cmd);
+
+        // Then
+        assertTrue(result.isFailure());
+        assertTrue(result.getValue().isEmpty());
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertEquals(403, error.getCode());
+        assertInstanceOf(ForbiddenError.class, error);
+
+        verify(projectRepository).findById(projectId);
+        verify(userRepository).findById(userId);
+        verify(projectUserRepository).findByProject_IdAndUser_Id(projectId, userId);
+        verifyNoInteractions(meetingRepository);
+        verifyNoMoreInteractions(projectRepository, userRepository, projectUserRepository);
+    }
+
 
     // =========================
     // UpdateMeeting
@@ -388,6 +659,81 @@ class MeetingServiceImplTest {
         // Then (상호작용: 조회만 일어나야 함)
         verify(meetingRepository, times(1)).findById(meetingId);
         verifyNoMoreInteractions(meetingRepository);
+    }
+
+    @Test
+    @DisplayName("projectId가 존재하면 ok(List<MeetingEntity>)를 반환한다")
+    void GetMeetingListByDate_projectExists_returnsOkList() {
+        // Given
+        long projectId = 10L;
+        LocalDateTime start = LocalDateTime.of(2026, 1, 1, 0, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 1, 31, 23, 59);
+
+        ProjectEntity project = new ProjectEntity();
+        project.setId(projectId);
+
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+
+        MeetingEntity m1 = new MeetingEntity(); m1.setId(3L);
+        MeetingEntity m2 = new MeetingEntity(); m2.setId(2L);
+        MeetingEntity m3 = new MeetingEntity(); m3.setId(1L);
+        List<MeetingEntity> found = List.of(m1, m2, m3);
+
+        // TODO: 실제 레포 메서드명/기간 조건(포함/미포함), 컬럼명(startedAt/endedAt)에 맞게 변경
+        // 예) findAllByProjectAndStartedAtBetween(project, start, end)
+        when(meetingRepository.findByProjectIdAndStartedAtBetweenOrderByIdDesc(project.getId(), start, end))
+                .thenReturn(found);
+
+        // When
+        Result<List<MeetingEntity>> result = sut.GetMeetingListByDate(projectId, start, end);
+
+        // Then (Result 계약)
+        assertTrue(result.isSuccess());
+        assertFalse(result.isFailure());
+        assertTrue(result.getErrors().isEmpty());
+        assertTrue(result.getValue().isPresent());
+
+        // Then (값 검증)
+        List<MeetingEntity> value = result.getValue().orElseThrow();
+        assertEquals(3, value.size());
+        assertEquals(List.of(3L, 2L, 1L), value.stream().map(MeetingEntity::getId).toList());
+
+        // Then (상호작용)
+        verify(projectRepository, times(1)).findById(projectId);
+        verify(meetingRepository, times(1)).findByProjectIdAndStartedAtBetweenOrderByIdDesc(project.getId(), start, end);
+        verifyNoMoreInteractions(projectRepository, meetingRepository);
+    }
+
+    @Test
+    @DisplayName("projectId가 존재하지 않으면 fail(NotFoundError(resource=projectId))를 반환하고 조회하지 않는다")
+    void GetMeetingListByDate_projectNotExists_returnsFailNotFound() {
+        // Given
+        long projectId = 999L;
+        LocalDateTime start = LocalDateTime.of(2026, 1, 1, 0, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 1, 31, 23, 59);
+
+        when(projectRepository.findById(projectId)).thenReturn(Optional.empty());
+
+        // When
+        Result<List<MeetingEntity>> result = sut.GetMeetingListByDate(projectId, start, end);
+
+        // Then (Result 계약)
+        assertTrue(result.isFailure());
+        assertFalse(result.isSuccess());
+        assertTrue(result.getValue().isEmpty());
+        assertFalse(result.getErrors().isEmpty());
+
+        // Then (에러 고정)
+        ResultError error = result.getSingleErrorOrThrow();
+        assertEquals(404, error.getCode());
+        assertInstanceOf(NotFoundError.class, error);
+        assertEquals("projectId", error.getMetadata().get("resource"));
+        assertEquals(projectId, error.getMetadata().get("key"));
+
+        // Then (조회 없음)
+        verify(projectRepository, times(1)).findById(projectId);
+        verifyNoInteractions(meetingRepository);
+        verifyNoMoreInteractions(projectRepository);
     }
 
     // =========================
