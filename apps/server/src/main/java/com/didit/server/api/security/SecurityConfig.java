@@ -40,7 +40,7 @@ public class SecurityConfig {
                             session.invalidate();
                         })
                         .logoutSuccessHandler((request, response, authentication) ->
-                                response.sendRedirect("https://did-it.xyz/")) //리다이렉트 될 페이지 추후 수정 필요
+                                response.sendRedirect("https://did-it.xyz")) //리다이렉트 될 페이지 추후 수정 필요
                         .deleteCookies("JSESSIONID")
                         .logoutSuccessUrl("/")
                 );
