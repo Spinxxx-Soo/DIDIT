@@ -25,7 +25,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
-                        .defaultSuccessUrl("/"))
+                        .defaultSuccessUrl("https://did-it.xyz/projects", true))
                 .logout(logout -> logout
                         .logoutUrl("/api/v1/auth/logout")
                         .addLogoutHandler((request, response, authentication) -> {
@@ -33,7 +33,7 @@ public class SecurityConfig {
                             session.invalidate();
                         })
                         .logoutSuccessHandler((request, response, authentication) ->
-                                response.sendRedirect("/")) //리다이렉트 될 페이지 추후 수정 필요
+                                response.sendRedirect("https://did-it.xyz/")) //리다이렉트 될 페이지 추후 수정 필요
                         .deleteCookies("JSESSIONID")
                         .logoutSuccessUrl("/")
                 );
