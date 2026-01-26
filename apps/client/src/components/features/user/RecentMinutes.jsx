@@ -14,15 +14,15 @@ const RecentMinutes = () => {
   const [openedMinute, setOpenedMinute] = useState(null);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col max-h-full overflow-hidden">
       <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
         📋 최근 회의록
       </h2>
 
       {/* 회의록 리스트 */}
-      <ul className="space-y-2">
+      <ul className="space-y-2 flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-1">
         {MOCK_MINUTES.map((minute) => (
-          <li 
+          <li
             key={minute.id}
             onClick={() => setOpenedMinute(minute)}
             className="p-3 bg-gray-50 hover:bg-blue-50 border border-gray-100 rounded-lg cursor-pointer transition-colors flex items-center justify-between group"
@@ -53,7 +53,7 @@ const RecentMinutes = () => {
               {openedMinute.title}
             </span>
             {/* 닫기 버튼 (드래그 이벤트 전파 방지) */}
-            <button 
+            <button
               onClick={(e) => {
                 e.stopPropagation(); // 중요: 드래그랑 겹치지 않게
                 setOpenedMinute(null);
@@ -70,7 +70,7 @@ const RecentMinutes = () => {
               {openedMinute.content}
             </p>
             <div className="mt-4 pt-4 border-t text-xs text-gray-400">
-               작성일: {openedMinute.date}
+              작성일: {openedMinute.date}
             </div>
           </div>
         </Rnd>

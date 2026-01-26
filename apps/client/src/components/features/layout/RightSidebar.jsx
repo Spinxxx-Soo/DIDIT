@@ -183,14 +183,14 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
               messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-3 ${msg.isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                   {!msg.isMine && (
-                    <Avatar name={msg.sender} size="sm" className="mt-1 shadow-sm" />
+                    <Avatar name={msg.sender} size="sm" className="mt-1" />
                   )}
                   <div className={`flex flex-col ${msg.isMine ? 'items-end' : 'items-start'} max-w-[75%]`}>
                     {!msg.isMine && (
                       <span className="text-[11px] text-gray-500 mb-1 ml-1">{msg.sender}</span>
                     )}
                     <div className={`px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed shadow-sm relative group ${msg.isMine
-                      ? 'bg-blue-600 text-white rounded-tr-none'
+                      ? 'bg-green-600 text-white rounded-tr-none'
                       : 'bg-white text-gray-700 border border-gray-100 rounded-tl-none'
                       }`}>
                       {msg.content}
@@ -205,7 +205,7 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
 
           {/* Input Area (Master Style) */}
           <div className="p-4 bg-white border-t border-gray-100 shrink-0">
-            <div className="flex items-center gap-2 bg-gray-50 rounded-full px-4 py-2 border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+            <div className="flex items-center gap-2 bg-gray-50 rounded-full px-4 py-2 border border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
               <input
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
@@ -218,7 +218,7 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
                 disabled={!chatMessage.trim()}
                 className={`
                    p-1.5 rounded-full transition-all duration-200 
-                   ${chatMessage.trim() ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
+                   ${chatMessage.trim() ? 'bg-green-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
                  `}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>

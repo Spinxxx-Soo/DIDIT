@@ -33,7 +33,7 @@ const WeeklySchedule = () => {
           📅 이번 주 일정
           <button className="text-gray-400 hover:text-blue-600 text-lg transition-colors">+</button>
         </h2>
-        
+
         <div className="flex items-center bg-white border border-gray-200 rounded-lg px-1 py-1 shadow-sm">
           <button onClick={handlePrevWeek} className="p-1 hover:bg-gray-100 rounded text-gray-600">
             &lt; {/* 아이콘으로 대체 가능 */}
@@ -54,11 +54,11 @@ const WeeklySchedule = () => {
           const isToday = isSameDay(day, new Date());
           const isSunday = day.getDay() === 0;
           const isSaturday = day.getDay() === 6;
-          
+
           return (
-            <div 
-              key={day.toString()} 
-              className={`flex-1 border-r last:border-r-0 flex flex-col group relative transition-colors
+            <div
+              key={day.toString()}
+              className={`flex-1 border-r last:border-r-0 flex flex-col group relative transition-colors border-gray-100
                 ${isToday ? 'bg-blue-50/40' : 'bg-white'}
               `}
             >
@@ -70,20 +70,20 @@ const WeeklySchedule = () => {
               `}>
                 {format(day, 'EEE (M/d)', { locale: ko })}
               </div>
-              
+
               {/* 일정 표시 영역 */}
               <div className="p-2 flex-1 flex flex-col gap-1">
                 {schedule && (
                   <div className={`
                     text-xs px-2 py-1.5 rounded-md font-medium truncate shadow-sm cursor-pointer hover:opacity-80 transition-opacity
-                    ${schedule.type === 'planning' 
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                    ${schedule.type === 'planning'
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
                       : 'bg-green-100 text-green-700 border border-green-200'}
                   `}>
                     {schedule.title}
                   </div>
                 )}
-                
+
                 {/* 호버 시 + 버튼 (선택사항) */}
                 <button className="opacity-0 group-hover:opacity-100 absolute bottom-2 right-2 text-gray-300 hover:text-blue-500 text-xs">
                   +
