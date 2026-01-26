@@ -26,10 +26,13 @@ export const issueApi = {
 export const chatApi = {
   // 텍스트 채팅 불러오기
   getChats: (projectId, params) => api.get(`/api/v1/rooms/${projectId}/chats`, { params }),
-  
+
   // 채팅 수정
   updateChat: (chatId, data) => api.patch(`/api/v1/chats/${chatId}`, data),
-  
+
   // 채팅 삭제
   deleteChat: (chatId) => api.delete(`/api/v1/chats/${chatId}`),
+
+  // 채팅 전송
+  createChat: (projectId, data) => api.post(`/api/v1/rooms/${projectId}/chats`, data),
 };
