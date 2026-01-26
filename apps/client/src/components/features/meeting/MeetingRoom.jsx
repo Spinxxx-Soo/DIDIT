@@ -33,12 +33,25 @@ const MeetingRoom = () => {
     setError(null);
 
     try {
-      // 1. API로 토큰 발급
-      const response = await meetingApi.joinVoice(projectId, {
-        meetingId: Number(channelId),
-      });
+      // Mock 모드: VITE_USE_MOCK=true/True 또는 백엔드 URL 없을 때
+      const useMock = String(import.meta.env.VITE_USE_MOCK).trim().toLowerCase() === 'true' ||
+                      (import.meta.env.DEV && !import.meta.env.VITE_BACKEND_URL);
 
-      const { token, sessionId, openviduUrl } = response.data;
+      let token, sessionId, openviduUrl;
+
+      if (useMock) {
+        // Mock 데이터
+        token = 'mock-token';
+        sessionId = `mock-session-${channelId}`;
+        openviduUrl = 'https://mock-openvidu.com';
+        console.log('[DEV] Mock 모드: 백엔드 없이 회의 화면 표시');
+      } else {
+        // 1. API로 토큰 발급
+        const response = await meetingApi.joinVoice(projectId, {
+          meetingId: Number(channelId),
+        });
+        ({ token, sessionId, openviduUrl } = response.data);
+      }
 
       // 2. 스토어에 회의 정보 저장
       joinMeeting({
@@ -49,11 +62,12 @@ const MeetingRoom = () => {
         title: currentChannelName || '회의',
       });
 
-      // 3. OpenVidu 세션 연결
-      const result = await joinSession(token, openviduUrl);
-
-      if (!result.success) {
-        throw new Error('OpenVidu 세션 연결 실패');
+      // 3. OpenVidu 세션 연결 (Mock 모드에서는 스킵)
+      if (!useMock) {
+        const result = await joinSession(token, openviduUrl);
+        if (!result.success) {
+          throw new Error('OpenVidu 세션 연결 실패');
+        }
       }
     } catch (err) {
       console.error('회의 참가 실패:', err);
@@ -64,9 +78,10 @@ const MeetingRoom = () => {
     }
   }, [projectId, channelId, currentChannelName, isInMeeting, joinMeeting, joinSession, setLoading, setError]);
 
-  // URL에서 channelId가 바뀌면 스토어에도 반영 (새로고침 대응)
+  // URL에서 channelId가 바뀌면 스토어에도 반영 + hasJoined 리셋 (채널 변경 대응)
   useEffect(() => {
     if (channelId) {
+      hasJoined.current = false; // 채널 변경 시 리셋하여 새 회의 참가 가능하게
       setCurrentChannel(Number(channelId), currentChannelName || '', null);
     }
   }, [channelId]);

@@ -12,6 +12,7 @@ const useMeetingStore = create((set, get) => ({
   // 현재 선택된 채널 정보
   currentChannelId: null,
   currentChannelName: '',
+  currentChannelMode: null, // 'VOICE' | 'CHAT' | null
 
   // 미디어 상태
   isMicOn: false,
@@ -55,6 +56,7 @@ const useMeetingStore = create((set, get) => ({
       meetingTitle: '',
       currentChannelId: null,
       currentChannelName: '',
+      currentChannelMode: null,
       isMicOn: false,
       isSpeakerOn: true,
       isScreenSharing: false,
@@ -68,12 +70,13 @@ const useMeetingStore = create((set, get) => ({
   // ------------------------------------------------------------------
   // 채널 선택
   // ------------------------------------------------------------------
-  setCurrentChannel: (channelId, channelName, sessionId) => {
+  setCurrentChannel: (channelId, channelName, sessionId, mode) => {
     set({
       currentChannelId: channelId,
       currentChannelName: channelName,
       sessionId: sessionId,
       meetingTitle: channelName,
+      currentChannelMode: mode,
     });
   },
 
