@@ -45,11 +45,14 @@ const useOpenVidu = () => {
       // 세션 연결
       await session.current.connect(token);
 
+      // 현재 마이크 상태 가져오기 (회의 참가 전 미리 설정된 상태 반영)
+      const currentMicState = useMeetingStore.getState().isMicOn;
+
       // 오디오 퍼블리셔 생성 (마이크만, 비디오 없음)
       publisher.current = await OV.current.initPublisherAsync(undefined, {
         audioSource: undefined, // 기본 마이크
         videoSource: false, // 비디오 없음
-        publishAudio: false, // 처음에는 음소거
+        publishAudio: currentMicState, // 미리 설정된 마이크 상태 적용
         publishVideo: false,
         resolution: '640x480',
         frameRate: 30,
@@ -159,11 +162,13 @@ const useOpenVidu = () => {
   // 마이크 토글
   // ------------------------------------------------------------------
   const toggleMic = useCallback(() => {
+    const newMicState = !isMicOn;
+    // 세션에 연결된 경우 실제 오디오 스트림도 제어
     if (publisher.current) {
-      const newMicState = !isMicOn;
       publisher.current.publishAudio(newMicState);
-      setMicOn(newMicState);
     }
+    // 상태는 항상 업데이트 (회의 참가 전 미리 설정 가능)
+    setMicOn(newMicState);
   }, [isMicOn, setMicOn]);
 
   // ------------------------------------------------------------------
