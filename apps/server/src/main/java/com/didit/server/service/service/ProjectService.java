@@ -1,6 +1,7 @@
 package com.didit.server.service.service;
 
 import com.didit.server.data.entity.ProjectEntity;
+import com.didit.server.data.entity.ProjectRecentEntity;
 import com.didit.server.data.entity.ProjectUserEntity;
 import com.didit.server.data.entity.UserEntity;
 import com.didit.server.service.command.AddProjectCommand;
@@ -150,4 +151,49 @@ public interface ProjectService {
      *  - <403> NotFoundError: userId, projectId는 유효하지만 프로젝트에는 속해있지 않음 - resourceName = userId
      */
     Result<ProjectUserEntity> FindProjectUser(long userId, long projectId);
+
+    /**
+     * Action: 사용자가 최근에 방문한 프로젝트 목록을 최대 4개까지 최신순으로 반환함
+     * Input:
+     * - long userId: 조회할 사용자의 ID
+     * Success:
+     * - ok(List<ProjectRecentEntity>): 최근 방문 기록 엔티티 리스트 (최대 4개, 방문 시각 내림차순 정렬)
+     * Auth/Permission:
+     * - 로그인한 사용자 본인의 기록만 조회 가능
+     * Persistence:
+     * - (찾기) _ProjectRecentRepository.findTop4ByUser_IdOrderByLastViewedAtDesc 호출
+     * Failures:
+     * - <404>: 존재하지 않는 userId인 경우 NotFoundError 반환
+     * - <500>: 조회 과정에서 예외 발생 시 ServerError(ProjectRecentList) 반환
+     */
+    Result<List<ProjectRecentEntity>> GetRecentProjects(long userId);
+
+    /**
+     * Action: 특정 프로젝트에 대한 사용자의 방문 기록을 생성하거나 최신 시각으로 갱신함 (Upsert)
+     * Input:
+     * - long projectId: 방문한 프로젝트의 ID
+     * - long userId: 방문한 사용자의 ID
+     * Success:
+     * - 기존 기록이 존재하면 'lastViewedAt' 시각을 현재로 업데이트하고, 없으면 새로 생성함
+     * Persistence:
+     * - (찾기) _ProjectRecentRepository.findByUser_IdAndProject_Id 호출
+     * - (저장) _ProjectRecentRepository.save 호출 (새 기록일 경우)
+     * Remark:
+     * - 실제 데이터가 필요한 시점까지 조회를 미루기 위해 getReferenceById를 사용함
+     */
+    void UpdateRecentView(long projectId, long userId);
+
+    /**
+     * Action: 프로젝트 ID를 통해 해당 프로젝트의 상세 정보를 조회함
+     * Input:
+     * - long projectId: 조회할 프로젝트의 ID
+     * Success:
+     * - ok(ProjectEntity): 프로젝트 정보가 담긴 엔티티 반환
+     * Persistence:
+     * - (찾기) _ProjectRepository.findById 호출
+     * Failures:
+     * - <404>: 존재하지 않는 projectId인 경우 NotFoundError 반환
+     * - <500>: 데이터베이스 조회 중 예외 발생 시 ServerError(ProjectDetail) 반환
+     */
+    Result<ProjectEntity> FindProjectById(long projectId);
 }

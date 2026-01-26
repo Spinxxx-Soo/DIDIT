@@ -4,9 +4,11 @@ import com.didit.server.api.request.AddProjectInviteRequest;
 import com.didit.server.api.request.AddProjectRequest;
 import com.didit.server.api.request.CreateMeetingRequest;
 import com.didit.server.api.response.MeetingResponse;
+import com.didit.server.api.response.ProjectRecentResponse;
 import com.didit.server.api.response.ProjectResponse;
 import com.didit.server.api.response.UserResponse;
 import com.didit.server.api.security.CustomOAuth2User;
+import com.didit.server.data.entity.ProjectEntity;
 import com.didit.server.data.entity.enums.MeetingStatus;
 import com.didit.server.service.command.AddProjectCommand;
 import com.didit.server.service.service.MeetingService;
@@ -201,4 +203,38 @@ public class ProjectController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/recents")
+    public ResponseEntity<?> GetRecentProjects(@AuthenticationPrincipal CustomOAuth2User user){
+        var userId = user.getId();
+        var recentProjects = _ProjectService.GetRecentProjects(userId);
+        if (recentProjects.isFailure()){
+            var err = recentProjects.getSingleErrorOrThrow();
+            var response = err.getResponse();
+            return new ResponseEntity<>(response, response.getStatusCode());
+        }
+        var projectsEntities = recentProjects.getOrThrow();
+        var result = projectsEntities.stream()
+                .map(ProjectRecentResponse::fromEntity).toList();
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{projectId}")
+    public ResponseEntity<?> GetProjectDetail(@PathVariable long projectId,
+                                              @AuthenticationPrincipal CustomOAuth2User user){
+        var userId = user.getId();
+        var findUser = _ProjectService.FindProjectUser(userId, projectId);
+        if (findUser.isFailure()) {
+            var err = findUser.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        var findResult = _ProjectService.FindProjectById(projectId);
+        if(findResult.isFailure()){
+            var err = findResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+
+        _ProjectService.UpdateRecentView(projectId, userId);
+        var entity = (ProjectEntity) findResult.getOrThrow();
+        return ResponseEntity.ok(ProjectResponse.fromEntity(entity));
+    }
 }

@@ -1,15 +1,9 @@
 package com.didit.server.service; // ✅ 운영 코드 패키지 구조 미러링 권장 :contentReference[oaicite:1]{index=1}
 
-import com.didit.server.data.entity.ProjectEntity;
-import com.didit.server.data.entity.ProjectInviteEntity;
-import com.didit.server.data.entity.ProjectUserEntity;
-import com.didit.server.data.entity.UserEntity;
+import com.didit.server.data.entity.*;
 import com.didit.server.data.entity.enums.ProjectUserRole;
 import com.didit.server.data.entity.enums.ProjectUserStatus;
-import com.didit.server.data.repository.ProjectInviteRepository;
-import com.didit.server.data.repository.ProjectRepository;
-import com.didit.server.data.repository.ProjectUserRepository;
-import com.didit.server.data.repository.UserRepository;
+import com.didit.server.data.repository.*;
 
 // TODO: 네 프로젝트 Result / ResultError 실제 패키지로 수정
 import com.didit.server.service.command.AddProjectCommand;
@@ -32,7 +26,9 @@ import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +42,7 @@ class ProjectServiceImplTest {
     @Mock private ProjectUserRepository projectUserRepository;
     @Mock private ProjectRepository projectRepository;
     @Mock private ProjectInviteRepository projectInviteRepository;
+    @Mock private ProjectRecentRepository projectRecentRepository;
 
     @InjectMocks private ProjectServiceImpl sut;
 
@@ -691,6 +688,70 @@ class ProjectServiceImplTest {
         verify(projectRepository, times(1)).findById(projectId);
         verify(projectUserRepository, never()).findUsersByProjectId(anyLong());
     }
+
+    @Test
+    @DisplayName("유효한 userId가 주어지면 최근 방문한 프로젝트 리스트 최대 4개를 반환한다.")
+    void GetRecentProjects_Success() {
+        // Given
+        long userId = 1L;
+        UserEntity user = UserEntity.builder().id(userId).build();
+
+        ProjectRecentEntity recent1 = ProjectRecentEntity.builder().id(10L).user(user).build();
+        ProjectRecentEntity recent2 = ProjectRecentEntity.builder().id(11L).user(user).build();
+        List<ProjectRecentEntity> expectedList = List.of(recent1, recent2);
+
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(projectRecentRepository.findTop4ByUser_IdOrderByLastViewedAtDesc(userId))
+                .willReturn(expectedList);
+
+        // When
+        Result<List<ProjectRecentEntity>> result = sut.GetRecentProjects(userId);
+
+        // Then
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getOrThrow()).hasSize(2);
+        assertThat(result.getOrThrow().get(0).getId()).isEqualTo(10L);
+
+        verify(userRepository, times(1)).findById(userId);
+        verify(projectRecentRepository, times(1)).findTop4ByUser_IdOrderByLastViewedAtDesc(userId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 userId로 조회하면 NotFoundError(404)를 반환한다.")
+    void GetRecentProjects_Fail_UserNotFound() {
+        // Given
+        long invalidUserId = 999L;
+        given(userRepository.findById(invalidUserId)).willReturn(Optional.empty());
+
+        // When
+        Result<List<ProjectRecentEntity>> result = sut.GetRecentProjects(invalidUserId);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(404);
+        assertThat(result.getSingleErrorOrThrow().getMessage()).contains("userId not found");
+
+        verify(projectRecentRepository, never()).findTop4ByUser_IdOrderByLastViewedAtDesc(anyLong());
+    }
+
+    @Test
+    @DisplayName("조회 중 DB 예외가 발생하면 ServerError(500)를 반환한다.")
+    void GetRecentProjects_Fail_InternalServerError() {
+        // Given
+        long userId = 1L;
+        given(userRepository.findById(userId)).willReturn(Optional.of(UserEntity.builder().id(userId).build()));
+        given(projectRecentRepository.findTop4ByUser_IdOrderByLastViewedAtDesc(userId))
+                .willThrow(new RuntimeException("Database Connection Error"));
+
+        // When
+        Result<List<ProjectRecentEntity>> result = sut.GetRecentProjects(userId);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(500);
+        assertThat(result.getSingleErrorOrThrow().getMessage()).contains("ProjectRecentList");
+    }
+
     // =========================================================
     // assert / fixture helpers
     // =========================================================
