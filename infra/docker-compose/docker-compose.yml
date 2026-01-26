@@ -5,14 +5,14 @@ services:
     image: mysql:8.0
     container_name: didit-mysql
     restart: unless-stopped
-    ports:
-      - "3306:3306"
+    # ports:
+    #   - "3306:3306"
     environment:
       TZ: Asia/Seoul
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: didit
-      MYSQL_USER: ssafy
-      MYSQL_PASSWORD: password
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
@@ -24,6 +24,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - internal
 
   server:
     image: ghcr.io/pjtdidit/server-image:latest
@@ -32,19 +34,28 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "8080:8080"
+    # ports:
+    #   - "8080:8080"
+    expose:
+      - "8080"
     environment:
       TZ: Asia/Seoul
-
       MYSQL_DATABASE: didit
-      MYSQL_USER: ssafy
-      MYSQL_PASSWORD: password
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_HOST: db
       MYSQL_PORT: 3306
-
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-defaultId}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-defaultSecret}
+    networks:
+      - internal
+      - caddy_default   # ✅ Caddy 네트워크에 붙이기
 
 volumes:
   mysql-data:
+
+networks:
+  internal:
+    driver: bridge
+  caddy_default:
+    external: true
