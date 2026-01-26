@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageCircle, FileText } from 'lucide-react';
+import { Mic, Hash } from 'lucide-react';
 import useMeetingStore from '@/store/useMeetingStore';
 import { meetingApi } from '@/api/meeting';
 
 const RECORDING_LIMIT_SECONDS = 60 * 60; // 1시간 = 3600초
 
 const MeetingHeader = () => {
-  const { meetingTitle, meetingId, isRecording, setRecording } = useMeetingStore();
+  const { meetingTitle, meetingId, isRecording, setRecording, currentChannelMode } = useMeetingStore();
   const [remainingTime, setRemainingTime] = useState(RECORDING_LIMIT_SECONDS);
 
   // TODO: 백엔드 연동 시 구현 예정
@@ -84,7 +84,11 @@ const MeetingHeader = () => {
       {/* 왼쪽: 회의 정보 */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <span>🎙</span>
+          {currentChannelMode === 'VOICE' ? (
+            <Mic size={18} className="text-[var(--color-green-primary)]" />
+          ) : (
+            <Hash size={18} className="text-[var(--text-secondary)]" />
+          )}
           <span className="font-semibold" style={{ color: 'var(--text-bright)' }}>
             {meetingTitle || '회의'}
           </span>
@@ -128,23 +132,6 @@ const MeetingHeader = () => {
           </div>
         )} */}
 
-        {/* 채팅/이슈 버튼 */}
-        <div className="flex items-center gap-4">
-          <button
-            className="flex items-center gap-1 text-sm"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            <MessageCircle size={16} />
-            채팅
-          </button>
-          <button
-            className="flex items-center gap-1 text-sm"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            <FileText size={16} />
-            이슈
-          </button>
-        </div>
       </div>
     </header>
   );

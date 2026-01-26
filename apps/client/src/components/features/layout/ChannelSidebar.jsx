@@ -4,6 +4,7 @@ import { Home, Mic, FileText, Hash, Plus, Headphones, MicOff, HeadphoneOff, Phon
 import { Avatar } from '@/components/common/Avatar';
 import { Divider } from '@/components/common/Divider';
 import { IconButton } from '@/components/common/Button/IconButton';
+import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
 import useMeetingStore from '@/store/useMeetingStore';
 import useOpenVidu from '@/hooks/useOpenVidu';
 import { projectApi } from '@/api/project';
@@ -31,6 +32,10 @@ const ChannelSidebar = () => {
   // 채널 및 멤버 데이터 (API 연동)
   const [channels, setChannels] = useState([]);
   const [members, setMembers] = useState([]);
+
+  // 채널 변경 확인 모달 상태
+  const [isChannelChangeModalOpen, setIsChannelChangeModalOpen] = useState(false);
+  const [pendingChannel, setPendingChannel] = useState(null);
 
   // 채널/멤버 데이터 로드
   useEffect(() => {
@@ -71,13 +76,40 @@ const ChannelSidebar = () => {
 
   // 채널 클릭 핸들러
   const handleChannelClick = (channel) => {
+    // 회의 중이고 다른 채널 클릭 시 확인 모달 표시
+    if (isInMeeting && currentChannelId !== channel.id) {
+      setPendingChannel(channel);
+      setIsChannelChangeModalOpen(true);
+      return;
+    }
+
     // 채널 선택 상태 저장 (UI 상태용)
-    setCurrentChannel(channel.id, channel.title, channel.sessionId);
+    setCurrentChannel(channel.id, channel.title, channel.sessionId, channel.mode);
     // 회의 페이지로 이동 (URL에 channelId 포함)
     navigate(`/workspace/${projectId}/meeting/${channel.id}`);
   };
 
+  // 채널 변경 확인 핸들러
+  const handleConfirmChannelChange = () => {
+    if (pendingChannel) {
+      // 이전 세션 나가기
+      leaveSession();
+      // 새 채널로 이동
+      setCurrentChannel(pendingChannel.id, pendingChannel.title, pendingChannel.sessionId, pendingChannel.mode);
+      navigate(`/workspace/${projectId}/meeting/${pendingChannel.id}`);
+    }
+    setIsChannelChangeModalOpen(false);
+    setPendingChannel(null);
+  };
+
+   // 회의 나가기 핸들러 (홈으로 리다이렉트)
+   const handleLeaveMeeting = () => {
+    leaveSession();
+    navigate(`/workspace/${projectId}`);
+  };
+
   return (
+    <>
     <div className="flex flex-col h-full pt-2 bg-[var(--bg-sidebar)]">
       {/* 1. 상단 고정 영역 */}
       <div className="flex-shrink-0 px-4 mb-2">
@@ -185,30 +217,34 @@ const ChannelSidebar = () => {
           </>
         )}
 
-        {/* 팀원 목록 */}
-        <div className="flex items-center justify-between text-[11px] text-[var(--text-tertiary)] font-semibold mb-3 tracking-wider uppercase group sticky top-0 bg-[var(--bg-sidebar)] py-1 z-10">
-          <span>팀원 ({members.length})</span>
-          <button className="text-[var(--text-tertiary)] hover:text-[var(--color-green-primary)]">
-            <Plus size={14} />
-          </button>
-        </div>
-        <ul className="space-y-1">
-          {members.map((member) => (
-            <li
-              key={member.id}
-              className="flex items-center gap-3 px-2 py-1.5 hover:bg-[var(--bg-hover)] rounded-[var(--radius-md)] cursor-pointer transition-colors duration-150"
-            >
-              <Avatar
-                name={member.name}
-                size="xs"
-                status={member.isOnline ? 'online' : 'offline'}
-              />
-              <span className={`text-[14px] ${member.isOnline ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'}`}>
-                {member.name}
-              </span>
-            </li>
-          ))}
-        </ul>
+        {/* 팀원 목록 - 회의 참가 중이 아닐 때만 표시 */}
+        {!isInMeeting && (
+          <>
+            <div className="flex items-center justify-between text-[11px] text-[var(--text-tertiary)] font-semibold mb-3 tracking-wider uppercase group sticky top-0 bg-[var(--bg-sidebar)] py-1 z-10">
+              <span>팀원 ({members.length})</span>
+              <button className="text-[var(--text-tertiary)] hover:text-[var(--color-green-primary)]">
+                <Plus size={14} />
+              </button>
+            </div>
+            <ul className="space-y-1">
+              {members.map((member) => (
+                <li
+                  key={member.id}
+                  className="flex items-center gap-3 px-2 py-1.5 hover:bg-[var(--bg-hover)] rounded-[var(--radius-md)] cursor-pointer transition-colors duration-150"
+                >
+                  <Avatar
+                    name={member.name}
+                    size="xs"
+                    status={member.isOnline ? 'online' : 'offline'}
+                  />
+                  <span className={`text-[14px] ${member.isOnline ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'}`}>
+                    {member.name}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
       
       <Divider />
@@ -261,13 +297,29 @@ const ChannelSidebar = () => {
               variant="ghost"
               size="sm"
               title="회의 나가기"
-              onClick={leaveSession}
-              className="text-white bg-[var(--color-error)] hover:bg-red-600"
+              onClick={handleLeaveMeeting}
+              className="text-[var(--text-bright)] bg-[var(--color-error)] hover:bg-red-600"
             />
           </>
         )}
       </div>
     </div>
+
+    {/* 채널 변경 확인 모달 */}
+    <ConfirmModal
+      isOpen={isChannelChangeModalOpen}
+      onClose={() => {
+        setIsChannelChangeModalOpen(false);
+        setPendingChannel(null);
+      }}
+      onConfirm={handleConfirmChannelChange}
+      title="채널 이동"
+      message={`현재 회의에서 나가고 '${pendingChannel?.title || ''}' 채널로 이동하시겠습니까?`}
+      confirmText="이동하기"
+      cancelText="취소"
+      confirmVariant="primary"
+    />
+    </>
   );
 };
 
