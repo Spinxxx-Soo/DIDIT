@@ -20,12 +20,19 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(request -> {
+                    var config = new org.springframework.web.cors.CorsConfiguration();
+                    config.setAllowedOrigins(java.util.List.of("http://localhost:5173", "https://did-it.xyz"));
+                    config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    config.setAllowedHeaders(java.util.List.of("*"));
+                    config.setAllowCredentials(true);
+                    return config;
+                }))
                 .authorizeHttpRequests(auth -> auth.requestMatchers("/", "/api/v1/auth/login", "/api/v1/auth/logout","/login/**", "/oauth2/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
-                        .defaultSuccessUrl("http://localhost:5173/projects", true))
+                        .defaultSuccessUrl("https://did-it.xyz/projects", true))
                 .logout(logout -> logout
                         .logoutUrl("/api/v1/auth/logout")
                         .addLogoutHandler((request, response, authentication) -> {
@@ -33,7 +40,7 @@ public class SecurityConfig {
                             session.invalidate();
                         })
                         .logoutSuccessHandler((request, response, authentication) ->
-                                response.sendRedirect("http://localhost:5173/")) //리다이렉트 될 페이지 추후 수정 필요
+                                response.sendRedirect("https://did-it.xyz/")) //리다이렉트 될 페이지 추후 수정 필요
                         .deleteCookies("JSESSIONID")
                         .logoutSuccessUrl("/")
                 );
