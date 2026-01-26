@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { IconButton } from '@/components/common/Button/IconButton';
@@ -6,11 +6,12 @@ import { Input } from '@/components/common/Input';
 import { Badge } from '@/components/common/Badge';
 import { Avatar } from '@/components/common/Avatar';
 import { Card } from '@/components/common/Card';
-import { useParams } from 'react-router-dom';
 
-import useLoungeStore from '@/store/useLoungeStore';
-import useChatStore from '@/store/useChatStore';
+import { useParams } from 'react-router-dom'; // Added
+
+import { chatApi } from '@/api/features';
 import useAuthStore from '@/store/useAuthStore';
+import useLoungeStore from '@/store/useLoungeStore';
 import IssueDetailPanel from './IssueDetailPanel';
 
 // Priority 설정
@@ -38,57 +39,119 @@ const STATUS_CONFIG = {
   closed: { label: 'Closed', variant: 'success' },
 };
 
-const RightSidebar = ({ activePanel, onClose }) => {
-  const { projectId } = useParams(); // URL에서 projectId 가져오기
-  const { openIssueDetail, openCreateIssue, issues, fetchIssues } = useLoungeStore();
-  const { messages, connect, disconnect, sendMessage } = useChatStore();
+const RightSidebar = ({ activePanel, onClose, channelId }) => {
+  const { projectId } = useParams(); // Added
+  const { openIssueDetail, openCreateIssue, issues, fetchIssues } = useLoungeStore(); // Added fetchIssues
   const { user } = useAuthStore();
-
-  // projectId로 바꿨길래 ... roomId = projectId로 해놓음
-  const roomId = projectId;
 
   const isChat = activePanel === 'chat';
   const isIssueMode = activePanel === 'issue' || activePanel === 'issue_detail';
   const isDetailView = activePanel === 'issue_detail';
 
   const [chatMessage, setChatMessage] = useState('');
-  const messagesEndRef = React.useRef(null);
+  const [messages, setMessages] = useState([]);
+  const [isLoadingChat, setIsLoadingChat] = useState(false);
 
-  // 0. 스크롤 자동 이동 (메시지 추가 시)
+  const messagesEndRef = useRef(null);
+
+  // Priority별로 정렬
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  const sortedIssues = [...issues].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+  // 이슈 목록 불러오기
+  useEffect(() => {
+    if (isIssueMode && projectId) {
+      fetchIssues(projectId);
+    }
+  }, [isIssueMode, projectId, fetchIssues]);
+
+  // 채팅 불러오기
+  const fetchChats = React.useCallback(async () => {
+    if (!channelId) return;
+
+    // Mock Mode Check
+    const isMock = import.meta.env.VITE_USE_MOCK === 'true';
+
+    try {
+      setIsLoadingChat(true);
+
+      if (isMock) {
+        // Mock Data
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        const mockMessages = [
+          { id: 1, content: `채널 ${channelId}에 오신 것을 환영합니다!`, sender: 'System', time: '오전 09:00', isMine: false },
+          { id: 2, content: '새로운 기능을 확인해보세요.', sender: '김도연', time: '오전 09:05', isMine: false },
+        ];
+
+        setMessages(mockMessages);
+
+      } else {
+        // Real API
+        const response = await chatApi.getChats(channelId);
+        const fetchedMessages = response.data.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          sender: msg.senderName || msg.sender?.name || '알 수 없음',
+          time: msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+          isMine: msg.senderId === user?.userId || msg.sender?.id === user?.userId,
+        }));
+        setMessages(fetchedMessages);
+      }
+
+    } catch (error) {
+      console.error('채팅 불러오기 실패:', error);
+    } finally {
+      setIsLoadingChat(false);
+    }
+  }, [channelId, user]);
+
+  // 채널이 바뀌거나 패널 열릴 때 로드
+  useEffect(() => {
+    if (isChat && channelId) {
+      fetchChats();
+    }
+  }, [isChat, channelId, fetchChats]);
+
+  // 스크롤 자동 이동
   useEffect(() => {
     if (isChat && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isChat]);
 
-  // 1. 이슈 목록 불러오기 (이슈 모드일 때)
-  useEffect(() => {
-    if (isIssueMode && roomId) {
-      fetchIssues(roomId);
+  const handleSendMessage = async () => {
+    if (!chatMessage.trim() || !channelId) return;
+    const isMock = import.meta.env.VITE_USE_MOCK === 'true';
+
+    try {
+      if (isMock) {
+        const newMsg = {
+          id: Date.now(),
+          content: chatMessage,
+          sender: '나',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isMine: true
+        };
+        setMessages(prev => [...prev, newMsg]);
+        setChatMessage('');
+      } else {
+        await chatApi.createChat(channelId, { content: chatMessage });
+        setChatMessage('');
+        fetchChats();
+      }
+    } catch (error) {
+      console.error('메시지 전송 실패:', error);
     }
-  }, [isIssueMode, roomId, fetchIssues]);
+  };
 
-  // 2. 채팅 연결 (채팅 모드일 때)
-  useEffect(() => {
-    if (isChat && roomId) {
-      connect(roomId);
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!e.nativeEvent.isComposing) {
+        handleSendMessage();
+      }
     }
-    // 채팅창 닫을 때 연결 끊을지 여부는 정책에 따라 결정.
-    // 여기서는 RightSidebar가 Unmount 될 때(또는 채팅모드 아닐 때) 끊는 것으로 가정
-    return () => {
-      // disconnect(); // 필요하면 주석 해제 (채팅창 닫아도 연결 유지하려면 주석 처리)
-    };
-  }, [isChat, roomId, connect, disconnect]);
-
-  // Priority별로 정렬 (high > medium > low)
-  const priorityOrder = { high: 0, medium: 1, low: 2 };
-  const sortedIssues = [...issues].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-
-  // 채팅 전송 핸들러
-  const handleSendMessage = () => {
-    if (!chatMessage.trim() || !roomId) return;
-    sendMessage(roomId, chatMessage);
-    setChatMessage('');
   };
 
   return (
@@ -97,7 +160,8 @@ const RightSidebar = ({ activePanel, onClose }) => {
       {/* 1. 채팅 모드 */}
       {isChat && (
         <div className="flex flex-col h-full w-full absolute inset-0 bg-[#F8F9FA] z-10">
-          {/* Header */}
+
+          {/* Header (Master Style) */}
           <div className="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-100 shadow-sm shrink-0">
             <div>
               <h2 className="font-bold text-lg text-gray-800">실시간 채팅</h2>
@@ -109,57 +173,43 @@ const RightSidebar = ({ activePanel, onClose }) => {
             <IconButton variant="ghost" size="sm" icon={<X size={20} />} onClick={onClose} />
           </div>
 
-          {/* Message List */}
+          {/* Message List (Master Style) */}
           <div className="flex-1 p-4 overflow-y-auto space-y-6 bg-[#F8F9FA]">
-            {messages.map((msg) => {
-              const isMine = msg.isMine || (user && msg.senderId === user.userId);
-              return (
-                <div key={msg.id} className={`flex gap-3 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                  {/* Avatar (타인일 경우만) */}
-                  {!isMine && (
-                    <Avatar
-                      name={msg.sender}
-                      size="sm"
-                      className="mt-1 shadow-sm"
-                    />
+            {isLoadingChat ? (
+              <div className="flex justify-center p-4 text-gray-500">로딩 중...</div>
+            ) : messages.length === 0 ? (
+              <div className="flex justify-center p-4 text-gray-400 text-sm">대화 내용이 없습니다.</div>
+            ) : (
+              messages.map((msg) => (
+                <div key={msg.id} className={`flex gap-3 ${msg.isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+                  {!msg.isMine && (
+                    <Avatar name={msg.sender} size="sm" className="mt-1 shadow-sm" />
                   )}
-
-                  <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} max-w-[75%]`}>
-                    {/* Receiver Info */}
-                    {!isMine && (
-                      <span className="text-[11px] text-gray-500 mb-1 ml-1">
-                        {msg.sender}
-                      </span>
+                  <div className={`flex flex-col ${msg.isMine ? 'items-end' : 'items-start'} max-w-[75%]`}>
+                    {!msg.isMine && (
+                      <span className="text-[11px] text-gray-500 mb-1 ml-1">{msg.sender}</span>
                     )}
-
-                    {/* Bubble */}
-                    <div className={`
-                      px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed shadow-sm relative group
-                      ${isMine
-                        ? 'bg-blue-600 text-white rounded-tr-none'
-                        : 'bg-white text-gray-700 border border-gray-100 rounded-tl-none'}
-                    `}>
+                    <div className={`px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed shadow-sm relative group ${msg.isMine
+                      ? 'bg-blue-600 text-white rounded-tr-none'
+                      : 'bg-white text-gray-700 border border-gray-100 rounded-tl-none'
+                      }`}>
                       {msg.content}
                     </div>
-
-                    {/* Time */}
-                    <span className="text-[10px] text-gray-400 mt-1 px-1">
-                      {msg.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                    <span className="text-[10px] text-gray-400 mt-1 px-1">{msg.time}</span>
                   </div>
                 </div>
-              );
-            })}
+              ))
+            )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Area */}
+          {/* Input Area (Master Style) */}
           <div className="p-4 bg-white border-t border-gray-100 shrink-0">
             <div className="flex items-center gap-2 bg-gray-50 rounded-full px-4 py-2 border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
               <input
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleSendMessage()}
+                onKeyDown={handleKeyDown}
                 placeholder="메시지를 입력하세요..."
                 className="flex-1 bg-transparent border-none outline-none text-sm py-1"
               />
@@ -167,21 +217,21 @@ const RightSidebar = ({ activePanel, onClose }) => {
                 onClick={handleSendMessage}
                 disabled={!chatMessage.trim()}
                 className={`
-                  p-1.5 rounded-full transition-all duration-200 
-                  ${chatMessage.trim() ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
-                `}
+                   p-1.5 rounded-full transition-all duration-200 
+                   ${chatMessage.trim() ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
+                 `}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
               </button>
             </div>
           </div>
+
         </div>
       )}
 
-      {/* 2. 이슈 모드 */}
+      {/* 2. 이슈 모드 (Existing) */}
       {isIssueMode && (
         <div className="absolute inset-0 w-full h-full overflow-hidden bg-[var(--bg-panel)]">
-
           {/* [LAYER 1] 이슈 목록 화면 */}
           <div
             className={`

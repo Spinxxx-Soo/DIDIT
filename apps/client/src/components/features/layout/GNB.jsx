@@ -8,7 +8,8 @@ const GNB = ({
   variant = 'landing',
   onChatClick,
   onIssueClick,
-  activePanel
+  activePanel,
+  showChat = false, // 기본값 false
 }) => {
   const isWorkspace = variant === 'workspace';
   const { isAuthenticated, logout } = useAuthStore();
@@ -29,15 +30,17 @@ const GNB = ({
         {isWorkspace ? (
           // [워크스페이스 모드] 채팅, 이슈 버튼
           <>
-            <Button
-              variant={activePanel === 'chat' ? 'secondary' : 'ghost'}
-              size="sm"
-              leftIcon={<MessageCircle size={16} />}
-              onClick={onChatClick}
-              className={activePanel === 'chat' ? 'border-[var(--color-green-primary)] text-[var(--color-green-primary)]' : ''}
-            >
-              채팅
-            </Button>
+            {showChat && ( // showChat이 true일 때만 채팅 버튼 노출
+              <Button
+                variant={activePanel === 'chat' ? 'secondary' : 'ghost'}
+                size="sm"
+                leftIcon={<MessageCircle size={16} />}
+                onClick={onChatClick}
+                className={activePanel === 'chat' ? 'border-[var(--color-green-primary)] text-[var(--color-green-primary)]' : ''}
+              >
+                채팅
+              </Button>
+            )}
             <Button
               variant={activePanel === 'issue' ? 'secondary' : 'ghost'}
               size="sm"
