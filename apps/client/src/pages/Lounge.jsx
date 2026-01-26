@@ -3,7 +3,7 @@ import React from 'react';
 // 주간 일정 컴포넌트 경로 주의 (아까 만드신 경로로)
 import WeeklySchedule from '@/components/features/user/WeeklySchedule';
 import RecentMinutes from "@/components/features/user/RecentMinutes";
-import IssueTracker from "@/components/features/user/IssueTracker"; // ★ 아직 없으니 주석 처리
+import IssueTracker from "@/components/features/user/IssueTracker";
 
 const Lounge = () => {
   return (
@@ -21,7 +21,7 @@ const Lounge = () => {
       {/* 3. 이슈 트래커 (나중에 풀기) */}
       <section className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
         <IssueTracker />
-      </section> 
+      </section>
     </div>
   );
 };
