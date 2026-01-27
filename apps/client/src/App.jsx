@@ -14,6 +14,7 @@ import { DevTest } from '@/pages/DevTest';
 import MyPage from './pages/MyPage';
 import LoginPage from './pages/LoginPage';
 import Lounge from './pages/Lounge';
+import JoinPage from '@/pages/JoinPage';
 
 // 회의 컴포넌트
 import MeetingRoom from '@/components/features/meeting/MeetingRoom';
@@ -42,7 +43,8 @@ function App() {
       <Routes>
         {/* === 1. 공개 라우트 === */}
         <Route path="/login" element={<LoginPage />} />
-        
+        <Route path="/invite/:inviteCode" element={<JoinPage />} />
+
         <Route element={<BaseLayout />}>
           <Route path="/" element={<Landing />} />
         </Route>
@@ -51,7 +53,7 @@ function App() {
 
         {/* === 2. 비공개 라우트 (로그인 필수) === */}
         <Route element={<PrivateRoute />}>
-          
+
           <Route element={<MainLayout />}>          {/* 2단계: MainLayout 씌우기 */}
             <Route path="/mypage" element={<MyPage />} />
             <Route path="/projects" element={<ProjectList />} />

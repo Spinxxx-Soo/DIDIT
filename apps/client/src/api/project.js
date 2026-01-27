@@ -84,6 +84,14 @@ export const projectApi = {
    */
   getParticipants: (projectId) => api.get(`/api/v1/projects/${projectId}/participants`),
 
+  /**
+   * 프로젝트 참여자 추방 (Added)
+   * @param {number} projectId
+   * @param {number} userId
+   * @returns {Promise}
+   */
+  removeParticipant: (projectId, userId) => api.delete(`/api/v1/projects/${projectId}/participants/${userId}`),
+
   // ------------------------------------------------------------------
   // 회의 채널 관리
   // ------------------------------------------------------------------
