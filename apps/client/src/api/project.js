@@ -32,6 +32,22 @@ export const projectApi = {
    */
   createProject: (data) => api.post('/api/v1/projects', data),
 
+  /**
+   * 프로젝트 GitHub 저장소 업데이트
+   * @param {number} projectId
+   * @param {string} githubRepo - "organization/repository" 형식
+   * @returns {Promise}
+   */
+  updateProjectRepo: (projectId, githubRepo) =>
+    api.patch(`/api/v1/projects/${projectId}`, { githubRepo }),
+
+  /**
+   * GitHub 저장소 검증
+   * @param {string} repo - "organization/repository" 형식
+   * @returns {Promise}
+   */
+  validateGithubRepo: (repo) => api.get(`/api/v1/github/validate`, { params: { repo } }),
+
   // ------------------------------------------------------------------
   // 초대 관리
   // ------------------------------------------------------------------
