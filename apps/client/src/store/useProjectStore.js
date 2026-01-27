@@ -10,6 +10,7 @@ const MOCK_PROJECTS = [
   {
     id: 1,
     name: '알고리즘 스터디',
+    ownerId: 1,
     imageUrl: null,
     githubRepo: 'ssafy/algo-study',
     memberCount: 6,
@@ -19,11 +20,22 @@ const MOCK_PROJECTS = [
   {
     id: 2,
     name: '공통 프로젝트',
+    ownerId: 2,
     imageUrl: null,
     githubRepo: 'ssafy/common-project',
     memberCount: 6,
     lastAccessed: '1일 전',
     createdAt: '2024-01-20T14:30:00Z',
+  },
+  {
+    id: 3,
+    name: '자율 프로젝트',
+    ownerId: 1,
+    imageUrl: null,
+    githubRepo: 'ssafy/autonomous-project',
+    memberCount: 4,
+    lastAccessed: '3일 전',
+    createdAt: '2024-01-25T09:00:00Z',
   },
 ];
 
@@ -216,6 +228,78 @@ const useProjectStore = create((set, get) => ({
   // [7] 에러 초기화
   // ------------------------------------------------------------------
   clearError: () => set({ error: null }),
+
+  // ------------------------------------------------------------------
+  // [8] 프로젝트 이름 수정
+  // ------------------------------------------------------------------
+  updateProjectName: async (projectId, name) => {
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === Number(projectId) ? { ...p, name } : p
+        ),
+      }));
+      return { success: true };
+    }
+    // TODO: API 연동 (PATCH /api/v1/projects/:id)
+    return { success: false, error: 'API not implemented' };
+  },
+
+  // ------------------------------------------------------------------
+  // [9] 프로젝트 떠나기
+  // ------------------------------------------------------------------
+  leaveProject: async (projectId) => {
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      set(state => ({
+        projects: state.projects.filter(p => p.id !== Number(projectId)),
+      }));
+      return { success: true };
+    }
+    // TODO: API 연동
+    return { success: false, error: 'API not implemented' };
+  },
+
+  // ------------------------------------------------------------------
+  // [10] 팀장 위임
+  // ------------------------------------------------------------------
+  transferOwnership: async (projectId, newOwnerId) => {
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === Number(projectId) ? { ...p, ownerId: newOwnerId } : p
+        ),
+      }));
+      return { success: true };
+    }
+    // TODO: API 연동
+    return { success: false, error: 'API not implemented' };
+  },
+
+  // ------------------------------------------------------------------
+  // [11] 프로젝트 참여자 조회
+  // ------------------------------------------------------------------
+  fetchParticipants: async (projectId) => {
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      return [
+        { id: 1, name: '김이', avatarUrl: null },
+        { id: 2, name: '이다연', avatarUrl: null },
+        { id: 3, name: '손율준', avatarUrl: null },
+        { id: 4, name: '하지연', avatarUrl: null },
+        { id: 5, name: '홍수민', avatarUrl: null },
+      ];
+    }
+    try {
+      const response = await projectApi.getParticipants(projectId);
+      return response.data;
+    } catch (error) {
+      console.error('참여자 조회 실패:', error);
+      return [];
+    }
+  },
 }));
 
 export default useProjectStore;
