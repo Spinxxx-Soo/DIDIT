@@ -1,7 +1,7 @@
 // src/pages/MyPage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Settings, Clock } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/common/Button';
 import {
@@ -104,10 +104,10 @@ export function MyPage() {
                 {/* 프로젝트 아이콘 */}
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden"
-                  style={{ backgroundColor: project.imageUrl ? 'transparent' : getProjectColor(project.id) }}
+                  style={{ backgroundColor: project.thumbnailUrl ? 'transparent' : getProjectColor(project.id) }}
                 >
-                  {project.imageUrl ? (
-                    <img src={project.imageUrl} alt={project.name} className="w-full h-full object-cover" />
+                  {project.thumbnailUrl ? (
+                    <img src={project.thumbnailUrl} alt={project.name} className="w-full h-full object-cover" />
                   ) : (
                     getProjectInitial(project.name)
                   )}
@@ -119,16 +119,8 @@ export function MyPage() {
                     {project.name}
                   </CardTitle>
                   <CardDescription>
-                    {project.githubRepo || '연결된 저장소 없음'}
+                    {project.repoFullName || '연결된 저장소 없음'}
                   </CardDescription>
-                  <div className="flex items-center gap-3 mt-2 text-[13px] text-[var(--text-tertiary)]">
-                    <span>멤버 {project.memberCount}명</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={12} />
-                      {project.lastAccessed}
-                    </span>
-                  </div>
                 </div>
               </div>
             </Card>

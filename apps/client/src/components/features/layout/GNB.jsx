@@ -7,6 +7,16 @@ import useProjectStore from '@/store/useProjectStore';
 import { Button } from '@/components/common/Button';
 import { GithubRepoSection } from './GithubRepoSection';
 
+/**
+ * Global Navigation Bar 컴포넌트
+ * @param {Object} props
+ * @param {'landing' | 'workspace'} props.variant - GNB 모드
+ * @param {Function} props.onChatClick - 채팅 버튼 클릭 핸들러
+ * @param {Function} props.onIssueClick - 이슈 버튼 클릭 핸들러
+ * @param {string} props.activePanel - 현재 활성화된 패널
+ * @param {boolean} props.showChat - 채팅 버튼 표시 여부
+ * @param {string} props.projectId - 프로젝트 ID
+ */
 const GNB = ({
   variant = 'landing',
   onChatClick,
@@ -46,7 +56,7 @@ const GNB = ({
         {/* workspace 모드에서 저장소 정보 표시 */}
         {isWorkspace && projectId && (
           <GithubRepoSection
-            githubRepo={currentProject?.githubRepo}
+            repoFullName={currentProject?.repoFullName}
             projectId={projectId}
             onValidateRepo={validateGithubRepo}
             onUpdateRepo={updateProjectRepo}
@@ -57,9 +67,8 @@ const GNB = ({
       {/* 네비게이션 영역 */}
       <nav className="flex items-center gap-3 text-[15px]">
         {isWorkspace ? (
-          // [워크스페이스 모드] 채팅, 이슈 버튼
           <>
-            {showChat && ( // showChat이 true일 때만 채팅 버튼 노출
+            {showChat && (
               <Button
                 variant={activePanel === 'chat' ? 'secondary' : 'ghost'}
                 size="sm"
@@ -81,7 +90,6 @@ const GNB = ({
             </Button>
           </>
         ) : (
-          // [기본 모드] 기존 랜딩 페이지 메뉴
           <>
             {isAuthenticated ? (
               <Button variant="secondary" size="sm" onClick={logout}>
