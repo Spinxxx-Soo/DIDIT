@@ -10,21 +10,30 @@ const MOCK_PROJECTS = [
   {
     id: 1,
     name: '알고리즘 스터디',
-    imageUrl: null,
-    githubRepo: 'ssafy/algo-study',
-    memberCount: 6,
-    lastAccessed: '2시간 전',
+    ownerId: 1,
+    thumbnailUrl: null,
+    repoFullName: 'ssafy/algo-study',
     createdAt: '2024-01-15T10:00:00Z',
   },
   {
     id: 2,
     name: '공통 프로젝트',
-    imageUrl: null,
-    githubRepo: 'ssafy/common-project',
-    memberCount: 6,
-    lastAccessed: '1일 전',
+    ownerId: 2,
+    thumbnailUrl: null,
+    repoFullName: 'ssafy/common-project',
     createdAt: '2024-01-20T14:30:00Z',
   },
+];
+
+/**
+ * Mock 참여자 데이터
+ */
+const MOCK_PARTICIPANTS = [
+  { id: 1, name: '김이', avatarUrl: null },
+  { id: 2, name: '이다연', avatarUrl: null },
+  { id: 3, name: '손율준', avatarUrl: null },
+  { id: 4, name: '하지연', avatarUrl: null },
+  { id: 5, name: '홍수민', avatarUrl: null },
 ];
 
 const useProjectStore = create((set, get) => ({
@@ -91,10 +100,8 @@ const useProjectStore = create((set, get) => ({
       const newProject = {
         id: Date.now(),
         name,
-        imageUrl: imageFile ? URL.createObjectURL(imageFile) : null,
-        githubRepo: githubRepo || null,
-        memberCount: 1,
-        lastAccessed: '방금 전',
+        thumbnailUrl: imageFile ? URL.createObjectURL(imageFile) : null,
+        repoFullName: githubRepo || null,
         createdAt: new Date().toISOString(),
       };
 
@@ -107,16 +114,13 @@ const useProjectStore = create((set, get) => ({
     }
 
     try {
-      const formData = new FormData();
-      formData.append('name', name);
-      if (imageFile) {
-        formData.append('image', imageFile);
-      }
-      if (githubRepo) {
-        formData.append('githubRepo', githubRepo);
-      }
+      // Backend API expects: { projectName, githubUrl }
+      const data = {
+        projectName: name,
+        githubUrl: githubRepo || null,
+      };
 
-      const response = await projectApi.createProject(formData);
+      const response = await projectApi.createProject(data);
 
       set(state => ({
         projects: [...state.projects, response.data],
@@ -215,7 +219,7 @@ const useProjectStore = create((set, get) => ({
   // ------------------------------------------------------------------
   // [7] 프로젝트 GitHub 저장소 업데이트
   // ------------------------------------------------------------------
-  updateProjectRepo: async (projectId, githubRepo) => {
+  updateProjectRepo: async (projectId, repoFullName) => {
     set({ isLoading: true, error: null });
 
     if (IS_MOCK) {
@@ -223,10 +227,10 @@ const useProjectStore = create((set, get) => ({
 
       set(state => ({
         projects: state.projects.map(p =>
-          p.id === Number(projectId) ? { ...p, githubRepo } : p
+          p.id === Number(projectId) ? { ...p, repoFullName } : p
         ),
         currentProject: state.currentProject?.id === Number(projectId)
-          ? { ...state.currentProject, githubRepo }
+          ? { ...state.currentProject, repoFullName }
           : state.currentProject,
         isLoading: false,
       }));
@@ -235,14 +239,14 @@ const useProjectStore = create((set, get) => ({
     }
 
     try {
-      await projectApi.updateProjectRepo(projectId, githubRepo);
+      await projectApi.updateProjectRepo(projectId, repoFullName);
 
       set(state => ({
         projects: state.projects.map(p =>
-          p.id === Number(projectId) ? { ...p, githubRepo } : p
+          p.id === Number(projectId) ? { ...p, repoFullName } : p
         ),
         currentProject: state.currentProject?.id === Number(projectId)
-          ? { ...state.currentProject, githubRepo }
+          ? { ...state.currentProject, repoFullName }
           : state.currentProject,
         isLoading: false,
       }));
@@ -259,6 +263,104 @@ const useProjectStore = create((set, get) => ({
   // [8] 에러 초기화
   // ------------------------------------------------------------------
   clearError: () => set({ error: null }),
+
+  // ------------------------------------------------------------------
+  // [9] 프로젝트 이름 수정
+  // ------------------------------------------------------------------
+  updateProjectName: async (projectId, name) => {
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === Number(projectId) ? { ...p, name } : p
+        ),
+      }));
+      return { success: true };
+    }
+
+    try {
+      await projectApi.updateProjectName(projectId, name);
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === Number(projectId) ? { ...p, name } : p
+        ),
+      }));
+      return { success: true };
+    } catch (error) {
+      console.error('프로젝트 이름 수정 실패:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // ------------------------------------------------------------------
+  // [10] 프로젝트 떠나기
+  // ------------------------------------------------------------------
+  leaveProject: async (projectId) => {
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      set(state => ({
+        projects: state.projects.filter(p => p.id !== Number(projectId)),
+      }));
+      return { success: true };
+    }
+
+    try {
+      await projectApi.leaveProject(projectId);
+      set(state => ({
+        projects: state.projects.filter(p => p.id !== Number(projectId)),
+      }));
+      return { success: true };
+    } catch (error) {
+      console.error('프로젝트 떠나기 실패:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // ------------------------------------------------------------------
+  // [11] 팀장 위임
+  // ------------------------------------------------------------------
+  transferOwnership: async (projectId, newOwnerId) => {
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === Number(projectId) ? { ...p, ownerId: newOwnerId } : p
+        ),
+      }));
+      return { success: true };
+    }
+
+    try {
+      await projectApi.transferOwnership(projectId, newOwnerId);
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === Number(projectId) ? { ...p, ownerId: newOwnerId } : p
+        ),
+      }));
+      return { success: true };
+    } catch (error) {
+      console.error('팀장 위임 실패:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // ------------------------------------------------------------------
+  // [12] 프로젝트 참여자 조회
+  // ------------------------------------------------------------------
+  fetchParticipants: async (projectId) => {
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      return MOCK_PARTICIPANTS;
+    }
+
+    try {
+      const response = await projectApi.getParticipants(projectId);
+      return response.data;
+    } catch (error) {
+      console.error('참여자 조회 실패:', error);
+      return [];
+    }
+  },
 }));
 
 export default useProjectStore;

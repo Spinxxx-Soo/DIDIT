@@ -16,13 +16,13 @@ const GITHUB_STATUS = {
 /**
  * GNB 내 GitHub 저장소 연결 섹션
  * @param {Object} props
- * @param {string|null} props.githubRepo - 현재 연결된 저장소 (null이면 미연결)
+ * @param {string|null} props.repoFullName - 현재 연결된 저장소 (null이면 미연결)
  * @param {number} props.projectId - 프로젝트 ID
  * @param {Function} props.onValidateRepo - 저장소 검증 함수
  * @param {Function} props.onUpdateRepo - 저장소 업데이트 함수
  */
 export function GithubRepoSection({
-  githubRepo,
+  repoFullName,
   projectId,
   onValidateRepo,
   onUpdateRepo,
@@ -31,6 +31,17 @@ export function GithubRepoSection({
   const [repoInput, setRepoInput] = useState('');
   const [githubStatus, setGithubStatus] = useState(GITHUB_STATUS.IDLE);
   const [repoError, setRepoError] = useState('');
+
+  /**
+   * 입력값 변경 핸들러
+   */
+  const handleInputChange = (e) => {
+    setRepoInput(e.target.value);
+    if (repoError) setRepoError('');
+    if (githubStatus !== GITHUB_STATUS.IDLE) {
+      setGithubStatus(GITHUB_STATUS.IDLE);
+    }
+  };
 
   /**
    * 저장소 검증 핸들러
@@ -93,22 +104,11 @@ export function GithubRepoSection({
     setRepoError('');
   };
 
-  /**
-   * 입력값 변경 핸들러
-   */
-  const handleInputChange = (e) => {
-    setRepoInput(e.target.value);
-    if (repoError) setRepoError('');
-    if (githubStatus !== GITHUB_STATUS.IDLE) {
-      setGithubStatus(GITHUB_STATUS.IDLE);
-    }
-  };
-
   // 저장소가 연결된 경우 - 주소 표시
-  if (githubRepo && !isEditing) {
+  if (repoFullName && !isEditing) {
     return (
       <a
-        href={`https://github.com/${githubRepo}`}
+        href={`https://github.com/${repoFullName}`}
         target="_blank"
         rel="noopener noreferrer"
         className="
@@ -124,7 +124,7 @@ export function GithubRepoSection({
         "
       >
         <Github size={14} />
-        <span>{githubRepo}</span>
+        <span>{repoFullName}</span>
         <LinkIcon size={12} className="text-[var(--text-tertiary)]" />
       </a>
     );
@@ -205,7 +205,7 @@ export function GithubRepoSection({
         <X size={14} />
       </button>
 
-      {/* 에러 메시지 툴팁 */}
+      {/* 에러 메시지 */}
       {repoError && (
         <div className="flex items-center gap-1 text-[12px] text-[var(--color-error)]">
           <AlertCircle size={12} />
@@ -215,3 +215,5 @@ export function GithubRepoSection({
     </div>
   );
 }
+
+export default GithubRepoSection;
