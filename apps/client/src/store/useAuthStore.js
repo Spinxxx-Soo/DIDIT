@@ -36,22 +36,22 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
-  // ------------------------------------------------------------------
-  // [2] 로그인 콜백 처리
-  // ------------------------------------------------------------------
-  completeLogin: async (token) => {
-    set({ isLoading: true, error: null });
+  // // ------------------------------------------------------------------
+  // // [2] 로그인 콜백 처리
+  // // ------------------------------------------------------------------
+  // completeLogin: async (token) => {
+  //   set({ isLoading: true, error: null });
     
-    try {
-      localStorage.setItem('accessToken', token);
-      await get().fetchCurrentUser(); 
-    } catch (error) {
-      set({ error: error.message, isAuthenticated: false });
-      localStorage.removeItem('accessToken');
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+  //   try {
+  //     localStorage.setItem('accessToken', token);
+  //     await get().fetchCurrentUser(); 
+  //   } catch (error) {
+  //     set({ error: error.message, isAuthenticated: false });
+  //     localStorage.removeItem('accessToken');
+  //   } finally {
+  //     set({ isLoading: false });
+  //   }
+  // },
 
   // ------------------------------------------------------------------
   // [3] 내 정보 조회
@@ -81,7 +81,7 @@ const useAuthStore = create((set, get) => ({
       } catch (error) {
         console.error('내 정보 조회 실패:', error);
         set({ user: null, isAuthenticated: false, error: '로그인 세션 만료' });
-        localStorage.removeItem('accessToken');
+        // localStorage.removeItem('accessToken');
       } finally {
         // 성공하든 실패하든 로딩 종료
         set({ isLoading: false });
@@ -114,18 +114,21 @@ const useAuthStore = create((set, get) => ({
   // ------------------------------------------------------------------
   // [5] 새로고침 시 상태 복구
   // ------------------------------------------------------------------
-  checkLoginStatus: async () => {
-    const token = localStorage.getItem('accessToken');
+    checkLoginStatus: async () => {
+      await get().fetchCurrentUser(); // 세션 유효성 바로 체크
+    },
+  // checkLoginStatus: async () => {
+  //   const token = localStorage.getItem('accessToken');
 
-    // 토근 없을 시 실패
-    if (!token) {
-      set({ user: null, isAuthenticated: false, isLoading: false });
-      return;
-    }
+  //   // 토근 없을 시 실패
+  //   if (!token) {
+  //     set({ user: null, isAuthenticated: false, isLoading: false });
+  //     return;
+  //   }
 
-    // 토큰 있으면 검증 시작
-    await get().fetchCurrentUser();
-  },
+  //   // 토큰 있으면 검증 시작
+  //   await get().fetchCurrentUser();
+  // },
 
   // ------------------------------------------------------------------
   // [6] 프로필 이미지 수정

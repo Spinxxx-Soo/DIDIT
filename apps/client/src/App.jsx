@@ -15,6 +15,7 @@ import MyPage from './pages/MyPage';
 import LoginPage from './pages/LoginPage';
 import Lounge from './pages/Lounge';
 import JoinPage from '@/pages/JoinPage';
+import LoginSuccess from './pages/LoginSuccess'; 
 
 // 회의 컴포넌트
 import MeetingRoom from '@/components/features/meeting/MeetingRoom';
@@ -43,6 +44,7 @@ function App() {
       <Routes>
         {/* === 1. 공개 라우트 === */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/login/success" element={<LoginSuccess />} />
         <Route path="/invite/:inviteCode" element={<JoinPage />} />
 
         <Route element={<BaseLayout />}>
