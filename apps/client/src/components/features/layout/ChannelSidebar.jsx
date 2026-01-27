@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Home, Mic, FileText, Hash, Plus, Headphones, MicOff, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Circle } from 'lucide-react';
+import { Home, Mic, FileText, Hash, Plus, Headphones, MicOff, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Circle, Pencil, Trash2, X, Check, Minus } from 'lucide-react';
 import { Avatar } from '@/components/common/Avatar';
 import { Divider } from '@/components/common/Divider';
 import { IconButton } from '@/components/common/Button/IconButton';
@@ -13,7 +13,7 @@ import { ManageMembersModal } from '@/components/features/project/ManageMembersM
 import useAuthStore from '@/store/useAuthStore';
 import useProjectStore from '@/store/useProjectStore';
 import useToastStore from '@/store/useToastStore';
-import { Settings, Copy, UserMinus, Link } from 'lucide-react';
+import { UserMinus, Link } from 'lucide-react';
 
 const ChannelSidebar = () => {
   const location = useLocation();
@@ -47,6 +47,24 @@ const ChannelSidebar = () => {
   const [pendingChannel, setPendingChannel] = useState(null);
   const [isMemberMenuOpen, setIsMemberMenuOpen] = useState(false);
   const [isManageMembersModalOpen, setIsManageMembersModalOpen] = useState(false);
+
+  // 채널 관리 모드 상태
+  const [channelMenuOpen, setChannelMenuOpen] = useState(false);
+  const [channelMode, setChannelMode] = useState(null); // 'create' | 'edit' | 'delete' | null
+
+  // 생성 모드 상태
+  const [newChannelName, setNewChannelName] = useState('');
+  const [newChannelType, setNewChannelType] = useState('VOICE');
+  const [isCreating, setIsCreating] = useState(false);
+
+  // 수정 모드 상태
+  const [editingChannelId, setEditingChannelId] = useState(null);
+  const [editingChannelName, setEditingChannelName] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // 삭제 모드 상태
+  const [channelToDelete, setChannelToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 권한 확인
   const isOwner = currentProject?.ownerId === user?.userId;
@@ -153,6 +171,154 @@ const ChannelSidebar = () => {
     setMembers(prev => prev.filter(m => m.id !== removedMemberId));
   };
 
+  // ===== 채널 관리 핸들러 =====
+
+  // 모드 선택
+  const handleModeSelect = (mode) => {
+    setChannelMode(mode);
+    setChannelMenuOpen(false);
+    setEditingChannelId(null);
+    setEditingChannelName('');
+    setNewChannelName('');
+    setNewChannelType('VOICE');
+  };
+
+  // 모드 종료
+  const exitMode = () => {
+    setChannelMode(null);
+    setEditingChannelId(null);
+    setEditingChannelName('');
+    setNewChannelName('');
+    setNewChannelType('VOICE');
+  };
+
+  // ESC 키로 모드 종료
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && (channelMode === 'edit' || channelMode === 'delete')) {
+        exitMode();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [channelMode]);
+
+  // 채널 생성
+  const handleCreateChannel = async () => {
+    if (!newChannelName.trim() || isCreating) return;
+    setIsCreating(true);
+    try {
+      await projectApi.createChannel(projectId, {
+        title: newChannelName.trim(),
+        mode: newChannelType,
+      });
+      const res = await projectApi.getChannels(projectId);
+      setChannels(res.data || []);
+      addToast({ type: 'success', message: '채널이 생성되었습니다.' });
+      exitMode();
+    } catch (error) {
+      console.error('채널 생성 실패:', error);
+      addToast({ type: 'error', message: '채널 생성에 실패했습니다.' });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // 채널 생성 키보드 핸들러
+  const handleCreateKeyDown = (e) => {
+    if (e.key === 'Enter' && newChannelName.trim()) {
+      handleCreateChannel();
+    }
+    if (e.key === 'Escape') {
+      exitMode();
+    }
+  };
+
+  // 채널 수정 시작
+  const handleStartEdit = (channel) => {
+    setEditingChannelId(channel.id);
+    setEditingChannelName(channel.title);
+  };
+
+  // 채널 수정 저장
+  const handleSaveEdit = async () => {
+    if (!editingChannelName.trim() || isUpdating || !editingChannelId) return;
+
+    const currentChannel = channels.find((c) => c.id === editingChannelId);
+    if (currentChannel?.title === editingChannelName.trim()) {
+      setEditingChannelId(null);
+      setEditingChannelName('');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await projectApi.updateChannel(editingChannelId, {
+        title: editingChannelName.trim(),
+      });
+      const res = await projectApi.getChannels(projectId);
+      setChannels(res.data || []);
+      addToast({ type: 'success', message: '채널 이름이 변경되었습니다.' });
+      setEditingChannelId(null);
+      setEditingChannelName('');
+    } catch (error) {
+      console.error('채널 수정 실패:', error);
+      addToast({ type: 'error', message: '채널 수정에 실패했습니다.' });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // 채널 수정 취소
+  const handleCancelEdit = () => {
+    setEditingChannelId(null);
+    setEditingChannelName('');
+  };
+
+  // 채널 수정 키보드 핸들러
+  const handleEditKeyDown = (e) => {
+    if (e.key === 'Enter' && editingChannelName.trim()) {
+      handleSaveEdit();
+    }
+    if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+
+  // 채널 삭제 클릭
+  const handleDeleteClick = (channel) => {
+    setChannelToDelete(channel);
+  };
+
+  // 채널 삭제 확인
+  const handleConfirmDelete = async () => {
+    if (!channelToDelete || isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      await projectApi.deleteChannel(channelToDelete.id);
+
+      // 현재 보고 있는 채널이면 홈으로 이동
+      if (currentChannelId === channelToDelete.id) {
+        setCurrentChannel(null, null, null, null);
+        navigate(`/workspace/${projectId}`);
+      }
+
+      const res = await projectApi.getChannels(projectId);
+      setChannels(res.data || []);
+      addToast({
+        type: 'success',
+        message: `'${channelToDelete.title}' 채널이 삭제되었습니다.`,
+      });
+    } catch (error) {
+      console.error('채널 삭제 실패:', error);
+      addToast({ type: 'error', message: '채널 삭제에 실패했습니다.' });
+    } finally {
+      setIsDeleting(false);
+      setChannelToDelete(null);
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col h-full pt-2 bg-[var(--bg-sidebar)]">
@@ -190,19 +356,76 @@ const ChannelSidebar = () => {
           <div className="mb-4">
             <div className="flex items-center justify-between text-[11px] text-[var(--text-tertiary)] font-semibold mb-3 tracking-wider uppercase group">
               <span>CHANNELS</span>
-              <button className="text-[var(--text-tertiary)] hover:text-[var(--color-green-primary)]">
-                <Plus size={14} />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setChannelMenuOpen(!channelMenuOpen)}
+                  className="text-[var(--text-tertiary)] hover:text-[var(--color-green-primary)] p-0.5 rounded focus:outline-none"
+                >
+                  <Plus size={14} />
+                </button>
+
+                {/* 채널 관리 드롭다운 메뉴 */}
+                {channelMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setChannelMenuOpen(false)}
+                    />
+                    <div className="absolute right-0 top-6 w-28 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-md z-50 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                      <button
+                        onClick={() => handleModeSelect('create')}
+                        className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+                      >
+                        <Plus size={14} /> 생성
+                      </button>
+                      <button
+                        onClick={() => handleModeSelect('edit')}
+                        className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+                      >
+                        <Pencil size={14} /> 수정
+                      </button>
+                      <button
+                        onClick={() => handleModeSelect('delete')}
+                        className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-[var(--bg-hover)] hover:text-red-600"
+                      >
+                        <Trash2 size={14} /> 삭제
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
+            {/* 모드 안내 UI */}
+            {(channelMode === 'edit' || channelMode === 'delete') && (
+              <div className="flex items-center justify-between px-2 py-1.5 bg-[var(--bg-hover)] rounded-[var(--radius-md)] mb-2 text-[11px]">
+                <span className="text-[var(--text-tertiary)]">
+                  {channelMode === 'edit' ? '수정할 채널 선택' : '삭제할 채널 선택'}
+                </span>
+                <button
+                  onClick={exitMode}
+                  className="text-[var(--color-green-primary)] hover:underline font-medium"
+                >
+                  완료
+                </button>
+              </div>
+            )}
+
             <ul className="space-y-1">
               {channels.map((channel) => {
                 const isVoiceChannel = channel.mode === 'VOICE';
                 const isSelected = currentChannelId === channel.id;
+                const isEditing = channelMode === 'edit' && editingChannelId === channel.id;
 
                 return (
                   <li
                     key={channel.id}
-                    onClick={() => handleChannelClick(channel)}
+                    onClick={() => {
+                      if (channelMode === 'edit' && !isEditing) {
+                        handleStartEdit(channel);
+                      } else if (channelMode !== 'edit' && channelMode !== 'delete') {
+                        handleChannelClick(channel);
+                      }
+                    }}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-md)] cursor-pointer text-[14px] transition-colors duration-150 ${isSelected
                       ? 'bg-[#DBEAFE] text-[#1E40AF] border-l-[3px] border-[#3B82F6] font-medium'
                       : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-bright)]'
@@ -213,10 +436,105 @@ const ChannelSidebar = () => {
                     ) : (
                       <Hash size={14} className={isSelected ? 'text-[#1E40AF]' : 'text-[var(--text-tertiary)]'} />
                     )}
-                    {channel.title}
+
+                    {isEditing ? (
+                      <>
+                        <input
+                          type="text"
+                          value={editingChannelName}
+                          onChange={(e) => setEditingChannelName(e.target.value)}
+                          onKeyDown={handleEditKeyDown}
+                          onClick={(e) => e.stopPropagation()}
+                          autoFocus
+                          className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-2 py-0.5 text-[13px] text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-green-primary)]"
+                        />
+                        <IconButton
+                          icon={<Check size={12} />}
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSaveEdit();
+                          }}
+                          disabled={!editingChannelName.trim() || isUpdating}
+                          className="text-[var(--color-green-primary)] w-6 h-6 min-w-6"
+                          title="저장"
+                        />
+                        <IconButton
+                          icon={<X size={12} />}
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCancelEdit();
+                          }}
+                          className="text-[var(--text-tertiary)] w-6 h-6 min-w-6"
+                          title="취소"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1">{channel.title}</span>
+                        {channelMode === 'edit' && (
+                          <Pencil size={12} className="text-[var(--text-tertiary)] opacity-50" />
+                        )}
+                        {channelMode === 'delete' && (
+                          <IconButton
+                            icon={<Minus size={12} />}
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(channel);
+                            }}
+                            className="text-[var(--color-error)] hover:bg-red-50 w-6 h-6 min-w-6"
+                            title="채널 삭제"
+                          />
+                        )}
+                      </>
+                    )}
                   </li>
                 );
               })}
+
+              {/* 채널 생성 모드 UI */}
+              {channelMode === 'create' && (
+                <li className="flex items-center gap-2 px-3 py-1.5">
+                  <button
+                    onClick={() => setNewChannelType(newChannelType === 'VOICE' ? 'CHAT' : 'VOICE')}
+                    className="text-[var(--color-green-primary)] hover:opacity-70 transition-opacity"
+                    title={newChannelType === 'VOICE' ? '음성 채널 (클릭하여 변경)' : '채팅 채널 (클릭하여 변경)'}
+                  >
+                    {newChannelType === 'VOICE' ? <Mic size={14} /> : <Hash size={14} />}
+                  </button>
+                  <input
+                    type="text"
+                    value={newChannelName}
+                    onChange={(e) => setNewChannelName(e.target.value)}
+                    onKeyDown={handleCreateKeyDown}
+                    placeholder="채널 이름"
+                    autoFocus
+                    className="flex-1 min-w-0 bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-2 py-0.5 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--color-green-primary)]"
+                  />
+                  <IconButton
+                    icon={<Check size={12} />}
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCreateChannel}
+                    disabled={!newChannelName.trim() || isCreating}
+                    className="text-[var(--color-green-primary)] w-6 h-6 min-w-6"
+                    title="생성"
+                  />
+                  <IconButton
+                    icon={<X size={12} />}
+                    size="sm"
+                    variant="ghost"
+                    onClick={exitMode}
+                    className="text-[var(--text-tertiary)] w-6 h-6 min-w-6"
+                    title="취소"
+                  />
+                </li>
+              )}
             </ul>
           </div>
         </div>
@@ -403,6 +721,19 @@ const ChannelSidebar = () => {
         currentUserId={user?.userId}
         isOwner={isOwner}
         onMemberRemoved={handleMemberRemoved}
+      />
+
+      {/* 채널 삭제 확인 모달 */}
+      <ConfirmModal
+        isOpen={!!channelToDelete}
+        onClose={() => setChannelToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="채널 삭제"
+        message={`'${channelToDelete?.title || ''}' 채널을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
+        confirmText="삭제"
+        cancelText="취소"
+        confirmVariant="danger"
+        isLoading={isDeleting}
       />
     </>
   );
