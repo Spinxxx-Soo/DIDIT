@@ -1,7 +1,7 @@
 // src/pages/MyPage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Settings } from 'lucide-react';
+import { Plus, Settings, Clock } from 'lucide-react';
 import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/common/Button';
 import {
@@ -121,6 +121,14 @@ export function MyPage() {
                   <CardDescription>
                     {project.repoFullName || '연결된 저장소 없음'}
                   </CardDescription>
+                  <div className="flex items-center gap-3 mt-2 text-[13px] text-[var(--text-tertiary)]">
+                    <span>멤버 {project.memberCount}명</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Clock size={12} />
+                      {project.lastAccessed}
+                    </span>
+                  </div>
                 </div>
               </div>
             </Card>
