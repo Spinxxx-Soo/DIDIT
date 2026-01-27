@@ -92,7 +92,7 @@ export function MyPage() {
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {projects.map((project) => (
+          {projects.slice(0, 4).map((project) => (
             <Card
               key={project.id}
               variant="elevated"
@@ -104,10 +104,10 @@ export function MyPage() {
                 {/* 프로젝트 아이콘 */}
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden"
-                  style={{ backgroundColor: project.imageUrl ? 'transparent' : getProjectColor(project.id) }}
+                  style={{ backgroundColor: project.thumbnailUrl ? 'transparent' : getProjectColor(project.id) }}
                 >
-                  {project.imageUrl ? (
-                    <img src={project.imageUrl} alt={project.name} className="w-full h-full object-cover" />
+                  {project.thumbnailUrl ? (
+                    <img src={project.thumbnailUrl} alt={project.name} className="w-full h-full object-cover" />
                   ) : (
                     getProjectInitial(project.name)
                   )}
@@ -119,7 +119,7 @@ export function MyPage() {
                     {project.name}
                   </CardTitle>
                   <CardDescription>
-                    {project.githubRepo || '연결된 저장소 없음'}
+                    {project.repoFullName || '연결된 저장소 없음'}
                   </CardDescription>
                   <div className="flex items-center gap-3 mt-2 text-[13px] text-[var(--text-tertiary)]">
                     <span>멤버 {project.memberCount}명</span>

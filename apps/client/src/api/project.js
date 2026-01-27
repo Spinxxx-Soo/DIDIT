@@ -32,6 +32,22 @@ export const projectApi = {
    */
   createProject: (data) => api.post('/api/v1/projects', data),
 
+  /**
+   * 프로젝트 GitHub 저장소 업데이트
+   * @param {number} projectId
+   * @param {string} githubRepo - "organization/repository" 형식
+   * @returns {Promise}
+   */
+  updateProjectRepo: (projectId, githubRepo) =>
+    api.patch(`/api/v1/projects/${projectId}`, { githubRepo }),
+
+  /**
+   * GitHub 저장소 검증
+   * @param {string} repo - "organization/repository" 형식
+   * @returns {Promise}
+   */
+  validateGithubRepo: (repo) => api.get(`/api/v1/github/validate`, { params: { repo } }),
+
   // ------------------------------------------------------------------
   // 초대 관리
   // ------------------------------------------------------------------
@@ -67,6 +83,14 @@ export const projectApi = {
    * @returns {Promise<UserResponse[]>}
    */
   getParticipants: (projectId) => api.get(`/api/v1/projects/${projectId}/participants`),
+
+  /**
+   * 프로젝트 참여자 추방 (Added)
+   * @param {number} projectId
+   * @param {number} userId
+   * @returns {Promise}
+   */
+  removeParticipant: (projectId, userId) => api.delete(`/api/v1/projects/${projectId}/participants/${userId}`),
 
   // ------------------------------------------------------------------
   // 회의 채널 관리
@@ -109,4 +133,43 @@ export const projectApi = {
    * @returns {Promise}
    */
   deleteChannel: (channelId) => api.delete(`/api/v1/channels/${channelId}`),
+
+  // ------------------------------------------------------------------
+  // 프로젝트 수정
+  // ------------------------------------------------------------------
+
+  /**
+   * 프로젝트 저장소 업데이트
+   * @param {number} projectId
+   * @param {string} repoFullName - organization/repository 형식
+   * @returns {Promise}
+   */
+  updateProjectRepo: (projectId, repoFullName) =>
+    api.patch(`/api/v1/projects/${projectId}`, { githubUrl: repoFullName }),
+
+  /**
+   * 프로젝트 이름 수정
+   * @param {number} projectId
+   * @param {string} name - 새 프로젝트 이름
+   * @returns {Promise}
+   */
+  updateProjectName: (projectId, name) =>
+    api.patch(`/api/v1/projects/${projectId}`, { projectName: name }),
+
+  /**
+   * 프로젝트 떠나기
+   * @param {number} projectId
+   * @returns {Promise}
+   */
+  leaveProject: (projectId) =>
+    api.delete(`/api/v1/projects/${projectId}/participants/me`),
+
+  /**
+   * 팀장 위임
+   * @param {number} projectId
+   * @param {number} newOwnerId - 새 팀장 유저 ID
+   * @returns {Promise}
+   */
+  transferOwnership: (projectId, newOwnerId) =>
+    api.patch(`/api/v1/projects/${projectId}/owner`, { newOwnerId }),
 };
