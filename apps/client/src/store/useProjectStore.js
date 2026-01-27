@@ -13,6 +13,8 @@ const MOCK_PROJECTS = [
     ownerId: 1,
     thumbnailUrl: null,
     repoFullName: 'ssafy/algo-study',
+    memberCount: 6,
+    lastAccessed: '2시간 전',
     createdAt: '2024-01-15T10:00:00Z',
   },
   {
@@ -21,7 +23,19 @@ const MOCK_PROJECTS = [
     ownerId: 2,
     thumbnailUrl: null,
     repoFullName: 'ssafy/common-project',
+    memberCount: 6,
+    lastAccessed: '1일 전',
     createdAt: '2024-01-20T14:30:00Z',
+  },
+  {
+    id: 3,
+    name: '자율 프로젝트',
+    ownerId: 1,
+    thumbnailUrl: null,
+    repoFullName: 'ssafy/autonomous-project',
+    memberCount: 4,
+    lastAccessed: '3일 전',
+    createdAt: '2024-01-25T09:00:00Z',
   },
 ];
 
