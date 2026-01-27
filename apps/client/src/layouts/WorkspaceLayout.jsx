@@ -5,12 +5,16 @@ import ProjectSidebar from '../components/features/layout/ProjectSidebar';
 import ChannelSidebar from '../components/features/layout/ChannelSidebar';
 import RightSidebar from '../components/features/layout/RightSidebar';
 import useLoungeStore from '@/store/useLoungeStore';
+import useMeetingStore from '@/store/useMeetingStore';
 
 const WorkspaceLayout = () => {
   const { projectId, channelId } = useParams(); // URL 파라미터에서 channelId 추출
 
   // ★ resetToIssueList를 스토어에서 꺼내옵니다.
   const { activePanel, setActivePanel, closeSidebar, resetToIssueList } = useLoungeStore();
+
+  // 회의 상태 가져오기
+  const { isInMeeting } = useMeetingStore();
 
   const handleChatClick = () => {
     setActivePanel(activePanel === 'chat' ? null : 'chat');
@@ -29,11 +33,12 @@ const WorkspaceLayout = () => {
   };
 
   // 채널 밖에 있을 때 채팅창이 열려있다면 닫기
+  // 단, 회의 중(isInMeeting)이라면 홈에서도 채팅을 볼 수 있어야 하므로 닫지 않음
   React.useEffect(() => {
-    if (!channelId && activePanel === 'chat') {
+    if (!channelId && activePanel === 'chat' && !isInMeeting) {
       closeSidebar();
     }
-  }, [channelId, activePanel, closeSidebar]);
+  }, [channelId, activePanel, closeSidebar, isInMeeting]);
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-[var(--bg-app)]">
@@ -42,8 +47,7 @@ const WorkspaceLayout = () => {
         activePanel={activePanel}
         onChatClick={handleChatClick}
         onIssueClick={handleIssueClick}
-        showChat={!!channelId}
-        projectId={projectId}
+        showChat={!!channelId || isInMeeting} // 채널 안에 있거나 회의 중이면 채팅 버튼 노출
       />
 
       <div className="flex flex-1 overflow-hidden">
