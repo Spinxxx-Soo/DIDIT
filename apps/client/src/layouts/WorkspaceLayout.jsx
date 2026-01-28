@@ -44,6 +44,7 @@ const WorkspaceLayout = () => {
     <div className="flex flex-col h-screen w-full overflow-hidden bg-[var(--bg-app)]">
       <GNB
         variant="workspace"
+        projectId={projectId} 
         activePanel={activePanel}
         onChatClick={handleChatClick}
         onIssueClick={handleIssueClick}

@@ -32,7 +32,7 @@ const MOCK_PROJECTS = [
     name: '자율 프로젝트',
     ownerId: 1,
     thumbnailUrl: null,
-    repoFullName: 'ssafy/autonomous-project',
+    repoFullName: null,
     memberCount: 4,
     lastAccessed: '3일 전',
     createdAt: '2024-01-25T09:00:00Z',
