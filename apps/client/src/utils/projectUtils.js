@@ -3,14 +3,14 @@
  * 프로젝트 id를 기반으로 순환 할당
  */
 export const PROJECT_COLORS = [
-  '#3B82F6', // Blue
-  '#10B981', // Green (Brand)
-  '#F59E0B', // Amber
-  '#EF4444', // Red
-  '#8B5CF6', // Purple
-  '#EC4899', // Pink
-  '#06B6D4', // Cyan
-  '#F97316', // Orange
+  '#F94144', // Warm Red (강렬하지만 차분한 레드)
+  '#F3722C', // Deep Orange (생동감 있는 오렌지)
+  '#F9C74F', // Golden Yellow (부드러운 노란색)
+  '#90BE6D', // Pistachio Green (자연스럽고 편안한 그린)
+  '#43AA8B', // Ocean Teal (청량하고 세련된 청록)
+  '#577590', // Slate Blue (이성적이고 차분한 블루)
+  '#277DA1', // Deep Sky (깊이감 있는 스카이블루)
+  '#938BB5', // Muted Purple (팔레트의 완성도를 높여줄 보라 - 추가 제안)
 ];
 
 /**
