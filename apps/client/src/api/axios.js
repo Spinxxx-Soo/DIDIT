@@ -1,4 +1,3 @@
-// src/api/axios.js
 import axios from 'axios';
 
 const api = axios.create({
@@ -10,13 +9,10 @@ const api = axios.create({
   withCredentials: true, // 쿠키 공유가 필요하다면 true
 });
 
-// 요청 인터셉터: API 호출 시마다 토큰 자동 첨부
+// 요청 인터셉터: (Session 기반이므로 토큰 첨부 로직 삭제됨)
+// 필요하다면 로깅이나 다른 공통 처리를 위해 유지/추가 가능
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
     return config;
   },
   (error) => Promise.reject(error)
