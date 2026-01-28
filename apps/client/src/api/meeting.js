@@ -123,4 +123,14 @@ export const meetingApi = {
       },
     });
   },
+  // 회의록 수정 (Mock)
+  updateMeetingSummary: (summaryId, data) => {
+    console.log(`[Mock] Updating summary ${summaryId}`, data);
+    return Promise.resolve({
+      data: {
+        id: summaryId,
+        ...data,
+      },
+    });
+  },
 };
