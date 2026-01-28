@@ -576,7 +576,7 @@ const ChannelSidebar = () => {
 
           {/* === 2. 회의록 목록 뷰 (슬라이드 인) === */}
           <div className={`absolute inset-0 flex flex-col bg-[var(--bg-sidebar)] transition-transform duration-300 ease-in-out ${viewMode === 'minutes' ? 'translate-x-0' : 'translate-x-full'}`}>
-            <div className="h-14 flex items-center gap-2 px-3 border-b border-[var(--border-default)]">
+            <div className="h-14 flex items-center gap-2 px-3 border-b border-gray-300">
               <IconButton icon={<ArrowLeft size={18} />} variant="ghost" size="sm" onClick={() => setViewMode('channels')} />
               <span className="font-bold">회의록 목록</span>
             </div>

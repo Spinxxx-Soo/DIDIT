@@ -27,7 +27,7 @@ const MeetingMinutesList = ({ projectId, onItemClick }) => {
     return (
         <div className="flex flex-col h-full">
             {/* Search (Optional UI) */}
-            <div className="px-4 py-2 border-b bg-[var(--bg-sidebar)]">
+            <div className="px-4 py-2 border-b border-gray-300 bg-[var(--bg-sidebar)]">
                 <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
