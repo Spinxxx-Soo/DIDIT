@@ -45,7 +45,7 @@ const GNB = ({
     <header className="h-16 border-b border-[var(--border-default)] px-6 flex items-center justify-between bg-[var(--bg-panel)] flex-shrink-0">
       {/* 로고 + 저장소 영역 */}
       <div className="flex items-center gap-4">
-        <Link to="/" className="flex items-center gap-2">
+        <Link to={isWorkspace ? "/mypage" : "/"} className="flex items-center gap-2">
           <img
             src={logo}
             alt="로고"

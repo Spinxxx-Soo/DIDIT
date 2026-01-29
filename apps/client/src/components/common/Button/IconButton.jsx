@@ -33,8 +33,8 @@ const baseStyles = [
   'disabled:opacity-50',
   'disabled:cursor-not-allowed',
   'focus:outline-none',
-  'focus:ring-3',
-  'focus:ring-[var(--color-green-primary)]/20',
+  'focus-visible:ring-3',
+  'focus-visible:ring-[var(--color-green-primary)]/20',
 ].join(' ');
 
 /**
