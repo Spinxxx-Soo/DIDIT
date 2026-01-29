@@ -13,7 +13,7 @@ const ProjectSidebar = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const { logout } = useAuthStore();
-  const { projects, fetchProjects } = useProjectStore();
+  const { projects, fetchProjects, error } = useProjectStore();
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
@@ -36,38 +36,48 @@ const ProjectSidebar = () => {
       <div className="flex flex-col items-center gap-3 w-full h-full bg-[var(--bg-sidebar)]">
         {/* === 1. 프로젝트 리스트 === */}
         <div className="flex flex-col gap-3 w-full items-center flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-hide pt-3">
-          {projects.map((project) => {
-            const isActive = projectId === String(project.id);
+          {error ? (
+            <div className="text-center px-3 py-4 text-red-400 text-xs">
+              프로젝트를 불러올 수 없습니다
+            </div>
+          ) : Array.isArray(projects) && projects.length > 0 ? (
+            projects.map((project) => {
+              const isActive = projectId === String(project.id);
 
-            return (
-              <div key={project.id} className="relative group">
-                <button
-                  onClick={() => handleProjectClick(project.id)}
-                  className={`
-                    w-10 h-10 flex items-center justify-center
-                    text-white font-bold text-sm shadow-sm
-                    rounded-[12px]
-                    transition-all duration-200 ease-in-out
-                    hover:scale-110
-                    ${isActive
-                      ? 'ring-2 ring-[var(--color-green-primary)] ring-offset-2 ring-offset-[var(--bg-sidebar)]'
-                      : ''
-                    }
-                  `}
-                  style={{ backgroundColor: getProjectColor(project.id) }}
-                  title={project.name}
-                >
-                  {project.name.charAt(0)}
-                </button>
+              return (
+                <div key={project.id} className="relative group">
+                  <button
+                    onClick={() => handleProjectClick(project.id)}
+                    className={`
+                      w-10 h-10 flex items-center justify-center
+                      text-white font-bold text-sm shadow-sm
+                      rounded-[12px]
+                      transition-all duration-200 ease-in-out
+                      hover:scale-110
+                      ${isActive
+                        ? 'ring-2 ring-[var(--color-green-primary)] ring-offset-2 ring-offset-[var(--bg-sidebar)]'
+                        : ''
+                      }
+                    `}
+                    style={{ backgroundColor: getProjectColor(project.id) }}
+                    title={project.name}
+                  >
+                    {project.name.charAt(0)}
+                  </button>
 
-                {/* 툴팁 (이름 표시) */}
-                <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                  {project.name}
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 border-4 border-transparent border-r-black/80"></div>
+                  {/* 툴팁 (이름 표시) */}
+                  <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    {project.name}
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 border-4 border-transparent border-r-black/80"></div>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          ) : (
+            <div className="text-center px-3 py-4 text-[var(--text-tertiary)] text-xs">
+              프로젝트가 없습니다
+            </div>
+          )}
 
           {/* === 3. 프로젝트 관리 버튼 === */}
           <div className="relative group">

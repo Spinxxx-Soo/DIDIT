@@ -71,10 +71,15 @@ const useProjectStore = create((set, get) => ({
 
     try {
       const response = await projectApi.getProjects();
-      set({ projects: response.data, isLoading: false });
+      const projectsData = Array.isArray(response.data) ? response.data : [];
+      set({ projects: projectsData, isLoading: false });
     } catch (error) {
       console.error('프로젝트 목록 조회 실패:', error);
-      set({ error: '프로젝트 목록을 불러올 수 없습니다', isLoading: false });
+      set({
+        projects: [],
+        error: '프로젝트 목록을 불러올 수 없습니다',
+        isLoading: false
+      });
     }
   },
 
