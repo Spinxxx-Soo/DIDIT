@@ -33,7 +33,8 @@ export function MyPage() {
     createProject,
     validateProjectName,
     validateGithubRepo,
-    isLoading
+    isLoading,
+    error
   } = useProjectStore();
 
   // 페이지 진입 시 프로젝트 목록 조회
@@ -91,49 +92,77 @@ export function MyPage() {
           최근 접속한 프로젝트
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {projects.slice(0, 4).map((project) => (
-            <Card
-              key={project.id}
-              variant="elevated"
-              isClickable
-              onClick={() => handleProjectClick(project.id)}
-              className="group"
-            >
-              <div className="flex items-start gap-4">
-                {/* 프로젝트 아이콘 */}
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden"
-                  style={{ backgroundColor: project.thumbnailUrl ? 'transparent' : getProjectColor(project.id) }}
-                >
-                  {project.thumbnailUrl ? (
-                    <img src={project.thumbnailUrl} alt={project.name} className="w-full h-full object-cover" />
-                  ) : (
-                    getProjectInitial(project.name)
-                  )}
-                </div>
+        {error ? (
+          <Card variant="outline" className="py-12 border-red-500/20 bg-red-500/5">
+            <div className="text-center space-y-3">
+              <p className="text-red-500 text-[16px] font-medium">
+                {error}
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => fetchProjects()}
+              >
+                다시 시도
+              </Button>
+            </div>
+          </Card>
+        ) : Array.isArray(projects) && projects.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {projects.slice(0, 4).map((project) => (
+              <Card
+                key={project.id}
+                variant="elevated"
+                isClickable
+                onClick={() => handleProjectClick(project.id)}
+                className="group"
+              >
+                <div className="flex items-start gap-4">
+                  {/* 프로젝트 아이콘 */}
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden"
+                    style={{ backgroundColor: project.thumbnailUrl ? 'transparent' : getProjectColor(project.id) }}
+                  >
+                    {project.thumbnailUrl ? (
+                      <img src={project.thumbnailUrl} alt={project.name} className="w-full h-full object-cover" />
+                    ) : (
+                      getProjectInitial(project.name)
+                    )}
+                  </div>
 
-                {/* 프로젝트 정보 */}
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="group-hover:text-[var(--color-green-primary)] transition-colors">
-                    {project.name}
-                  </CardTitle>
-                  <CardDescription>
-                    {project.repoFullName || '연결된 저장소 없음'}
-                  </CardDescription>
-                  <div className="flex items-center gap-3 mt-2 text-[13px] text-[var(--text-tertiary)]">
-                    <span>멤버 {project.memberCount}명</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={12} />
-                      {project.lastAccessed}
-                    </span>
+                  {/* 프로젝트 정보 */}
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="group-hover:text-[var(--color-green-primary)] transition-colors">
+                      {project.name}
+                    </CardTitle>
+                    <CardDescription>
+                      {project.repoFullName || '연결된 저장소 없음'}
+                    </CardDescription>
+                    <div className="flex items-center gap-3 mt-2 text-[13px] text-[var(--text-tertiary)]">
+                      <span>멤버 {project.memberCount}명</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <Clock size={12} />
+                        {project.lastAccessed}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card variant="outline" className="py-12">
+            <div className="text-center space-y-3">
+              <p className="text-[var(--text-secondary)] text-[16px]">
+                아직 참여 중인 프로젝트가 없습니다
+              </p>
+              <p className="text-[var(--text-tertiary)] text-[14px]">
+                아래에서 새 프로젝트를 만들거나 초대 코드로 참여해보세요
+              </p>
+            </div>
+          </Card>
+        )}
       </section>
 
       {/* 새 프로젝트 만들기 */}
