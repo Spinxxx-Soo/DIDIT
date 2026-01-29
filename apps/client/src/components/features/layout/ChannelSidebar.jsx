@@ -42,6 +42,7 @@ const ChannelSidebar = () => {
   // 데이터 상태
   const [channels, setChannels] = useState([]);
   const [members, setMembers] = useState([]);
+  const [fetchError, setFetchError] = useState(null);
 
   // UI 상태
   const [isChannelChangeModalOpen, setIsChannelChangeModalOpen] = useState(false);
@@ -76,6 +77,7 @@ const ChannelSidebar = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!projectId) return;
+      setFetchError(null);
       try {
         // 프로젝트 상세 정보도 함께 조회하여 currentProject 업데이트
         await useProjectStore.getState().fetchProject(projectId);
@@ -88,15 +90,9 @@ const ChannelSidebar = () => {
         setMembers(membersRes.data || []);
       } catch (error) {
         console.error('데이터 로드 실패:', error);
-        // API 실패 시 임시 데이터 사용 (개발용)
-        setChannels([
-          { id: 1, title: '일반', sessionId: null, status: 'RUNNING', mode: 'CHAT' },
-          { id: 2, title: '개발 회의', sessionId: 'OV_SESSION_10', status: 'RUNNING', mode: 'VOICE' },
-        ]);
-        setMembers([
-          { id: 1, name: '팀원1', isOnline: true },
-          { id: 2, name: '팀원2', isOnline: false },
-        ]);
+        setFetchError('데이터를 불러올 수 없습니다');
+        setChannels([]);
+        setMembers([]);
       }
     };
     fetchData();
@@ -397,91 +393,102 @@ const ChannelSidebar = () => {
                   )}
 
                   <ul className="space-y-1">
-                    {channels.map((channel) => {
-                      const isVoiceChannel = channel.mode === 'VOICE';
-                      const isSelected = currentChannelId === channel.id;
-                      const isEditing = channelMode === 'edit' && editingChannelId === channel.id;
+                    {fetchError ? (
+                      <li className="px-3 py-4 text-center text-red-400 text-xs">
+                        {fetchError}
+                      </li>
+                    ) : channels.length > 0 ? (
+                      channels.map((channel) => {
+                        const isVoiceChannel = channel.mode === 'VOICE';
+                        const isSelected = currentChannelId === channel.id;
+                        const isEditing = channelMode === 'edit' && editingChannelId === channel.id;
 
-                      return (
-                        <li
-                          key={channel.id}
-                          onClick={() => {
-                            if (channelMode === 'edit' && !isEditing) {
-                              handleStartEdit(channel);
-                            } else if (channelMode !== 'edit' && channelMode !== 'delete') {
-                              handleChannelClick(channel);
-                            }
-                          }}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-md)] cursor-pointer text-[14px] transition-colors duration-150 ${isSelected
-                            ? 'bg-[#DBEAFE] text-[#1E40AF] border-l-[3px] border-[#3B82F6] font-medium'
-                            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-bright)]'
-                            }`}
-                        >
-                          {isVoiceChannel ? (
-                            <Mic size={14} className={isSelected ? 'text-[#1E40AF]' : 'text-[var(--text-tertiary)]'} />
-                          ) : (
-                            <Hash size={14} className={isSelected ? 'text-[#1E40AF]' : 'text-[var(--text-tertiary)]'} />
-                          )}
+                        return (
+                          <li
+                            key={channel.id}
+                            onClick={() => {
+                              if (channelMode === 'edit' && !isEditing) {
+                                handleStartEdit(channel);
+                              } else if (channelMode !== 'edit' && channelMode !== 'delete') {
+                                handleChannelClick(channel);
+                              }
+                            }}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-md)] cursor-pointer text-[14px] transition-colors duration-150 ${isSelected
+                              ? 'bg-[#DBEAFE] text-[#1E40AF] border-l-[3px] border-[#3B82F6] font-medium'
+                              : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-bright)]'
+                              }`}
+                          >
+                            {isVoiceChannel ? (
+                              <Mic size={14} className={isSelected ? 'text-[#1E40AF]' : 'text-[var(--text-tertiary)]'} />
+                            ) : (
+                              <Hash size={14} className={isSelected ? 'text-[#1E40AF]' : 'text-[var(--text-tertiary)]'} />
+                            )}
 
-                          {isEditing ? (
-                            <>
-                              <input
-                                type="text"
-                                value={editingChannelName}
-                                onChange={(e) => setEditingChannelName(e.target.value)}
-                                onKeyDown={handleEditKeyDown}
-                                onClick={(e) => e.stopPropagation()}
-                                autoFocus
-                                className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-2 py-0.5 text-[13px] text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-green-primary)]"
-                              />
-                              <IconButton
-                                icon={<Check size={12} />}
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSaveEdit();
-                                }}
-                                disabled={!editingChannelName.trim() || isUpdating}
-                                className="text-[var(--color-green-primary)] w-6 h-6 min-w-6"
-                                title="저장"
-                              />
-                              <IconButton
-                                icon={<X size={12} />}
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCancelEdit();
-                                }}
-                                className="text-[var(--text-tertiary)] w-6 h-6 min-w-6"
-                                title="취소"
-                              />
-                            </>
-                          ) : (
-                            <>
-                              <span className="flex-1">{channel.title}</span>
-                              {channelMode === 'edit' && (
-                                <Pencil size={12} className="text-[var(--text-tertiary)] opacity-50" />
-                              )}
-                              {channelMode === 'delete' && (
+                            {isEditing ? (
+                              <>
+                                <input
+                                  type="text"
+                                  value={editingChannelName}
+                                  onChange={(e) => setEditingChannelName(e.target.value)}
+                                  onKeyDown={handleEditKeyDown}
+                                  onClick={(e) => e.stopPropagation()}
+                                  autoFocus
+                                  className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-2 py-0.5 text-[13px] text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-green-primary)]"
+                                />
                                 <IconButton
-                                  icon={<Minus size={12} />}
+                                  icon={<Check size={12} />}
                                   size="sm"
                                   variant="ghost"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteClick(channel);
+                                    handleSaveEdit();
                                   }}
-                                  className="text-[var(--color-error)] hover:bg-red-50 w-6 h-6 min-w-6"
-                                  title="채널 삭제"
+                                  disabled={!editingChannelName.trim() || isUpdating}
+                                  className="text-[var(--color-green-primary)] w-6 h-6 min-w-6"
+                                  title="저장"
                                 />
-                              )}
-                            </>
-                          )}
-                        </li>
-                      );
-                    })}
+                                <IconButton
+                                  icon={<X size={12} />}
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCancelEdit();
+                                  }}
+                                  className="text-[var(--text-tertiary)] w-6 h-6 min-w-6"
+                                  title="취소"
+                                />
+                              </>
+                            ) : (
+                              <>
+                                <span className="flex-1">{channel.title}</span>
+                                {channelMode === 'edit' && (
+                                  <Pencil size={12} className="text-[var(--text-tertiary)] opacity-50" />
+                                )}
+                                {channelMode === 'delete' && (
+                                  <IconButton
+                                    icon={<Minus size={12} />}
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteClick(channel);
+                                    }}
+                                    className="text-[var(--color-error)] hover:bg-red-50 w-6 h-6 min-w-6"
+                                    title="채널 삭제"
+                                  />
+                                )}
+                              </>
+                            )}
+                          </li>
+                        );
+                      })
+                    ) : channelMode !== 'create' ? (
+                      <li className="px-3 py-4 text-center text-[var(--text-tertiary)] text-xs">
+                        채널이 없습니다<br />
+                        <span className="text-[10px]">+ 버튼을 눌러 채널을 생성하세요</span>
+                      </li>
+                    ) : null}
 
                     {/* 채널 생성 모드 UI */}
                     {channelMode === 'create' && (
