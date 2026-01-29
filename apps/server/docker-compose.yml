@@ -1,3 +1,4 @@
+#로컬 개발용 docker compose
 version: "3.8"
 
 services:
@@ -9,10 +10,10 @@ services:
       - "3306:3306"
     environment:
       TZ: Asia/Seoul
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: didit
-      MYSQL_USER: ssafy
-      MYSQL_PASSWORD: password
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
@@ -26,26 +27,13 @@ services:
       retries: 10
 
 
-  server:
-    image: ghcr.io/pjtdidit/server-image:latest
-    container_name: didit-server
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
+  openvidu:
+    image: openvidu/openvidu-dev:2.32.1
+    container_name: openvidu-dev
     ports:
-      - "8080:8080"
+      - "4443:4443"
     environment:
-      TZ: Asia/Seoul
-
-      MYSQL_DATABASE: didit
-      MYSQL_USER: ssafy
-      MYSQL_PASSWORD: password
-      MYSQL_HOST: db
-      MYSQL_PORT: 3306
-
-      GITHUB_CLIENT_ID: GITHUB_CLIENT_ID
-      GITHUB_CLIENT_SECRET: GITHUB_CLIENT_SECRET
+      OPENVIDU_SECRET: ${OPENVIDU_SECRET}
 
 volumes:
   mysql-data:
