@@ -46,3 +46,6 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+
+# issue 모델
+*.safetensors
