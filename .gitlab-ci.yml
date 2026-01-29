@@ -25,7 +25,7 @@ include:
   #ci
   - local: .gitlab/ci/server.yml
   - local: .gitlab/deploy.yml
-  # - local: .gitlab/ci/client.yml
+  - local: .gitlab/ci/client.yml
   # - local: .gitlab/ci/ai.yml
   #cd
   - local: .gitlab/deploy.yml

@@ -1,0 +1,15 @@
+build_push_client:
+  stage: build
+  extends: [ .docker-sock, .ghcr-login ]
+  tags: ["docker"]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+        - apps/client/**/*
+        - .gitlab/ci/client.yml
+        - .gitlab-ci.yml
+  script:
+    - docker info
+    - docker build -t ghcr.io/pjtdidit/client-image:$CI_COMMIT_SHA -t ghcr.io/pjtdidit/client-image:latest -f apps/client/Dockerfile apps/client
+    - docker push ghcr.io/pjtdidit/client-image:$CI_COMMIT_SHA
+    - docker push ghcr.io/pjtdidit/client-image:latest
