@@ -1,0 +1,23 @@
+# Dependencies
+node_modules
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.logw
+
+# Editor/OS files
+.vscode
+.idea
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+# Docker artifacts
+*Dockerfile*
+*docker-compose*
