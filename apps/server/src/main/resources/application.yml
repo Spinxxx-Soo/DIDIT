@@ -9,6 +9,10 @@ spring:
   application:
     name: server
 
+  mvc:
+    async:
+      request-timeout: 1800000
+
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:db}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:didit}?serverTimezone=Asia/Seoul&characterEncoding=utf8
     username: ${MYSQL_USER:defaultId}

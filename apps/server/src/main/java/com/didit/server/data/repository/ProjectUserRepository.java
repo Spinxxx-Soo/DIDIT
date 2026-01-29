@@ -23,4 +23,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUserEntity, 
         where pu.project.id = :projectId
         """)
     List<UserEntity> findUsersByProjectId(@Param("projectId") long projectId);
+
+    boolean existsByProject_IdAndUser_Id(long projectId, long userId);
 }

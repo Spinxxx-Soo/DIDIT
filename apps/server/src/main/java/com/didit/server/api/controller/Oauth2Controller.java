@@ -13,11 +13,11 @@ import java.io.IOException;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class Oauth2Controller {
 
-    @GetMapping("/v1/auth/login")
+    @GetMapping("/login")
     public void login(HttpServletResponse response) throws IOException {
         response.sendRedirect("/oauth2/authorization/github");
     }
