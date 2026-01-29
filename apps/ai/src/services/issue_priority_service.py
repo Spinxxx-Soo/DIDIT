@@ -14,6 +14,10 @@ from models.common.logger import get_logger
 
 logger = get_logger(__name__)
 
+"""
+    해당 폴더에서 단일 이슈 & 목록 이슈 서비스를 정의 합니다.
+    현재 목록 이슈 서비스만 정의하고 있습니다..
+"""
 
 class IssuePriorityService:
     """이슈 우선순위 재정렬 서비스 클래스

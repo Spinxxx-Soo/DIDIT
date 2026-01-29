@@ -49,7 +49,7 @@ async def predict_priority(issue: IssueRequest):
 
 @router.post("/predict/batch")
 async def predict_priority_batch(request: IssueBatchRequest):
-    """배치 이슈 우선순위 예측"""
+    """목록 이슈 우선순위 예측"""
     try:
         if not request.issues or len(request.issues) == 0:
             raise ValidationException("최소 1개 이상의 이슈가 필요합니다")
