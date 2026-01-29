@@ -1,7 +1,10 @@
-// src/pages/MyPage.jsx
+/**
+ * Apple-Style MyPage
+ * Bento Grid project cards, elegant greeting, clean design
+ */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Settings, Clock } from 'lucide-react';
+import { Plus, Settings, Clock, ArrowRight } from 'lucide-react';
 import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/common/Button';
 import {
@@ -65,92 +68,179 @@ export function MyPage() {
   };
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-12">
       {/* 인사말 섹션 */}
-      <section className="flex items-center py-10 gap-10">
-        <Avatar src={user?.avatarUrl} name={user?.name || '사용자'} size="2xl" />
+      <section
+        className="
+          flex 
+          items-center 
+          gap-8 
+          py-8
+          animate-fade-up
+        "
+      >
+        <div className="relative group">
+          <Avatar
+            src={user?.avatarUrl}
+            name={user?.name || '사용자'}
+            size="2xl"
+            className="ring-4 ring-[var(--border-subtle)] transition-all duration-300 group-hover:ring-[var(--color-green-primary)]/30"
+          />
+          <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-[var(--color-green-primary)] rounded-full flex items-center justify-center text-white">
+            <span className="text-xs">✓</span>
+          </div>
+        </div>
+
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-[var(--text-bright)] leading-tight">
-            오늘 하루도 힘차게 시작해보아요,
-            <br />
+          <p className="text-sm text-[var(--text-tertiary)] mb-1">안녕하세요,</p>
+          <h1 className="text-headline text-[var(--text-bright)]">
             {user?.name || '사용자'}님!
           </h1>
+          <p className="text-[var(--text-secondary)] mt-2">
+            오늘 하루도 힘차게 시작해보아요 ✨
+          </p>
         </div>
+
         <Button
           variant="secondary"
-          leftIcon={<Settings size={18} />}
+          leftIcon={<Settings size={16} />}
           onClick={() => setIsEditProfileModalOpen(true)}
+          className="rounded-full"
         >
-          Edit
+          프로필 편집
         </Button>
       </section>
 
       {/* 최근 접속한 프로젝트 */}
-      <section className="space-y-4">
-        <h2 className="text-[20px] font-semibold text-[var(--text-bright)]">
-          최근 접속한 프로젝트
-        </h2>
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-title text-[var(--text-bright)]">
+            최근 프로젝트
+          </h2>
+          <span className="text-sm text-[var(--text-tertiary)]">
+            {projects.length}개의 프로젝트
+          </span>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {projects.slice(0, 4).map((project) => (
-            <Card
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {projects.slice(0, 4).map((project, index) => (
+            <div
               key={project.id}
-              variant="elevated"
-              isClickable
-              onClick={() => handleProjectClick(project.id)}
-              className="group"
+              className="animate-fade-up"
+              style={{ animationDelay: `${index * 100}ms` }}
             >
-              <div className="flex items-start gap-4">
-                {/* 프로젝트 아이콘 */}
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden"
-                  style={{ backgroundColor: project.thumbnailUrl ? 'transparent' : getProjectColor(project.id) }}
-                >
-                  {project.thumbnailUrl ? (
-                    <img src={project.thumbnailUrl} alt={project.name} className="w-full h-full object-cover" />
-                  ) : (
-                    getProjectInitial(project.name)
-                  )}
-                </div>
+              <Card
+                variant="elevated"
+                isClickable
+                onClick={() => handleProjectClick(project.id)}
+                className="group"
+              >
+                <div className="flex items-start gap-5">
+                  {/* 프로젝트 아이콘 */}
+                  <div
+                    className="
+                      w-14 h-14 
+                      rounded-[var(--radius-xl)] 
+                      flex items-center justify-center 
+                      text-white 
+                      font-bold 
+                      text-lg 
+                      flex-shrink-0 
+                      overflow-hidden
+                      shadow-[var(--shadow-sm)]
+                      transition-all duration-300
+                      group-hover:scale-105
+                      group-hover:shadow-[var(--shadow-md)]
+                    "
+                    style={{ backgroundColor: project.thumbnailUrl ? 'transparent' : getProjectColor(project.id) }}
+                  >
+                    {project.thumbnailUrl ? (
+                      <img
+                        src={project.thumbnailUrl}
+                        alt={project.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      getProjectInitial(project.name)
+                    )}
+                  </div>
 
-                {/* 프로젝트 정보 */}
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="group-hover:text-[var(--color-green-primary)] transition-colors">
-                    {project.name}
-                  </CardTitle>
-                  <CardDescription>
-                    {project.repoFullName || '연결된 저장소 없음'}
-                  </CardDescription>
-                  <div className="flex items-center gap-3 mt-2 text-[13px] text-[var(--text-tertiary)]">
-                    <span>멤버 {project.memberCount}명</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={12} />
-                      {project.lastAccessed}
-                    </span>
+                  {/* 프로젝트 정보 */}
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="group-hover:text-[var(--color-green-primary)] transition-colors flex items-center gap-2">
+                      {project.name}
+                      <ArrowRight
+                        size={16}
+                        className="
+                          opacity-0 
+                          -translate-x-2 
+                          group-hover:opacity-100 
+                          group-hover:translate-x-0 
+                          transition-all 
+                          duration-200
+                          text-[var(--color-green-primary)]
+                        "
+                      />
+                    </CardTitle>
+                    <CardDescription className="truncate">
+                      {project.repoFullName || '연결된 저장소 없음'}
+                    </CardDescription>
+                    <div className="flex items-center gap-4 mt-3 text-[13px] text-[var(--text-tertiary)]">
+                      <span className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-green-primary)]" />
+                        멤버 {project.memberCount}명
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock size={12} />
+                        {project.lastAccessed}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            </div>
           ))}
         </div>
       </section>
 
       {/* 새 프로젝트 만들기 */}
-      <section>
+      <section className="animate-fade-up" style={{ animationDelay: '400ms' }}>
         <Card
           variant="outline"
           isClickable
           onClick={() => setIsCreateModalOpen(true)}
-          className="border-dashed hover:border-[var(--color-green-primary)] hover:bg-[var(--success-bg)]"
+          className="
+            border-dashed 
+            border-2
+            hover:border-[var(--color-green-primary)] 
+            hover:bg-[var(--success-bg)]
+            transition-all
+            duration-300
+          "
         >
-          <div className="flex items-center justify-center gap-3 py-0">
-            <div className="w-10 h-5 rounded-full bg-[var(--bg-input)] flex items-center justify-center">
-              <Plus size={20} className="text-[var(--text-secondary)]" />
+          <div className="flex items-center justify-center gap-4 py-4">
+            <div
+              className="
+                w-12 h-12 
+                rounded-full 
+                bg-[var(--bg-input)] 
+                flex items-center justify-center
+                transition-all
+                duration-300
+                group-hover:bg-[var(--color-green-primary)]
+                group-hover:text-white
+              "
+            >
+              <Plus size={22} className="text-[var(--text-secondary)]" />
             </div>
-            <span className="text-[16px] font-medium text-[var(--text-secondary)]">
-              새 프로젝트 만들기
-            </span>
+            <div className="text-left">
+              <span className="block text-[16px] font-semibold text-[var(--text-primary)]">
+                새 프로젝트 만들기
+              </span>
+              <span className="text-sm text-[var(--text-tertiary)]">
+                팀원을 초대하고 협업을 시작하세요
+              </span>
+            </div>
           </div>
         </Card>
       </section>

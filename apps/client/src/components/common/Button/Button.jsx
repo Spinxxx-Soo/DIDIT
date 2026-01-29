@@ -1,9 +1,19 @@
+/**
+ * Apple-Style Button Component
+ * Ultra-modern with soft corners, subtle animations, and gradient effects
+ */
+
 const variantStyles = {
   primary: [
-    'bg-[var(--color-green-primary)]',
+    'bg-gradient-to-br',
+    'from-[var(--color-green-primary)]',
+    'to-[var(--color-green-hover)]',
     'text-white',
-    'hover:bg-[var(--color-green-hover)]',
-    'active:bg-[var(--color-green-active)]',
+    'shadow-[0_4px_14px_rgba(46,204,113,0.35)]',
+    'hover:shadow-[0_6px_20px_rgba(46,204,113,0.45)]',
+    'hover:-translate-y-0.5',
+    'active:translate-y-0',
+    'active:scale-[0.98]',
   ].join(' '),
 
   secondary: [
@@ -13,22 +23,32 @@ const variantStyles = {
     'border-[var(--border-default)]',
     'hover:border-[var(--color-green-primary)]',
     'hover:text-[var(--color-green-primary)]',
+    'hover:bg-[var(--bg-hover)]',
+    'hover:-translate-y-0.5',
+    'active:translate-y-0',
+    'active:scale-[0.98]',
   ].join(' '),
 
   danger: [
-    'bg-[var(--color-error)]',
+    'bg-gradient-to-br',
+    'from-[var(--color-error)]',
+    'to-red-600',
     'text-white',
-    'hover:bg-red-600',
-    'active:bg-red-700',
+    'shadow-[0_4px_14px_rgba(239,68,68,0.3)]',
+    'hover:shadow-[0_6px_20px_rgba(239,68,68,0.4)]',
+    'hover:-translate-y-0.5',
+    'active:translate-y-0',
+    'active:scale-[0.98]',
   ].join(' '),
 
-  // 🔶 새로 추가
   'danger-outline': [
     'bg-transparent',
     'text-[var(--color-error)]',
     'border',
     'border-[var(--color-error)]',
     'hover:bg-[var(--error-bg)]',
+    'hover:-translate-y-0.5',
+    'active:translate-y-0',
   ].join(' '),
 
   ghost: [
@@ -36,13 +56,27 @@ const variantStyles = {
     'text-[var(--text-secondary)]',
     'hover:bg-[var(--bg-hover)]',
     'hover:text-[var(--text-primary)]',
+    'active:scale-[0.98]',
+  ].join(' '),
+
+  glass: [
+    'bg-[var(--bg-glass-strong)]',
+    'backdrop-blur-xl',
+    'text-[var(--text-primary)]',
+    'border',
+    'border-[var(--border-default)]',
+    'hover:bg-[var(--bg-elevated)]',
+    'hover:-translate-y-0.5',
+    'active:translate-y-0',
+    'active:scale-[0.98]',
   ].join(' '),
 };
 
 const sizeStyles = {
-  sm: 'h-8 px-3 text-[13px] gap-1.5',
-  md: 'h-10 px-4 text-[14px] gap-2',
-  lg: 'h-12 px-6 text-[16px] gap-2 rounded-[var(--radius-lg)]',
+  sm: 'h-9 px-4 text-[13px] gap-1.5 rounded-full',
+  md: 'h-11 px-5 text-[14px] gap-2 rounded-full',
+  lg: 'h-13 px-7 text-[16px] gap-2.5 rounded-full',
+  xl: 'h-14 px-8 text-[17px] gap-3 rounded-full',
 };
 
 const baseStyles = [
@@ -50,22 +84,23 @@ const baseStyles = [
   'items-center',
   'justify-center',
   'font-semibold',
-  'rounded-[var(--radius-md)]',
   'transition-all',
   'duration-200',
   'cursor-pointer',
   'disabled:opacity-50',
   'disabled:cursor-not-allowed',
+  'disabled:transform-none',
   'focus:outline-none',
-  'focus:ring-3',
-  'focus:ring-[var(--color-green-primary)]/20',
+  'focus-visible:ring-4',
+  'focus-visible:ring-[var(--color-green-primary)]/20',
+  'select-none',
 ].join(' ');
 
 /**
- * Button 컴포넌트
+ * Button 컴포넌트 - Apple Style
  * @param {Object} props
- * @param {'primary' | 'secondary' | 'danger' | 'ghost'} props.variant - 버튼 스타일
- * @param {'sm' | 'md' | 'lg'} props.size - 버튼 크기
+ * @param {'primary' | 'secondary' | 'danger' | 'danger-outline' | 'ghost' | 'glass'} props.variant - 버튼 스타일
+ * @param {'sm' | 'md' | 'lg' | 'xl'} props.size - 버튼 크기
  * @param {React.ReactNode} props.children - 버튼 내용
  * @param {boolean} props.isLoading - 로딩 상태
  * @param {React.ReactNode} props.leftIcon - 왼쪽 아이콘
@@ -95,10 +130,10 @@ export function Button({
       {isLoading ? (
         <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
       ) : (
-        leftIcon
+        leftIcon && <span className="flex-shrink-0">{leftIcon}</span>
       )}
       {children}
-      {!isLoading && rightIcon}
+      {!isLoading && rightIcon && <span className="flex-shrink-0">{rightIcon}</span>}
     </button>
   );
 }

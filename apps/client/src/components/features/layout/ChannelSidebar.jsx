@@ -351,7 +351,7 @@ const ChannelSidebar = () => {
                             className="fixed inset-0 z-40"
                             onClick={() => setChannelMenuOpen(false)}
                           />
-                          <div className="absolute right-0 top-6 w-28 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-md z-50 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                          <div className="absolute right-0 top-6 w-32 bg-[var(--bg-panel)] border border-[var(--border-default)] shadow-[var(--shadow-xl)] rounded-[var(--radius-xl)] z-50 overflow-hidden py-1.5 animate-scale-in">
                             <button
                               onClick={() => handleModeSelect('create')}
                               className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
@@ -550,7 +550,7 @@ const ChannelSidebar = () => {
                               className="fixed inset-0 z-40"
                               onClick={() => setIsMemberMenuOpen(false)}
                             />
-                            <div className="absolute right-0 top-6 w-48 bg-white dark:bg-gray-800 border border-gray-200 shadow-xl rounded-md z-50 py-1">
+                            <div className="absolute right-0 top-6 w-48 bg-[var(--bg-panel)] border border-[var(--border-default)] shadow-[var(--shadow-xl)] rounded-[var(--radius-xl)] z-50 py-1.5">
                               <button onClick={handleCopyInviteLink} className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs hover:bg-[var(--bg-hover)]"><Link size={14} /> 초대 링크 복사</button>
                               {isOwner && (
                                 <button onClick={() => { setIsManageMembersModalOpen(true); setIsMemberMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-[var(--bg-hover)]"><UserMinus size={14} /> 팀원 관리</button>
@@ -576,7 +576,7 @@ const ChannelSidebar = () => {
 
           {/* === 2. 회의록 목록 뷰 (슬라이드 인) === */}
           <div className={`absolute inset-0 flex flex-col bg-[var(--bg-sidebar)] transition-transform duration-300 ease-in-out ${viewMode === 'minutes' ? 'translate-x-0' : 'translate-x-full'}`}>
-            <div className="h-14 flex items-center gap-2 px-3 border-b border-gray-300">
+            <div className="h-14 flex items-center gap-2 px-3 border-b border-[var(--border-default)]">
               <IconButton icon={<ArrowLeft size={18} />} variant="ghost" size="sm" onClick={() => setViewMode('channels')} />
               <span className="font-bold">회의록 목록</span>
             </div>

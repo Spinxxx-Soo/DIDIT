@@ -1,3 +1,7 @@
+/**
+ * Apple-Style Workspace Layout
+ * Clean panels, subtle borders, elegant spacing
+ */
 import React from 'react';
 import { Outlet, useParams } from 'react-router-dom';
 import GNB from '../components/features/layout/GNB';
@@ -8,12 +12,9 @@ import useLoungeStore from '@/store/useLoungeStore';
 import useMeetingStore from '@/store/useMeetingStore';
 
 const WorkspaceLayout = () => {
-  const { projectId, channelId } = useParams(); // URL 파라미터에서 channelId 추출
+  const { projectId, channelId } = useParams();
 
-  // ★ resetToIssueList를 스토어에서 꺼내옵니다.
   const { activePanel, setActivePanel, closeSidebar, resetToIssueList } = useLoungeStore();
-
-  // 회의 상태 가져오기
   const { isInMeeting } = useMeetingStore();
 
   const handleChatClick = () => {
@@ -21,19 +22,14 @@ const WorkspaceLayout = () => {
   };
 
   const handleIssueClick = () => {
-    // 1. 현재 '이슈 목록(issue)'이 이미 열려있다면 -> 닫기 (토글 기능)
     if (activePanel === 'issue') {
       closeSidebar();
-    }
-    // 2. 그 외의 모든 경우 (닫혀있음, 채팅 중, 이슈 상세/수정 보는 중)
-    // -> 싹 초기화하고 '이슈 목록'을 보여줌
-    else {
+    } else {
       resetToIssueList();
     }
   };
 
   // 채널 밖에 있을 때 채팅창이 열려있다면 닫기
-  // 단, 회의 중(isInMeeting)이라면 홈에서도 채팅을 볼 수 있어야 하므로 닫지 않음
   React.useEffect(() => {
     if (!channelId && activePanel === 'chat' && !isInMeeting) {
       closeSidebar();
@@ -44,38 +40,76 @@ const WorkspaceLayout = () => {
     <div className="flex flex-col h-screen w-full overflow-hidden bg-[var(--bg-app)]">
       <GNB
         variant="workspace"
-        projectId={projectId} 
+        projectId={projectId}
         activePanel={activePanel}
         onChatClick={handleChatClick}
         onIssueClick={handleIssueClick}
-        showChat={!!channelId || isInMeeting} // 채널 안에 있거나 회의 중이면 채팅 버튼 노출
+        showChat={!!channelId || isInMeeting}
       />
 
       <div className="flex flex-1 overflow-hidden">
         {/* 1열: 프로젝트 선택 바 */}
-        <aside className="w-[72px] bg-[var(--bg-sidebar)] border-r border-[var(--border-default)] flex-shrink-0">
+        <aside
+          className="
+            w-[72px] 
+            flex-shrink-0
+            bg-[var(--bg-sidebar)]
+            border-r 
+            border-[var(--border-default)]
+          "
+        >
           <ProjectSidebar />
         </aside>
 
-        <aside className="w-[240px] bg-[var(--bg-sidebar)] border-r border-[var(--border-default)] flex-shrink-0 flex flex-col">
+        {/* 2열: 채널 사이드바 */}
+        <aside
+          className="
+            w-[260px] 
+            flex-shrink-0 
+            flex 
+            flex-col
+            bg-[var(--bg-sidebar)]
+            border-r 
+            border-[var(--border-default)]
+          "
+        >
           <ChannelSidebar />
         </aside>
 
         {/* 메인 콘텐츠 */}
-        <main className="flex-1 overflow-y-auto bg-[var(--bg-app)] p-6">
-          <Outlet />
+        <main
+          className="
+            flex-1 
+            overflow-y-auto 
+            bg-[var(--bg-app)] 
+            p-8
+            scrollbar-thin
+          "
+        >
+          <div className="max-w-[1400px] mx-auto">
+            <Outlet />
+          </div>
         </main>
 
         {/* 우측 사이드바 */}
         <aside
-          className={`flex-shrink-0 border-l border-[var(--border-default)] bg-[var(--bg-panel)] transition-all duration-300 ease-in-out overflow-hidden ${activePanel ? 'w-[360px]' : 'w-0 border-none'
-            }`}
+          className={`
+            flex-shrink-0 
+            bg-[var(--bg-panel)]
+            border-l 
+            border-[var(--border-default)]
+            transition-all 
+            duration-300 
+            ease-out
+            overflow-hidden
+            ${activePanel ? 'w-[380px]' : 'w-0 border-none'}
+          `}
         >
           {activePanel && (
             <RightSidebar
               activePanel={activePanel}
               onClose={closeSidebar}
-              channelId={channelId} // RightSidebar에 channelId 전달
+              channelId={channelId}
             />
           )}
         </aside>
