@@ -4,9 +4,18 @@ deploy_portainer:
   stage: deploy
   tags: ["deploy"]
   image: curlimages/curl:8.5.0
-  needs: ["build_push_server"]
+  needs: 
+    - job: build_push_server
+      optional: true
+    - job: build_push_client
+      optional: true
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+        - apps/server/**/*
+        - apps/client/**/*
+        - .gitlab/ci/**/*
+        - .gitlab-ci.yml
     - when: never
   variables:
     GIT_STRATEGY: none
