@@ -77,6 +77,9 @@ const ChannelSidebar = () => {
     const fetchData = async () => {
       if (!projectId) return;
       try {
+        // 프로젝트 상세 정보도 함께 조회하여 currentProject 업데이트
+        await useProjectStore.getState().fetchProject(projectId);
+
         const [channelsRes, membersRes] = await Promise.all([
           projectApi.getChannels(projectId),
           projectApi.getParticipants(projectId),
@@ -315,7 +318,9 @@ const ChannelSidebar = () => {
           <div className={`absolute inset-0 flex flex-col transition-transform duration-300 ease-in-out ${viewMode === 'minutes' ? '-translate-x-full' : 'translate-x-0'}`}>
             <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
               <div className="flex-shrink-0 px-4 mb-2 pt-2">
-                <div className="h-12 flex items-center font-bold text-xl">공통 PJT</div>
+                <div className="h-12 flex items-center font-bold text-xl px-2 truncate">
+                  {currentProject?.name || 'Loading...'}
+                </div>
                 <Divider className="mb-4" />
 
                 {/* WORKSPACE 메뉴 */}

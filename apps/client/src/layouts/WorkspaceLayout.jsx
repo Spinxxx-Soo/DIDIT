@@ -44,7 +44,7 @@ const WorkspaceLayout = () => {
     <div className="flex flex-col h-screen w-full overflow-hidden bg-[var(--bg-app)]">
       <GNB
         variant="workspace"
-        projectId={projectId} 
+        projectId={projectId}
         activePanel={activePanel}
         onChatClick={handleChatClick}
         onIssueClick={handleIssueClick}
@@ -58,7 +58,7 @@ const WorkspaceLayout = () => {
         </aside>
 
         <aside className="w-[240px] bg-[var(--bg-sidebar)] border-r border-[var(--border-default)] flex-shrink-0 flex flex-col">
-          <ChannelSidebar />
+          <ChannelSidebar key={projectId} />
         </aside>
 
         {/* 메인 콘텐츠 */}
