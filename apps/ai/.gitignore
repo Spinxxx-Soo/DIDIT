@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# Hugging Face Cache
+.cache/
+huggingface/
+transformers_cache/
+.huggingface/
+
+# Model files (다운로드된 모델)
+**/models/**/*.bin
+**/models/**/*.pt
+**/models/**/*.pth
+**/models/**/*.onnx
+*.safetensors
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
