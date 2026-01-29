@@ -26,6 +26,7 @@ const ERROR_MESSAGES = {
   REPO_NOT_ORG: '조직 레퍼지토리가 아닙니다',
   REPO_NO_PERMISSION: '권한 없는 저장소입니다',
   GITHUB_AUTH_REQUIRED: 'GitHub 인증이 필요합니다',
+  REPO_REQUIRED: 'GitHub 저장소를 입력해주세요 (추후 수정 예정)',
 };
 
 /**
@@ -224,12 +225,18 @@ export function CreateProjectModal({
     }
 
     // 프로젝트 이름 중복 체크
-    if (onValidateName) {
-      const isDuplicate = await onValidateName(projectName.trim());
-      if (isDuplicate) {
-        setNameError(ERROR_MESSAGES.NAME_DUPLICATE);
-        return;
-      }
+    // if (onValidateName) {
+    //   const isDuplicate = await onValidateName(projectName.trim());
+    //   if (isDuplicate) {
+    //     setNameError(ERROR_MESSAGES.NAME_DUPLICATE);
+    //     return;
+    //   }
+    // }
+
+    // GitHub 저장소 필수 체크 (추후 수정 예정 - null 허용 예정)
+    if (!githubRepo.trim() || githubStatus !== GITHUB_STATUS.SUCCESS) {
+      setRepoError(ERROR_MESSAGES.REPO_REQUIRED);
+      return;
     }
 
     // 제출 데이터 구성 (color 제외, 가이드에 따라 ID 기반 결정)
