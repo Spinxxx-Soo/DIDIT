@@ -224,13 +224,13 @@ export function CreateProjectModal({
     }
 
     // 프로젝트 이름 중복 체크
-    if (onValidateName) {
-      const isDuplicate = await onValidateName(projectName.trim());
-      if (isDuplicate) {
-        setNameError(ERROR_MESSAGES.NAME_DUPLICATE);
-        return;
-      }
-    }
+    // if (onValidateName) {
+    //   const isDuplicate = await onValidateName(projectName.trim());
+    //   if (isDuplicate) {
+    //     setNameError(ERROR_MESSAGES.NAME_DUPLICATE);
+    //     return;
+    //   }
+    // }
 
     // 제출 데이터 구성 (color 제외, 가이드에 따라 ID 기반 결정)
     const submitData = {
