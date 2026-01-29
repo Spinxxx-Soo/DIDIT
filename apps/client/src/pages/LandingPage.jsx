@@ -12,15 +12,14 @@ const LandingPage = () => {
     const { isAuthenticated } = useAuthStore();
 
     // Scroll animation refs
-    const [heroScale, setHeroScale] = useState(1);
-    const [heroOpacity, setHeroOpacity] = useState(1);
+    const [heroEffect, setHeroEffect] = useState({ scale: 1, opacity: 1, filter: 'blur(0px)' });
     const heroRef = useRef(null);
-    const fadeRefs = useRef([]);
+    const revealRefs = useRef([]);
 
-    // Add element to fade refs
-    const addToRefs = (el) => {
-        if (el && !fadeRefs.current.includes(el)) {
-            fadeRefs.current.push(el);
+    // Add element to reveal refs
+    const addToReveal = (el) => {
+        if (el && !revealRefs.current.includes(el)) {
+            revealRefs.current.push(el);
         }
     };
 
@@ -28,27 +27,36 @@ const LandingPage = () => {
     useEffect(() => {
         const handleScroll = () => {
             const scrollY = window.scrollY;
-            const windowHeight = window.innerHeight;
 
-            // Hero parallax effect
-            const scale = Math.max(0.8, 1 - scrollY / 2000);
-            const opacity = Math.max(0, 1 - scrollY / 500);
-            setHeroScale(scale);
-            setHeroOpacity(opacity);
-
-            // Fade-up animations
-            fadeRefs.current.forEach((el) => {
-                const rect = el.getBoundingClientRect();
-                if (rect.top < windowHeight * 0.85) {
-                    el.classList.add('visible');
-                }
+            // Hero parallax effect - Apple style fade out & scale down
+            const progress = Math.min(scrollY / 800, 1);
+            setHeroEffect({
+                scale: Math.max(0.9, 1 - progress * 0.1),
+                opacity: Math.max(0, 1 - progress * 1.2),
+                filter: `blur(${progress * 20}px)`
             });
         };
 
         window.addEventListener('scroll', handleScroll, { passive: true });
-        handleScroll(); // Initial check
 
-        return () => window.removeEventListener('scroll', handleScroll);
+        // Intersection Observer for reveal elements
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, {
+            threshold: 0.15,
+            rootMargin: '0px 0px -50px 0px'
+        });
+
+        revealRefs.current.forEach((el) => observer.observe(el));
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            observer.disconnect();
+        };
     }, []);
 
     const handleGetStarted = () => {
@@ -66,7 +74,7 @@ const LandingPage = () => {
                 <div className="nav-container">
                     <div className="nav-logo">
                         <span className="logo-text">
-                            did<span className="logo-accent">!</span>t
+                            DID<span className="logo-accent">IT</span>
                         </span>
                     </div>
 
@@ -87,25 +95,26 @@ const LandingPage = () => {
                 className="hero-section"
                 ref={heroRef}
                 style={{
-                    transform: `scale(${heroScale})`,
-                    opacity: heroOpacity,
+                    transform: `scale(${heroEffect.scale})`,
+                    opacity: heroEffect.opacity,
+                    filter: heroEffect.filter
                 }}
             >
-                <div className="hero-content">
+                <div className="hero-content appear-on-load">
                     <div className="hero-badge">
                         <span className="badge-dot"></span>
                         AI 기반 회의 관리 플랫폼
                     </div>
 
                     <h1 className="hero-title">
-                        회의를 <span className="title-accent">스마트</span>하게,
-                        <br />
-                        협업을 <span className="title-accent">심플</span>하게.
+                        협업은 <span className="title-accent">간단</span>하게.<br />
+                        결과는 <span className="title-accent">완벽</span>하게.
+
                     </h1>
 
                     <p className="hero-description">
-                        did!t와 함께라면 복잡한 회의 관리는 잊으세요.
-                        AI가 회의록을 자동으로 정리하고, 팀의 생산성을 높여드립니다.
+                        실시간 화상회의부터 AI 회의록 자동 생성까지,<br />
+                        팀 협업에 필요한 모든 것이 한곳에.
                     </p>
 
                     <div className="hero-cta-group">
@@ -119,7 +128,7 @@ const LandingPage = () => {
                     </div>
                 </div>
 
-                <div className="hero-visual">
+                <div className="hero-visual appear-on-load">
                     <div className="hero-glow"></div>
                     <div className="hero-card-stack">
                         <div className="floating-card card-1">
@@ -139,7 +148,7 @@ const LandingPage = () => {
             </section>
 
             {/* Scroll Indicator */}
-            <div className="scroll-indicator" style={{ opacity: heroOpacity }}>
+            <div className="scroll-indicator" style={{ opacity: heroEffect.opacity }}>
                 <div className="scroll-mouse">
                     <div className="scroll-wheel"></div>
                 </div>
@@ -148,7 +157,7 @@ const LandingPage = () => {
 
             {/* Features Bento Grid */}
             <section id="features" className="features-section">
-                <div className="section-header fade-up" ref={addToRefs}>
+                <div className="section-header reveal-on-scroll" ref={addToReveal}>
                     <span className="section-label">Features</span>
                     <h2 className="section-title">
                         팀 협업의 새로운 기준
@@ -157,63 +166,87 @@ const LandingPage = () => {
 
                 <div className="bento-grid">
                     {/* Large Card - Video Call */}
-                    <div className="bento-item bento-large fade-up" ref={addToRefs}>
+                    <div className="bento-item bento-large reveal-on-scroll" ref={addToReveal}>
                         <div className="bento-content">
                             <div className="bento-icon-wrapper accent">
-                                <span className="bento-icon">🎥</span>
+                                <span className="bento-icon">🎬</span>
                             </div>
                             <h3>실시간 화상 회의</h3>
                             <p>
-                                최대 50명이 동시 참여 가능한 고품질 화상 회의.
+                                최대 50명 동시 참여 가능한 고품질 화상 회의.<br />
                                 화면 공유와 실시간 채팅을 지원합니다.
                             </p>
                         </div>
                         <div className="bento-visual">
                             <div className="mock-video-grid">
-                                <div className="mock-video-item"></div>
-                                <div className="mock-video-item"></div>
-                                <div className="mock-video-item"></div>
-                                <div className="mock-video-item"></div>
+                                <div className="mock-video-item speaking">
+                                    <div className="avatar-large">👨‍💼</div>
+                                    <span className="user-name">김스마트</span>
+                                    <div className="speaking-wave"></div>
+                                </div>
+                                <div className="mock-video-item">
+                                    <div className="avatar-large">👩‍💻</div>
+                                    <span className="user-name">이개발</span>
+                                </div>
+                                <div className="mock-video-item">
+                                    <div className="avatar-large">👨‍🎨</div>
+                                    <span className="user-name">박디자인</span>
+                                </div>
+                                <div className="mock-video-item">
+                                    <div className="avatar-large">👩‍🔬</div>
+                                    <span className="user-name">최기획</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Medium Card - AI Summary */}
-                    <div className="bento-item bento-medium fade-up" ref={addToRefs}>
-                        <div className="bento-icon-wrapper">
-                            <span className="bento-icon">✨</span>
+                    {/* Large Card - AI Summary */}
+                    <div className="bento-item bento-large reveal-on-scroll" ref={addToReveal}>
+                        <div className="bento-content">
+                            <div className="bento-icon-wrapper">
+                                <span className="bento-icon">✨</span>
+                            </div>
+                            <h3>AI 회의록 자동 생성</h3>
+                            <p>
+                                회의가 끝나면 AI가 자동으로 핸심 내용을 정리하고,<br />
+                                액션 아이템과 담당자를 배정해드립니다.
+                            </p>
                         </div>
-                        <h3>AI 회의록 자동 생성</h3>
-                        <p>
-                            회의 내용을 AI가 분석하여 핵심 내용만 정리해드립니다.
-                        </p>
-                        <div className="ai-summary-preview">
-                            <div className="summary-line"></div>
-                            <div className="summary-line short"></div>
-                            <div className="summary-bullet"></div>
-                            <div className="summary-bullet"></div>
+                        <div className="ai-summary-preview-large">
+                            <div className="summary-header">
+                                <span className="summary-badge">회의 요약</span>
+                                <span className="summary-date">2025.01.29</span>
+                            </div>
+                            <div className="summary-content">
+                                <div className="summary-section">
+                                    <span className="section-icon">📌</span>
+                                    <div className="section-text">
+                                        <strong>주요 논의</strong>
+                                        <p>Q1 로드맵 및 주요 마일스톤 결정</p>
+                                    </div>
+                                </div>
+                                <div className="summary-section">
+                                    <span className="section-icon">✅</span>
+                                    <div className="section-text">
+                                        <strong>액션 아이템</strong>
+                                        <p>디자인 시안 검토 (박디자인)</p>
+                                    </div>
+                                </div>
+                                <div className="summary-section">
+                                    <span className="section-icon">📅</span>
+                                    <div className="section-text">
+                                        <strong>다음 회의</strong>
+                                        <p>2025.02.05 14:00</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Small Cards */}
-                    <div className="bento-item bento-small fade-up" ref={addToRefs}>
-                        <div className="bento-icon-wrapper small">
+                    {/* Medium Card - Schedule & Issue */}
+                    <div className="bento-item bento-medium reveal-on-scroll" ref={addToReveal}>
+                        <div className="bento-icon-wrapper accent">
                             <span className="bento-icon">📅</span>
-                        </div>
-                        <h4>일정 관리</h4>
-                    </div>
-
-                    <div className="bento-item bento-small fade-up" ref={addToRefs}>
-                        <div className="bento-icon-wrapper small accent">
-                            <span className="bento-icon">📋</span>
-                        </div>
-                        <h4>이슈 트래킹</h4>
-                    </div>
-
-                    {/* Medium Card - Calendar */}
-                    <div className="bento-item bento-medium fade-up" ref={addToRefs}>
-                        <div className="bento-icon-wrapper">
-                            <span className="bento-icon">🗓️</span>
                         </div>
                         <h3>스마트 일정 관리</h3>
                         <p>
@@ -224,11 +257,36 @@ const LandingPage = () => {
                                 {[22, 23, 24, 25, 26, 27, 28].map((day) => (
                                     <div
                                         key={day}
-                                        className={`calendar-day ${day === 24 ? 'active' : ''}`}
+                                        className={`calendar-day ${day === 24 ? 'active' : ''} ${day === 25 || day === 26 ? 'has-event' : ''}`}
                                     >
                                         {day}
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Medium Card - Issue Tracking */}
+                    <div className="bento-item bento-medium reveal-on-scroll" ref={addToReveal}>
+                        <div className="bento-icon-wrapper">
+                            <span className="bento-icon">📋</span>
+                        </div>
+                        <h3>이슈 트래킹</h3>
+                        <p>
+                            프로젝트 진행 상황을 실시간으로 확인하세요.
+                        </p>
+                        <div className="issue-preview">
+                            <div className="issue-item">
+                                <span className="issue-status done">✅</span>
+                                <span className="issue-text">로그인 UI 개선</span>
+                            </div>
+                            <div className="issue-item">
+                                <span className="issue-status progress">🟡</span>
+                                <span className="issue-text">API 연동 작업</span>
+                            </div>
+                            <div className="issue-item">
+                                <span className="issue-status todo">⬜</span>
+                                <span className="issue-text">테스트 코드 작성</span>
                             </div>
                         </div>
                     </div>
@@ -237,7 +295,7 @@ const LandingPage = () => {
 
             {/* Workflow Section */}
             <section id="workflow" className="workflow-section">
-                <div className="section-header fade-up" ref={addToRefs}>
+                <div className="section-header reveal-on-scroll" ref={addToReveal}>
                     <span className="section-label">Workflow</span>
                     <h2 className="section-title">
                         3단계로 시작하세요
@@ -245,7 +303,7 @@ const LandingPage = () => {
                 </div>
 
                 <div className="workflow-steps">
-                    <div className="workflow-step fade-up" ref={addToRefs}>
+                    <div className="workflow-step fade-up" ref={addToReveal}>
                         <span className="step-number">01</span>
                         <div className="step-content">
                             <h3>프로젝트 생성</h3>
@@ -262,7 +320,7 @@ const LandingPage = () => {
                         </svg>
                     </div>
 
-                    <div className="workflow-step fade-up" ref={addToRefs}>
+                    <div className="workflow-step fade-up" ref={addToReveal}>
                         <span className="step-number">02</span>
                         <div className="step-content">
                             <h3>팀원 초대</h3>
@@ -279,7 +337,7 @@ const LandingPage = () => {
                         </svg>
                     </div>
 
-                    <div className="workflow-step fade-up" ref={addToRefs}>
+                    <div className="workflow-step fade-up" ref={addToReveal}>
                         <span className="step-number">03</span>
                         <div className="step-content">
                             <h3>회의 시작</h3>
@@ -295,7 +353,7 @@ const LandingPage = () => {
             {/* Team Section */}
             <section id="team" className="team-section">
                 <div className="team-container">
-                    <div className="section-header fade-up" ref={addToRefs}>
+                    <div className="section-header reveal-on-scroll" ref={addToReveal}>
                         <span className="section-label">For Teams</span>
                         <h2 className="section-title">
                             모든 팀을 위한 솔루션
@@ -303,7 +361,7 @@ const LandingPage = () => {
                     </div>
 
                     <div className="team-grid">
-                        <div className="team-card fade-up" ref={addToRefs}>
+                        <div className="team-card fade-up" ref={addToReveal}>
                             <div className="team-icon">💻</div>
                             <h4>개발팀</h4>
                             <p>
@@ -312,7 +370,7 @@ const LandingPage = () => {
                             </p>
                         </div>
 
-                        <div className="team-card featured fade-up" ref={addToRefs}>
+                        <div className="team-card featured fade-up" ref={addToReveal}>
                             <div className="team-icon">🎨</div>
                             <h4>디자인팀</h4>
                             <p>
@@ -321,7 +379,7 @@ const LandingPage = () => {
                             </p>
                         </div>
 
-                        <div className="team-card fade-up" ref={addToRefs}>
+                        <div className="team-card fade-up" ref={addToReveal}>
                             <div className="team-icon">📈</div>
                             <h4>마케팅팀</h4>
                             <p>
@@ -334,14 +392,14 @@ const LandingPage = () => {
             </section>
 
             {/* CTA Section */}
-            <section className="cta-section fade-up" ref={addToRefs}>
+            <section className="cta-section fade-up" ref={addToReveal}>
                 <div className="cta-container">
                     <div className="cta-glow"></div>
                     <h2>
-                        지금 바로 시작하세요
+                        지금 바로 시작하세요 ㅡ
                     </h2>
                     <p>
-                        did!t와 함께 더 스마트한 팀 협업을 경험해보세요.
+                        DIDIT은 여러분의 새로운 시작을 기다리고 있습니다.
                     </p>
                     <button className="cta-primary large" onClick={handleGetStarted}>
                         무료로 시작하기
@@ -352,38 +410,8 @@ const LandingPage = () => {
 
             {/* Footer */}
             <footer className="landing-footer">
-                <div className="footer-container">
-                    <div className="footer-brand">
-                        <span className="logo-text">
-                            did<span className="logo-accent">!</span>t
-                        </span>
-                        <p>AI 기반 스마트 회의 관리 플랫폼</p>
-                    </div>
-
-                    <div className="footer-links">
-                        <div className="footer-column">
-                            <h5>Product</h5>
-                            <a href="#features">기능</a>
-                            <a href="#workflow">워크플로우</a>
-                            <a href="#">가격</a>
-                        </div>
-                        <div className="footer-column">
-                            <h5>Company</h5>
-                            <a href="#">소개</a>
-                            <a href="#">블로그</a>
-                            <a href="#">채용</a>
-                        </div>
-                        <div className="footer-column">
-                            <h5>Support</h5>
-                            <a href="#">도움말</a>
-                            <a href="#">문의하기</a>
-                            <a href="#">개인정보처리방침</a>
-                        </div>
-                    </div>
-                </div>
-
                 <div className="footer-bottom">
-                    <p>© 2025 did!t. All rights reserved.</p>
+                    <p>© 2026 DIDIT. All rights reserved.</p>
                 </div>
             </footer>
         </div>

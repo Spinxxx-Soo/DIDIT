@@ -15,7 +15,7 @@ const MOCK_ISSUES = [
   { id: 139, priority: 'Medium', title: '메인 페이지 배너 교체', assignee: '손흥민', status: '대기중', author: '이강인', date: '2025-01-16' },
 ];
 
-const ITEMS_PER_PAGE = 4;
+const ITEMS_PER_PAGE = 3;
 
 const IssueTracker = () => {
   const { openIssueDetail } = useLoungeStore();

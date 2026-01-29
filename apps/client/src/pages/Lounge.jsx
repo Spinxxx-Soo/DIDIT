@@ -6,40 +6,41 @@ import React from 'react';
 import WeeklySchedule from '@/components/features/user/WeeklySchedule';
 import RecentMinutes from '@/components/features/user/RecentMinutes';
 import IssueTracker from '@/components/features/user/IssueTracker';
-import { Calendar, FileText, AlertCircle } from 'lucide-react';
+import { Calendar, FileText, AlertCircle, Sparkles } from 'lucide-react';
 
 const SectionHeader = ({ icon, title, subtitle }) => (
-  <div className="flex items-center gap-3 mb-5">
+  <div className="flex items-center gap-4 mb-6">
     <div
       className="
-        w-10 h-10 
-        rounded-[var(--radius-lg)] 
-        bg-[var(--bg-input)] 
+        w-12 h-12 
+        rounded-[var(--radius-xl)] 
+        bg-gradient-to-br from-[var(--color-green-50)] to-[var(--success-bg)]
         flex items-center justify-center
         text-[var(--color-green-primary)]
+        shadow-[var(--shadow-sm)]
       "
     >
       {icon}
     </div>
     <div>
-      <h2 className="text-title text-[var(--text-bright)]">{title}</h2>
+      <h2 className="text-xl font-semibold text-[var(--text-bright)]">{title}</h2>
       {subtitle && (
-        <p className="text-sm text-[var(--text-tertiary)]">{subtitle}</p>
+        <p className="text-sm text-[var(--text-tertiary)] mt-0.5">{subtitle}</p>
       )}
     </div>
   </div>
 );
 
-const DashboardCard = ({ children, className = '' }) => (
+const DashboardCard = ({ children, className = '', hover = true }) => (
   <div
     className={`
       bg-[var(--bg-panel)]
       rounded-[var(--radius-2xl)]
-      border border-[var(--border-default)]
-      shadow-[var(--shadow-sm)]
-      p-6
+      border border-[var(--border-subtle)]
+      shadow-[var(--shadow-card)]
+      p-8
       transition-all duration-300
-      hover:shadow-[var(--shadow-md)]
+      ${hover ? 'hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1' : ''}
       ${className}
     `}
   >
@@ -48,55 +49,47 @@ const DashboardCard = ({ children, className = '' }) => (
 );
 
 const Lounge = () => {
+  const cardHeight = "h-[450px]";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       {/* Page Header */}
-      <div className="mb-8 animate-fade-up">
-        <h1 className="text-headline text-[var(--text-bright)] mb-2">
-          대시보드
-        </h1>
-        <p className="text-[var(--text-secondary)]">
-          이번 주 일정과 최근 활동을 한눈에 확인하세요
-        </p>
-      </div>
 
-      {/* Bento Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 주간 일정 - 큰 카드 */}
-        <div className="lg:col-span-2 animate-fade-up" style={{ animationDelay: '100ms' }}>
-          <DashboardCard>
+      {/* Top Row - 최근 회의록 + 이슈 현황 */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* 최근 회의록 (넓게) */}
+        <div className="flex-[2]">
+          <DashboardCard hover={false} className={`${cardHeight} flex flex-col`}>
             <SectionHeader
-              icon={<Calendar size={20} />}
-              title="이번 주 일정"
-              subtitle="예정된 회의와 일정"
-            />
-            <WeeklySchedule />
-          </DashboardCard>
-        </div>
-
-        {/* 이슈 트래커 */}
-        <div className="animate-fade-up" style={{ animationDelay: '200ms' }}>
-          <DashboardCard className="h-full">
-            <SectionHeader
-              icon={<AlertCircle size={20} />}
-              title="이슈 현황"
-            />
-            <IssueTracker />
-          </DashboardCard>
-        </div>
-
-        {/* 최근 회의록 - 전체 너비 */}
-        <div className="lg:col-span-3 animate-fade-up" style={{ animationDelay: '300ms' }}>
-          <DashboardCard>
-            <SectionHeader
-              icon={<FileText size={20} />}
+              icon={<FileText size={22} />}
               title="최근 회의록"
               subtitle="AI가 요약한 회의 내용"
             />
             <RecentMinutes />
           </DashboardCard>
         </div>
+
+        {/* 이슈 트래커 */}
+        <div className="w-full lg:w-[340px] flex-shrink-0">
+          <DashboardCard hover={false} className={`${cardHeight} flex flex-col`}>
+            <SectionHeader
+              icon={<AlertCircle size={22} />}
+              title="이슈 현황"
+            />
+            <IssueTracker />
+          </DashboardCard>
+        </div>
       </div>
+
+      {/* Bottom Row - 이번 주 일정 */}
+      <DashboardCard hover={false}>
+        <SectionHeader
+          icon={<Calendar size={22} />}
+          title="이번 주 일정"
+          subtitle="예정된 회의와 일정"
+        />
+        <WeeklySchedule />
+      </DashboardCard>
     </div>
   );
 };

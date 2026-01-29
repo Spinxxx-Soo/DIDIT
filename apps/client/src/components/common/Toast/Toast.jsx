@@ -45,25 +45,30 @@ function ToastItem({ id, type, message }) {
         flex items-center gap-3
         px-4 py-3
         ${style.bg}
+        backdrop-blur-xl
         border ${style.border}
-        rounded-[var(--radius-lg)]
-        shadow-lg
-        animate-slide-up
+        rounded-[var(--radius-xl)]
+        shadow-[var(--shadow-lg)]
+        animate-spring-in
         min-w-[280px]
         max-w-[400px]
       `}
     >
-      <Icon size={18} className={style.text} />
+      <div className={`w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center ${style.bg}`}>
+        <Icon size={16} className={style.text} />
+      </div>
       <p className={`flex-1 text-[14px] font-medium ${style.text}`}>
         {message}
       </p>
       <button
         onClick={() => removeToast(id)}
         className={`
-          p-1
-          rounded-[var(--radius-sm)]
+          w-7 h-7
+          flex items-center justify-center
+          rounded-full
           hover:bg-black/10
-          transition-colors
+          transition-all duration-200
+          active:scale-90
           ${style.text}
         `}
       >

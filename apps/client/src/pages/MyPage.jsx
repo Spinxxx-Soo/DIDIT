@@ -1,7 +1,3 @@
-/**
- * Apple-Style MyPage
- * Bento Grid project cards, elegant greeting, clean design
- */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Settings, Clock, ArrowRight } from 'lucide-react';
@@ -70,45 +66,45 @@ export function MyPage() {
   return (
     <div className="space-y-12">
       {/* 인사말 섹션 */}
-      <section
-        className="
-          flex 
-          items-center 
-          gap-8 
-          py-8
-          animate-fade-up
-        "
-      >
-        <div className="relative group">
-          <Avatar
-            src={user?.avatarUrl}
-            name={user?.name || '사용자'}
-            size="2xl"
-            className="ring-4 ring-[var(--border-subtle)] transition-all duration-300 group-hover:ring-[var(--color-green-primary)]/30"
-          />
-          <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-[var(--color-green-primary)] rounded-full flex items-center justify-center text-white">
-            <span className="text-xs">✓</span>
+      <section className="py-8">
+        <div className="flex items-center gap-10">
+          {/* Avatar with glow effect */}
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-green-primary)] to-[var(--color-green-light)] rounded-full opacity-0 group-hover:opacity-20 blur-xl transition-all duration-500" />
+            <Avatar
+              src={user?.avatarUrl}
+              name={user?.name || '사용자'}
+              size="2xl"
+              className="ring-4 ring-[var(--border-subtle)] transition-all duration-500 group-hover:ring-[var(--color-green-primary)]/40 group-hover:scale-105 relative z-10"
+            />
+            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-gradient-to-br from-[var(--color-green-primary)] to-[var(--color-green-hover)] rounded-full flex items-center justify-center text-white shadow-[var(--shadow-glow)] z-20">
+              <span className="text-sm font-bold">✓</span>
+            </div>
           </div>
-        </div>
 
-        <div className="flex-1">
-          <p className="text-sm text-[var(--text-tertiary)] mb-1">안녕하세요,</p>
-          <h1 className="text-headline text-[var(--text-bright)]">
-            {user?.name || '사용자'}님!
-          </h1>
-          <p className="text-[var(--text-secondary)] mt-2">
-            오늘 하루도 힘차게 시작해보아요 ✨
-          </p>
-        </div>
+          {/* Greeting Text - Hero Typography */}
+          <div className="flex-1">
+            <p className="text-sm font-medium text-[var(--color-green-primary)] tracking-wide uppercase mb-2">
+              Welcome back
+            </p>
+            <h1 className="text-display text-[var(--text-bright)] mb-3">
+              {user?.name || '사용자'}님
+            </h1>
+            <p className="text-xl text-[var(--text-secondary)] font-light">
+              오늘도 멋진 하루가 되길 바랍니다 ✨
+            </p>
+          </div>
 
-        <Button
-          variant="secondary"
-          leftIcon={<Settings size={16} />}
-          onClick={() => setIsEditProfileModalOpen(true)}
-          className="rounded-full"
-        >
-          프로필 편집
-        </Button>
+          {/* Profile Edit Button */}
+          <Button
+            variant="secondary"
+            leftIcon={<Settings size={16} />}
+            onClick={() => setIsEditProfileModalOpen(true)}
+            className="rounded-full px-6 py-3 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-300"
+          >
+            프로필 편집
+          </Button>
+        </div>
       </section>
 
       {/* 최근 접속한 프로젝트 */}
@@ -126,8 +122,6 @@ export function MyPage() {
           {projects.slice(0, 4).map((project, index) => (
             <div
               key={project.id}
-              className="animate-fade-up"
-              style={{ animationDelay: `${index * 100}ms` }}
             >
               <Card
                 variant="elevated"
