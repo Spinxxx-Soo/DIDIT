@@ -24,7 +24,6 @@ MODEL_THRESHOLDS = {
     "train_max": 0.872
 }
 
-
 # Threshold 검증에 필요한 키
 REQUIRED_THRESHOLD_KEYS = {"q_low", "q_high", "train_min", "train_max"}
 

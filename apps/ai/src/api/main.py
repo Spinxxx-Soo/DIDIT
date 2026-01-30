@@ -2,14 +2,15 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from api.routers import issue_priority
+from api.routers import issue_priority, meeting_summary
 from api.exceptions import BaseAPIException
 from api.schemas.error import ErrorResponse
+from common.settings import settings
 
 app = FastAPI(
-    title="AI Service API",
+    title=settings.APP_NAME,
     description="AI 모델 서비스 API",
-    version="1.0.0"
+    version=settings.APP_VERSION
 )
 
 
@@ -61,6 +62,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 # 라우터 등록
 app.include_router(issue_priority.router, prefix="/api/v1")
+app.include_router(meeting_summary.router, prefix="/api/v1")
 
 
 @app.get("/health")
