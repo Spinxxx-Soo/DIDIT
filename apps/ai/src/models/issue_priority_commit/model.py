@@ -1,6 +1,5 @@
 # models/issue_priority_commit/model.py
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from hf_hub_download import huggingface_hub
 from common.settings import MODEL_REGISTRY
 from models.common.hf_io import try_download_from_hf, try_load_json
 from models.common.logger import get_logger

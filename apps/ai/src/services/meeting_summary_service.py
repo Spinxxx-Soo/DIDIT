@@ -5,7 +5,7 @@
 import tempfile
 import os
 from typing import Optional
-import redis
+# import redis  # Redis 미사용으로 주석 처리
 from models.meeting_summary.model import MeetingSummaryModel
 from models.common.logger import get_logger
 
@@ -19,13 +19,14 @@ class MeetingSummaryService:
         """서비스 초기화"""
         logger.info("회의 요약 서비스 초기화 중...")
         
-        # 레디스 클라이언트 초기화
-        self.redis_client = redis.Redis(
-            host=os.getenv("REDIS_HOST", "localhost"),
-            port=int(os.getenv("REDIS_PORT", 6379)),
-            db=0,
-            decode_responses=False  # 바이너리 데이터
-        )
+        # 레디스 클라이언트 초기화 (Redis 미사용으로 주석 처리)
+        # self.redis_client = redis.Redis(
+        #     host=os.getenv("REDIS_HOST", "localhost"),
+        #     port=int(os.getenv("REDIS_PORT", 6379)),
+        #     db=0,
+        #     decode_responses=False  # 바이너리 데이터
+        # )
+        self.redis_client = None
         
         # 모델 초기화
         self.model = MeetingSummaryModel()
@@ -38,7 +39,7 @@ class MeetingSummaryService:
         file_key: Optional[str] = None
     ) -> bytes:
         """
-        백엔드 레디스에서 파일을 가져옵니다.
+        백엔드 레디스에서 파일을 가져옵니다. (Redis 미사용으로 임시 비활성화)
         
         Args:
             meeting_id: 회의 ID
@@ -47,23 +48,26 @@ class MeetingSummaryService:
         Returns:
             파일 바이너리 데이터
         """
-        # 키가 없으면 기본 형식으로 생성
-        if file_key is None:
-            file_key = f"meeting:{meeting_id}:file"
+        # Redis 미사용으로 임시 비활성화
+        raise NotImplementedError("Redis가 설정되지 않아 파일 다운로드 기능을 사용할 수 없습니다.")
         
-        try:
-            logger.info(f"레디스에서 파일 가져오기: {file_key}")
-            file_data = self.redis_client.get(file_key)
-            
-            if file_data is None:
-                raise ValueError(f"레디스에서 파일을 찾을 수 없습니다: {file_key}")
-            
-            logger.info(f"파일 다운로드 완료: {len(file_data)} bytes")
-            return file_data
-            
-        except redis.RedisError as e:
-            logger.error(f"레디스 오류: {e}")
-            raise
+        # # 키가 없으면 기본 형식으로 생성
+        # if file_key is None:
+        #     file_key = f"meeting:{meeting_id}:file"
+        # 
+        # try:
+        #     logger.info(f"레디스에서 파일 가져오기: {file_key}")
+        #     file_data = self.redis_client.get(file_key)
+        #     
+        #     if file_data is None:
+        #         raise ValueError(f"레디스에서 파일을 찾을 수 없습니다: {file_key}")
+        #     
+        #     logger.info(f"파일 다운로드 완료: {len(file_data)} bytes")
+        #     return file_data
+        #     
+        # except redis.RedisError as e:
+        #     logger.error(f"레디스 오류: {e}")
+        #     raise
     
     def save_temp_file(self, file_data: bytes, suffix: str = ".webm") -> str:
         """
