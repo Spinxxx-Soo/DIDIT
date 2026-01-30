@@ -119,7 +119,7 @@ public interface MeetingService {
      * Failures:
      * - <404>: 존재하지 않는 projectId
      */
-    Result<List<MeetingEntity>> GetMeetingList(long projectId, MeetingStatus status, long cursor, Pageable pageable);
+    Result<List<MeetingEntity>> GetMeetingList(long projectId, MeetingStatus status, Long cursor, Pageable pageable);
 
     /**
      * Action: 특정 프로젝트 찾을 기간내의 존재하는 프로젝트들을 찾음
