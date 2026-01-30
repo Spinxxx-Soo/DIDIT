@@ -1,7 +1,7 @@
 // src/pages/MyPage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Settings, Clock } from 'lucide-react';
+import { Plus, Settings, Clock, Loader2 } from 'lucide-react';
 import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/common/Button';
 import {
@@ -92,7 +92,12 @@ export function MyPage() {
           최근 접속한 프로젝트
         </h2>
 
-        {error ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-[var(--color-green-primary)]">
+            <Loader2 size={40} className="animate-spin mb-4" />
+            <span className="text-[14px]">프로젝트를 불러오는 중입니다...</span>
+          </div>
+        ) : error ? (
           <Card variant="outline" className="py-12 border-red-500/20 bg-red-500/5">
             <div className="text-center space-y-3">
               <p className="text-red-500 text-[16px] font-medium">
@@ -136,7 +141,7 @@ export function MyPage() {
                       {project.name}
                     </CardTitle>
                     <CardDescription>
-                      {project.repoFullName || '연결된 저장소 없음'}
+                      {project.repoFullName?.replace(/^https?:\/\/github\.com\//, '') || '연결된 저장소 없음'}
                     </CardDescription>
                     <div className="flex items-center gap-3 mt-2 text-[13px] text-[var(--text-tertiary)]">
                       <span>멤버 {project.memberCount}명</span>

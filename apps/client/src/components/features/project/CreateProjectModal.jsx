@@ -54,13 +54,13 @@ export function CreateProjectModal({
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [githubRepo, setGithubRepo] = useState('');
-  
+
   // Validation State
   const [nameError, setNameError] = useState('');
   const [repoError, setRepoError] = useState('');
   const [imageError, setImageError] = useState('');
   const [githubStatus, setGithubStatus] = useState(GITHUB_STATUS.IDLE);
-  
+
   // Refs
   const fileInputRef = useRef(null);
 
@@ -73,7 +73,7 @@ export function CreateProjectModal({
    */
   const handleClose = () => {
     if (isLoading) return;
-    
+
     // 상태 초기화
     setProjectName('');
     setImageFile(null);
@@ -144,7 +144,7 @@ export function CreateProjectModal({
   const handleNameChange = (e) => {
     const value = e.target.value;
     setProjectName(value);
-    
+
     // 에러 초기화
     if (nameError) {
       setNameError('');
@@ -157,7 +157,7 @@ export function CreateProjectModal({
   const handleRepoChange = (e) => {
     const value = e.target.value;
     setGithubRepo(value);
-    
+
     // 에러 및 상태 초기화
     if (repoError) {
       setRepoError('');
@@ -197,7 +197,7 @@ export function CreateProjectModal({
       // 외부 검증 함수 호출
       if (onValidateRepo) {
         const result = await onValidateRepo(githubRepo.trim());
-        
+
         if (result.success) {
           setGithubStatus(GITHUB_STATUS.SUCCESS);
         } else {
@@ -234,7 +234,8 @@ export function CreateProjectModal({
     // }
 
     // GitHub 저장소 필수 체크 (추후 수정 예정 - null 허용 예정)
-    if (!githubRepo.trim() || githubStatus !== GITHUB_STATUS.SUCCESS) {
+    // [Modified] 검증 버튼 비활성화로 인해 githubStatus 체크 제거
+    if (!githubRepo.trim()) {
       setRepoError(ERROR_MESSAGES.REPO_REQUIRED);
       return;
     }
@@ -243,7 +244,8 @@ export function CreateProjectModal({
     const submitData = {
       name: projectName.trim(),
       imageFile: imageFile,
-      githubRepo: githubStatus === GITHUB_STATUS.SUCCESS ? githubRepo.trim() : null,
+      githubRepo: githubRepo.trim(),
+      // githubRepo: githubStatus === GITHUB_STATUS.SUCCESS ? githubRepo.trim() : null,
     };
 
     onSubmit?.(submitData);
@@ -284,7 +286,7 @@ export function CreateProjectModal({
               (선택)
             </span>
           </label>
-          
+
           <div className="flex items-center gap-5">
             {/* 이미지 미리보기 */}
             <div
@@ -348,8 +350,8 @@ export function CreateProjectModal({
                 className="hidden"
                 id="project-image-upload"
               /><label
-                  htmlFor="project-image-upload"
-                  className="
+                htmlFor="project-image-upload"
+                className="
                     inline-flex items-center gap-2
                     px-3.5 py-1.5                  {/* 여백을 살짝 줄여 콤팩트하게 */}
                     bg-[var(--bg-input)]
@@ -364,10 +366,10 @@ export function CreateProjectModal({
                     transition-all duration-200
                     active:scale-[0.98]            {/* 클릭 시 살짝 눌리는 효과 */}
                   "
-                >
-                  <Upload size={14} />             {/* 아이콘 크기도 14로 살짝 축소 */}
-                  이미지 업로드
-                </label>
+              >
+                <Upload size={14} />             {/* 아이콘 크기도 14로 살짝 축소 */}
+                이미지 업로드
+              </label>
               {imageError ? (
                 <p className="mt-2 text-[13px] text-[var(--color-error)] flex items-center gap-1">
                   <AlertCircle size={14} />
@@ -402,7 +404,7 @@ export function CreateProjectModal({
               (선택)
             </span>
           </label>
-          
+
           <div className="flex gap-2">
             <div className="flex-1 relative">
               <Input
@@ -424,7 +426,8 @@ export function CreateProjectModal({
                 </div>
               )}
             </div>
-            
+
+            {/* 
             <Button
               variant="secondary"
               onClick={handleRepoValidate}
@@ -434,6 +437,7 @@ export function CreateProjectModal({
             >
               인증
             </Button>
+            */}
           </div>
 
           {/* 에러 메시지 */}

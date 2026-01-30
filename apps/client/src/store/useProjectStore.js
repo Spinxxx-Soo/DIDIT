@@ -134,9 +134,12 @@ const useProjectStore = create((set, get) => ({
 
     try {
       // Backend API expects: { projectName, githubUrl }
+      // Backend API expects a full URL due to @URL validation
+      const githubUrl = githubRepo ? `https://github.com/${githubRepo}` : null;
+
       const data = {
         projectName: name,
-        githubUrl: githubRepo || null,
+        githubUrl: githubUrl || null,
       };
 
       const response = await projectApi.createProject(data);
@@ -149,8 +152,9 @@ const useProjectStore = create((set, get) => ({
       return { success: true, project: response.data };
     } catch (error) {
       console.error('프로젝트 생성 실패:', error);
-      set({ error: '프로젝트 생성에 실패했습니다', isLoading: false });
-      return { success: false, error: error.message };
+      const errorMessage = error.response?.data?.message || '프로젝트 생성에 실패했습니다';
+      set({ error: errorMessage, isLoading: false });
+      return { success: false, error: errorMessage };
     }
   },
 
@@ -197,6 +201,11 @@ const useProjectStore = create((set, get) => ({
       return { success: false, error: '유효한 레퍼지토리가 아닙니다' };
     }
 
+    // [Modified] 백엔드 엔드포인트(api/v1/github/validate) 부재로 인해 검증 로직 임시 비활성화
+    // 무조건 성공 처리
+    return { success: true };
+
+    /*
     try {
       const response = await projectApi.validateGithubRepo(repo);
       return { success: true, data: response.data };
@@ -204,6 +213,7 @@ const useProjectStore = create((set, get) => ({
       const errorMessage = error.response?.data?.message || '저장소 검증에 실패했습니다';
       return { success: false, error: errorMessage };
     }
+    */
   },
 
   // ------------------------------------------------------------------

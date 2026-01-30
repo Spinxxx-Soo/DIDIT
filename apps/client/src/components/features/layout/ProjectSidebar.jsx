@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, LogOut } from 'lucide-react';
+import { Plus, LogOut, Loader2 } from 'lucide-react';
 
 import { IconButton } from '@/components/common/Button/IconButton';
 import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
 import { ProjectManageModal } from '@/components/features/project/ProjectManageModal';
 import useAuthStore from '@/store/useAuthStore';
 import useProjectStore from '@/store/useProjectStore';
-import { getProjectColor } from '@/utils/projectUtils';
+import { getProjectColor, getProjectInitial } from '@/utils/projectUtils';
 
 const ProjectSidebar = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const { logout } = useAuthStore();
-  const { projects, fetchProjects, error } = useProjectStore();
+  const { projects, fetchProjects, error, isLoading } = useProjectStore();
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
@@ -36,7 +36,11 @@ const ProjectSidebar = () => {
       <div className="flex flex-col items-center gap-3 w-full h-full bg-[var(--bg-sidebar)]">
         {/* === 1. 프로젝트 리스트 === */}
         <div className="flex flex-col gap-3 w-full items-center flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-hide pt-3">
-          {error ? (
+          {isLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 size={24} className="animate-spin text-[var(--color-green-primary)]" />
+            </div>
+          ) : error ? (
             <div className="text-center px-3 py-4 text-red-400 text-xs">
               프로젝트를 불러올 수 없습니다
             </div>
@@ -62,7 +66,7 @@ const ProjectSidebar = () => {
                     style={{ backgroundColor: getProjectColor(project.id) }}
                     title={project.name}
                   >
-                    {project.name.charAt(0)}
+                    {getProjectInitial(project.name)}
                   </button>
 
                   {/* 툴팁 (이름 표시) */}
@@ -91,7 +95,7 @@ const ProjectSidebar = () => {
             />
           </div>
         </div>
-        
+
 
 
         {/* === 4. 로그아웃 버튼 (하단 고정) === */}

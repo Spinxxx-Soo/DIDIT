@@ -7,8 +7,8 @@ export const authApi = {
   // 2. 로그아웃
   logout: () => api.post('/api/v1/auth/logout'),
 
-  // 3. 내 프로필 조회 (Refactored: /users/me -> /user/me)
-  getMe: () => api.get('/api/v1/user/me'),
+  // 3. 내 프로필 조회
+  getMe: () => api.get('/api/v1/auth/me'),
 
   // [Disabled] 문서에 없는 API 주석 처리
   // 4. 프로필 사진 수정

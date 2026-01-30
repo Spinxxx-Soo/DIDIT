@@ -4,6 +4,7 @@ import com.didit.server.data.entity.UserEntity;
 import com.didit.server.data.repository.UserRepository;
 import com.didit.server.service.service.UserService;
 import com.didit.server.share.result.Result;
+import com.didit.server.share.result.impl.NotFoundError;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,13 @@ public class UserServiceImpl implements UserService {
         } catch (Exception e) {
             return Result.fail(500, "Internal Server Error");
         }
+    }
+
+    @Override
+    public Result<UserEntity> findUserById(Long userId) {
+        var user = userRepository.findById(userId);
+        return user.map(Result::ok).orElseGet(() -> Result.fail(new NotFoundError("userId", userId)));
+
     }
 }
 
