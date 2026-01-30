@@ -77,7 +77,6 @@ const MOCK_PARTICIPANTS = [
 const useProjectStore = create((set, get) => ({
   // State
   projects: [],
-  allProjects: [], // 전체 프로젝트 목록 (사이드바용)
   currentProject: null,
   isLoading: false,
   error: null,
@@ -144,18 +143,18 @@ const useProjectStore = create((set, get) => ({
 
     if (IS_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 300));
-      set({ allProjects: MOCK_PROJECTS, isLoading: false });
+      set({ projects: MOCK_PROJECTS, isLoading: false });
       return;
     }
 
     try {
       const response = await projectApi.getProjects();
       const projectsData = Array.isArray(response.data) ? response.data : [];
-      set({ allProjects: projectsData, isLoading: false });
+      set({ projects: projectsData, isLoading: false });
     } catch (error) {
       console.error('전체 프로젝트 목록 조회 실패:', error);
       set({
-        allProjects: [],
+        projects: [],
         error: '프로젝트 목록을 불러올 수 없습니다',
         isLoading: false
       });
