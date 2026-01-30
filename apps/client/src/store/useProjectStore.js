@@ -4,6 +4,30 @@ import { projectApi } from '@/api/project';
 const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 /**
+ * ISO 타임스탬프를 상대 시간으로 변환
+ * @param {string} isoString - ISO 8601 형식의 날짜 문자열
+ * @returns {string} - "2시간 전", "3일 전" 등
+ */
+const formatRelativeTime = (isoString) => {
+  if (!isoString) return '정보 없음';
+
+  const now = new Date();
+  const past = new Date(isoString);
+  const diffMs = now - past;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return '방금 전';
+  if (diffMins < 60) return `${diffMins}분 전`;
+  if (diffHours < 24) return `${diffHours}시간 전`;
+  if (diffDays < 30) return `${diffDays}일 전`;
+
+  return past.toLocaleDateString('ko-KR');
+};
+
+
+/**
  * Mock 프로젝트 데이터
  */
 const MOCK_PROJECTS = [
@@ -58,7 +82,7 @@ const useProjectStore = create((set, get) => ({
   error: null,
 
   // ------------------------------------------------------------------
-  // [1] 프로젝트 목록 조회
+  // [1] 프로젝트 목록 조회 (최근 조회 프로젝트)
   // ------------------------------------------------------------------
   fetchProjects: async () => {
     set({ isLoading: true, error: null });
@@ -70,9 +94,37 @@ const useProjectStore = create((set, get) => ({
     }
 
     try {
-      const response = await projectApi.getProjects();
-      const projectsData = Array.isArray(response.data) ? response.data : [];
-      set({ projects: projectsData, isLoading: false });
+      // 최근 조회 프로젝트 목록 가져오기
+      const response = await projectApi.getRecentProjects();
+      const recentProjects = Array.isArray(response.data) ? response.data : [];
+
+      // 각 프로젝트의 참여자 수 조회
+      const projectsWithCounts = await Promise.all(
+        recentProjects.map(async (recent) => {
+          try {
+            const participantsRes = await projectApi.getParticipants(recent.project.id);
+            const memberCount = Array.isArray(participantsRes.data) ? participantsRes.data.length : 0;
+
+            // lastViewedAt을 상대 시간으로 변환
+            const lastAccessed = formatRelativeTime(recent.lastViewedAt);
+
+            return {
+              ...recent.project,
+              memberCount,
+              lastAccessed,
+            };
+          } catch (error) {
+            console.error(`프로젝트 ${recent.project.id} 참여자 조회 실패:`, error);
+            return {
+              ...recent.project,
+              memberCount: 0,
+              lastAccessed: formatRelativeTime(recent.lastViewedAt),
+            };
+          }
+        })
+      );
+
+      set({ projects: projectsWithCounts, isLoading: false });
     } catch (error) {
       console.error('프로젝트 목록 조회 실패:', error);
       set({
