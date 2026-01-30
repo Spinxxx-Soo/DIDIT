@@ -13,7 +13,7 @@ const ProjectSidebar = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const { logout } = useAuthStore();
-  const { allProjects, fetchAllProjects, error, isLoading } = useProjectStore();
+  const { projects, fetchAllProjects, error, isLoading } = useProjectStore();
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
@@ -22,11 +22,6 @@ const ProjectSidebar = () => {
   useEffect(() => {
     fetchAllProjects();
   }, [fetchAllProjects]);
-
-  // 디버깅: 프로젝트 개수 확인
-  useEffect(() => {
-    console.log('[ProjectSidebar] allProjects:', allProjects?.length, allProjects);
-  }, [allProjects]);
 
   const handleProjectClick = (id) => {
     navigate(`/workspace/${id}`);
@@ -49,8 +44,8 @@ const ProjectSidebar = () => {
             <div className="text-center px-3 py-4 text-red-400 text-xs">
               프로젝트를 불러올 수 없습니다
             </div>
-          ) : Array.isArray(allProjects) && allProjects.length > 0 ? (
-            allProjects.map((project) => {
+          ) : Array.isArray(projects) && projects.length > 0 ? (
+            projects.map((project) => {
               const isActive = projectId === String(project.id);
 
               return (
