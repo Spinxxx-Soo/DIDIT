@@ -1,18 +1,16 @@
 package com.didit.server.api.controller;
 
-import ch.qos.logback.core.status.Status;
-import com.didit.server.api.response.MeetingResponse;
 import com.didit.server.api.response.MeetingResponse;
 import com.didit.server.api.response.ProjectResponse;
 import com.didit.server.api.response.UserResponse;
 import com.didit.server.api.security.CustomOAuth2User;
-import com.didit.server.data.entity.enums.MeetingStatus;
+import com.didit.server.data.entity.enums.MeetingMode;
 import com.didit.server.service.service.MeetingService;
-import com.didit.server.service.service.ProjectService;
+import com.didit.server.service.service.MeetingMediaService;
+import com.didit.server.service.service.MeetingUserService;
 import com.didit.server.service.service.ProjectService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +24,8 @@ public class MeetingController {
 
     private final MeetingService _meetingService;
     private final ProjectService _projectService;
+    private final MeetingMediaService _meetingMediaService;
+    private final MeetingUserService _MeetingUserService;
 
 
     //이름 수정: PATCH /api/v1/meetings/{sId}
@@ -112,6 +112,86 @@ public class MeetingController {
                 .createdAt(meetingEntity.getCreatedAt())
                 .updatedAt(meetingEntity.getUpdatedAt())
                 .build();
+        return ResponseEntity.ok(res);
+    }
+
+    @PostMapping("/{channelId}/webrtc")
+    public ResponseEntity<?> joinMeeting(@AuthenticationPrincipal CustomOAuth2User user,
+                                         @PathVariable Long channelId){
+        var findMeetingResult = _meetingService.FindMeetingById(channelId);
+        if (findMeetingResult.isFailure()) {
+            var err = findMeetingResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        var meeting = findMeetingResult.getOrThrow();
+
+        if(!meeting.getMode().equals(MeetingMode.VOICE)){
+            return new ResponseEntity<>(HttpStatus.CONFLICT);
+        }
+        var userId = user.getId();
+        var createResult = _meetingMediaService.createConnection(meeting.getId(), userId);
+        if(createResult.isFailure()){
+            var err = createResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        var token = createResult.getOrThrow();
+        var joinResult = _MeetingUserService.joinMeeting(meeting.getId(), userId, token);
+        if(joinResult.isFailure()){
+            var err = joinResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        return ResponseEntity.ok(token);
+    }
+
+    @DeleteMapping("/{channelId}/webrtc")
+    public ResponseEntity<?> leaveMeeting(@AuthenticationPrincipal CustomOAuth2User user,
+                                         @PathVariable Long channelId){
+        var findMeetingResult = _meetingService.FindMeetingById(channelId);
+        if (findMeetingResult.isFailure()) {
+            var err = findMeetingResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        var meeting = findMeetingResult.getOrThrow();
+        if(!meeting.getMode().equals(MeetingMode.VOICE)){
+            return new ResponseEntity<>(HttpStatus.CONFLICT);
+        }
+
+        var userId = user.getId();
+        var closeResult = _meetingMediaService.closeConnection(meeting.getId(), userId);
+        if(closeResult.isFailure()){
+            var err = closeResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+
+        var leftResult = _MeetingUserService.leftMeeting(meeting.getId(), userId);
+        if(leftResult.isFailure()){
+            var err = leftResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{channelId}/webrtc/users")
+    public ResponseEntity<?> GetMeetingUsers(@PathVariable Long channelId)
+    {
+        var findMeetingResult = _meetingService.FindMeetingById(channelId);
+        if (findMeetingResult.isFailure()) {
+            var err = findMeetingResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        var meeting = findMeetingResult.getOrThrow();
+        if(!meeting.getMode().equals(MeetingMode.VOICE)){
+            return new ResponseEntity<>(HttpStatus.CONFLICT);
+        }
+
+        var getUsersResult = _meetingMediaService.getConnectedUsers(channelId);
+        if (getUsersResult.isFailure()){
+            var err = getUsersResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        var users = getUsersResult.getOrThrow();
+        var res = users.stream().map(UserResponse::fromEntity).toList();
         return ResponseEntity.ok(res);
     }
 
