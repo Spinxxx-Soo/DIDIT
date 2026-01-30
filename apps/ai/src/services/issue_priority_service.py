@@ -217,3 +217,69 @@ class IssuePriorityService:
         logger.info("이슈 재정렬 완료 (총 %d개)", len(reordered_issues))
         
         return reordered_issues
+    
+    def predict(
+        self,
+        subject: str,
+        body: str = "",
+        return_score: bool = False
+    ) -> Dict[str, Any]:
+        """단일 이슈의 우선순위를 예측합니다.
+        
+        Args:
+            subject: 이슈 제목
+            body: 이슈 본문
+            return_score: 점수를 결과에 포함할지 여부
+        
+        Returns:
+            우선순위 예측 결과 딕셔너리 {"priority": "HIGH|MED|LOW", "score": float (optional)}
+        """
+        text = self._build_text(subject, body)
+        score = self._calculate_score(subject, body)
+        priority = self.processor.to_priority(
+            score=score,
+            text=text,
+            thresholds=self.thresholds
+        )
+        
+        result = {"priority": priority}
+        if return_score:
+            result["score"] = score
+        
+        return result
+    
+    def predict_batch(
+        self,
+        issues: List[Dict[str, str]],
+        return_scores: bool = False
+    ) -> List[Dict[str, Any]]:
+        """여러 이슈의 우선순위를 예측합니다.
+        
+        Args:
+            issues: 이슈 목록 [{"subject": str, "body": str}, ...]
+            return_scores: 점수를 결과에 포함할지 여부
+        
+        Returns:
+            우선순위 예측 결과 목록 [{"priority": "HIGH|MED|LOW", "score": float (optional)}, ...]
+        """
+        results = []
+        
+        for issue in issues:
+            subject = issue.get("subject", "")
+            body = issue.get("body", "")
+            
+            text = self._build_text(subject, body)
+            score = self._calculate_score(subject, body)
+            priority = self.processor.to_priority(
+                score=score,
+                text=text,
+                thresholds=self.thresholds
+            )
+            
+            result = {"priority": priority}
+            if return_scores:
+                result["score"] = score
+            
+            results.append(result)
+        
+        return results
