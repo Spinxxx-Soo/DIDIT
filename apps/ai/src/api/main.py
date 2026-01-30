@@ -6,6 +6,7 @@ from api.routers import issue_priority, meeting_summary
 from api.exceptions import BaseAPIException
 from api.schemas.error import ErrorResponse
 from common.settings import settings
+import uvicorn
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -69,3 +70,12 @@ app.include_router(meeting_summary.router, prefix="/api/v1")
 async def health():
     """AI 체크 엔드포인트"""
     return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "api.main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=True
+    )

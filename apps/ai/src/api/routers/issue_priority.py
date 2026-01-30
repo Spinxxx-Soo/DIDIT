@@ -15,7 +15,6 @@ router = APIRouter(prefix="/issue-priority", tags=["issue-priority"])
 
 # 서비스 초기화 (앱 시작 시 한 번만)
 service = IssuePriorityService(
-    model_name=settings.MODEL_ISSUE_PRIORITY_COMMIT,
     use_rules=settings.USE_RULES
 )
 

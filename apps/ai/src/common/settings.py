@@ -8,22 +8,27 @@ class Settings(BaseSettings):
     APP_NAME: str = "AI Server"
     APP_VERSION: str = "1.0.0"
     
-    # 모델 설정
-    # MODEL_ISSUE_PRIORITY_COMMIT: str = "spinxxxx/git-issues-priority-ko"
-    # USE_RULES: bool = True
-    # MAX_BATCH_SIZE: int = 100
+    #모델 설정
+    MODEL_ISSUE_PRIORITY_COMMIT: str = "spinxxxx/git-issues-priority-ko"
+    USE_RULES: bool = True
+    MAX_BATCH_SIZE: int = 100
     
     # 서버 설정
     HOST: str = "0.0.0.0"
     PORT: int = 8000
+    DEBUG: bool = False
     
-    # # Redis 설정 - 아직 안함 해야함.
+    # 로깅 설정
+    LOG_LEVEL: str = "INFO"
+    
+    # Redis 설정 - 아직 안함 해야함.
     # REDIS_HOST: str = "localhost"
     # REDIS_PORT: int = 6379
     
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"  # .env에 정의되지 않은 필드는 무시
 
 # Settings 인스턴스 생성
 settings = Settings()
