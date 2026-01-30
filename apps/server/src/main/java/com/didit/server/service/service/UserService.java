@@ -25,4 +25,6 @@ public interface UserService {
      * - 400: 입력값(githubId, login 등)이 유효하지 않거나 누락된 경우
      */
     Result<UserEntity> joinOrUpdate(Long githubId, String login, String name, String avatarUrl);
+
+    Result<UserEntity> findUserById(Long userId);
 }
