@@ -9,11 +9,15 @@ from api.exceptions import (
     BadRequestException
 )
 from api.schemas.error import ErrorCode
+from common.settings import settings
 
 router = APIRouter(prefix="/issue-priority", tags=["issue-priority"])
 
 # 서비스 초기화 (앱 시작 시 한 번만)
-service = IssuePriorityService(use_rules=True)
+service = IssuePriorityService(
+    model_name=settings.MODEL_ISSUE_PRIORITY_COMMIT,
+    use_rules=settings.USE_RULES
+)
 
 
 class IssueRequest(BaseModel):
@@ -55,8 +59,8 @@ async def predict_priority_batch(request: IssueBatchRequest):
             raise ValidationException("최소 1개 이상의 이슈가 필요합니다")
         
         #모델은 예측 개수 상관 X, 서버 처리에서 우려되어 제한 O -> 추후 수정 필요
-        if len(request.issues) > 100:
-            raise BadRequestException("한 번에 최대 100개까지 예측 가능합니다")
+        if len(request.issues) > settings.MAX_BATCH_SIZE:
+            raise BadRequestException(f"한 번에 최대 {settings.MAX_BATCH_SIZE}개까지 예측 가능합니다")
         
         issues = [{"subject": issue.subject, "body": issue.body or ""}
                   for issue in request.issues]
