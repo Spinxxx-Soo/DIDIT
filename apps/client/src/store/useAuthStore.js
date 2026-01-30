@@ -68,7 +68,10 @@ const useAuthStore = create((set, get) => ({
 
     try {
       const response = await authApi.getMe();
-      set({ user: response.data, isAuthenticated: true });
+      // API 변경으로 id -> userId 매핑 (구조 분해 할당 및 리네이밍)
+      const { id, ...rest } = response.data;
+      const userData = { ...rest, id, userId: id };
+      set({ user: userData, isAuthenticated: true });
     } catch (error) {
       // 여기서 401 에러 등이 발생하면 세션이 없는 것
       set({ user: null, isAuthenticated: false });

@@ -3,10 +3,10 @@ import { Check, Pencil, Plus } from 'lucide-react';
 import { Modal } from '@/components/common/Modal';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { Card } from '@/components/common/Card'; 
+import { Card } from '@/components/common/Card';
 import { LeaveProjectModal } from './LeaveProjectModal';
 import { TransferOwnershipModal } from './TransferOwnershipModal';
-import { CreateProjectModal } from './CreateProjectModal'; 
+import { CreateProjectModal } from './CreateProjectModal';
 import useProjectStore from '@/store/useProjectStore';
 import useAuthStore from '@/store/useAuthStore';
 import { getProjectColor } from '@/utils/projectUtils';
@@ -26,7 +26,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
     transferOwnership,
     fetchParticipants,
     createProject,
-    validateProjectName, 
+    validateProjectName,
     validateGithubRepo,
     isLoading,
   } = useProjectStore();
@@ -56,7 +56,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
       setNameError('');
       setLeaveTarget(null);
       setTransferTarget(null);
-      setIsCreateModalOpen(false); 
+      setIsCreateModalOpen(false);
     }
   }, [isOpen]);
 
@@ -88,10 +88,10 @@ export function ProjectManageModal({ isOpen, onClose }) {
 
     // 중복 확인 추가
     const isDuplicate = await validateProjectName(editingName.trim());
-      if (isDuplicate) {
-        setNameError('이미 존재하는 프로젝트 이름입니다');
-        return;
-      }
+    if (isDuplicate) {
+      setNameError('이미 존재하는 프로젝트 이름입니다');
+      return;
+    }
 
     setIsSaving(true);
     await updateProjectName(projectId, editingName.trim());
@@ -182,9 +182,9 @@ export function ProjectManageModal({ isOpen, onClose }) {
                         <Input
                           value={editingName}
                           onChange={(e) => {
-                              setEditingName(e.target.value);
-                              if (nameError) setNameError(''); 
-                            }}
+                            setEditingName(e.target.value);
+                            if (nameError) setNameError('');
+                          }}
                           className="flex-1"
                           autoFocus
                           onKeyDown={(e) => {
@@ -287,10 +287,10 @@ export function ProjectManageModal({ isOpen, onClose }) {
         onClose={() => setTransferTarget(null)}
         onConfirm={handleTransferConfirm}
         participants={participants}
-        currentUserId={user?.id}
+        currentUserId={user?.userId}
         isLoading={isTransferring}
       />
-     {/* 프로젝트 생성 모달 추가 */}
+      {/* 프로젝트 생성 모달 추가 */}
       <CreateProjectModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
