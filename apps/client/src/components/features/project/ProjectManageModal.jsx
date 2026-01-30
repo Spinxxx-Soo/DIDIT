@@ -9,7 +9,7 @@ import { TransferOwnershipModal } from './TransferOwnershipModal';
 import { CreateProjectModal } from './CreateProjectModal';
 import useProjectStore from '@/store/useProjectStore';
 import useAuthStore from '@/store/useAuthStore';
-import { getProjectColor } from '@/utils/projectUtils';
+import { getProjectColor, getProjectInitial } from '@/utils/projectUtils';
 
 /**
  * ProjectManageModal - 프로젝트 관리 메인 모달
@@ -172,7 +172,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
                     className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                     style={{ backgroundColor: getProjectColor(project.id) }}
                   >
-                    {project.name.charAt(0)}
+                    {getProjectInitial(project.name)}
                   </div>
 
                   {/* 프로젝트 이름 (일반/편집 모드) */}
