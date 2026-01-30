@@ -106,9 +106,15 @@ export function GithubRepoSection({
 
   // 저장소가 연결된 경우 - 주소 표시
   if (repoFullName && !isEditing) {
+    // [Modified] 백엔드 @URL 검증으로 인해 repoFullName이 전체 URL로 저장될 수 있음.
+    // 따라서 형식에 따라 href와 표시 텍스트를 조정함.
+    const isUrl = repoFullName.startsWith('http');
+    const href = isUrl ? repoFullName : `https://github.com/${repoFullName}`;
+    const displayText = isUrl ? repoFullName.replace(/^https?:\/\/github\.com\//, '') : repoFullName;
+
     return (
       <a
-        href={`https://github.com/${repoFullName}`}
+        href={href}
         target="_blank"
         rel="noopener noreferrer"
         className="
@@ -124,7 +130,7 @@ export function GithubRepoSection({
         "
       >
         <Github size={14} />
-        <span>{repoFullName}</span>
+        <span>{displayText}</span>
         <LinkIcon size={12} className="text-[var(--text-tertiary)]" />
       </a>
     );
