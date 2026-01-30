@@ -136,6 +136,32 @@ const useProjectStore = create((set, get) => ({
   },
 
   // ------------------------------------------------------------------
+  // [1-2] 전체 프로젝트 목록 조회 (사이드바용)
+  // ------------------------------------------------------------------
+  fetchAllProjects: async () => {
+    set({ isLoading: true, error: null });
+
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      set({ projects: MOCK_PROJECTS, isLoading: false });
+      return;
+    }
+
+    try {
+      const response = await projectApi.getProjects();
+      const projectsData = Array.isArray(response.data) ? response.data : [];
+      set({ projects: projectsData, isLoading: false });
+    } catch (error) {
+      console.error('전체 프로젝트 목록 조회 실패:', error);
+      set({
+        projects: [],
+        error: '프로젝트 목록을 불러올 수 없습니다',
+        isLoading: false
+      });
+    }
+  },
+
+  // ------------------------------------------------------------------
   // [2] 프로젝트 상세 조회
   // ------------------------------------------------------------------
   fetchProject: async (projectId) => {

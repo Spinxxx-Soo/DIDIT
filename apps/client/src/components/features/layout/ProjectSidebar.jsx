@@ -13,15 +13,15 @@ const ProjectSidebar = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const { logout } = useAuthStore();
-  const { projects, fetchProjects, error, isLoading } = useProjectStore();
+  const { projects, fetchAllProjects, error, isLoading } = useProjectStore();
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
 
   // 마운트 시 프로젝트 목록 조회
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    fetchAllProjects();
+  }, [fetchAllProjects]);
 
   const handleProjectClick = (id) => {
     navigate(`/workspace/${id}`);
