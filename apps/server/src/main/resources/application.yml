@@ -40,3 +40,13 @@ spring:
             scope:
               - read:user
               - user:email
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:-}
+      timeout: 2s
+#openvidu
+openvidu:
+  url: ${OPENVIDU_URL}
+  secret: ${OPENVIDU_SECRET}
