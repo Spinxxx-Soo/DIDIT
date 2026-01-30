@@ -136,7 +136,7 @@ export function MyPage() {
                       {project.name}
                     </CardTitle>
                     <CardDescription>
-                      {project.repoFullName || '연결된 저장소 없음'}
+                      {project.repoFullName?.replace(/^https?:\/\/github\.com\//, '') || '연결된 저장소 없음'}
                     </CardDescription>
                     <div className="flex items-center gap-3 mt-2 text-[13px] text-[var(--text-tertiary)]">
                       <span>멤버 {project.memberCount}명</span>

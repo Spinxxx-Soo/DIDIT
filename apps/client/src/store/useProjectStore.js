@@ -134,9 +134,12 @@ const useProjectStore = create((set, get) => ({
 
     try {
       // Backend API expects: { projectName, githubUrl }
+      // Backend API expects a full URL due to @URL validation
+      const githubUrl = githubRepo ? `https://github.com/${githubRepo}` : null;
+
       const data = {
         projectName: name,
-        githubUrl: githubRepo || null,
+        githubUrl: githubUrl || null,
       };
 
       const response = await projectApi.createProject(data);
