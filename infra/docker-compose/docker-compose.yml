@@ -55,8 +55,6 @@ services:
     networks:
       - internal
       - caddy_default
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
         
   client:
     image: ghcr.io/pjtdidit/client-image:latest
