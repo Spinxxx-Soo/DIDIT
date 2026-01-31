@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { projectApi } from '@/api/project';
+import { all } from 'axios';
 
 const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
@@ -205,6 +206,7 @@ const useProjectStore = create((set, get) => ({
 
       set(state => ({
         projects: [...state.projects, newProject],
+        allProjects: [...state.allProjects, newProject],
         isLoading: false,
       }));
 
@@ -225,6 +227,7 @@ const useProjectStore = create((set, get) => ({
 
       set(state => ({
         projects: [...state.projects, response.data],
+        allProjects: [...state.allProjects, response.data],
         isLoading: false,
       }));
 
@@ -243,8 +246,8 @@ const useProjectStore = create((set, get) => ({
   validateProjectName: async (name) => {
     if (IS_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 200));
-      const { projects } = get();
-      const isDuplicate = projects.some(
+      const { allProjects } = get();
+      const isDuplicate = allProjects.some(
         p => p.name.toLowerCase() === name.toLowerCase()
       );
       return isDuplicate;
@@ -305,6 +308,7 @@ const useProjectStore = create((set, get) => ({
       await new Promise(resolve => setTimeout(resolve, 300));
       set(state => ({
         projects: state.projects.filter(p => p.id !== projectId),
+        allProjects: state.allProjects.filter(p => p.id !== projectId),
         isLoading: false,
       }));
       return { success: true };
@@ -314,6 +318,7 @@ const useProjectStore = create((set, get) => ({
       await projectApi.deleteProject(projectId);
       set(state => ({
         projects: state.projects.filter(p => p.id !== projectId),
+        allProjects: state.allProjects.filter(p => p.id !== projectId),
         isLoading: false,
       }));
       return { success: true };
@@ -334,6 +339,9 @@ const useProjectStore = create((set, get) => ({
       await new Promise(resolve => setTimeout(resolve, 300));
 
       set(state => ({
+        allProjects: state.allProjects.map(p =>
+          p.id === Number(projectId) ? { ...p, repoFullName } : p
+        ),
         projects: state.projects.map(p =>
           p.id === Number(projectId) ? { ...p, repoFullName } : p
         ),
@@ -350,6 +358,9 @@ const useProjectStore = create((set, get) => ({
       await projectApi.updateProjectRepo(projectId, repoFullName);
 
       set(state => ({
+        allProjects: state.allProjects.map(p =>
+          p.id === Number(projectId) ? { ...p, repoFullName } : p
+        ),
         projects: state.projects.map(p =>
           p.id === Number(projectId) ? { ...p, repoFullName } : p
         ),
@@ -382,6 +393,9 @@ const useProjectStore = create((set, get) => ({
         projects: state.projects.map(p =>
           p.id === Number(projectId) ? { ...p, name } : p
         ),
+        allProjects: state.allProjects.map(p =>
+          p.id === Number(projectId) ? { ...p, name } : p
+        ),
       }));
       return { success: true };
     }
@@ -390,6 +404,9 @@ const useProjectStore = create((set, get) => ({
       await projectApi.updateProjectName(projectId, name);
       set(state => ({
         projects: state.projects.map(p =>
+          p.id === Number(projectId) ? { ...p, name } : p
+        ),
+        allProjects: state.allProjects.map(p =>
           p.id === Number(projectId) ? { ...p, name } : p
         ),
       }));
@@ -407,6 +424,7 @@ const useProjectStore = create((set, get) => ({
     if (IS_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 300));
       set(state => ({
+        allProjects: state.allProjects.filter(p => p.id !== Number(projectId)),
         projects: state.projects.filter(p => p.id !== Number(projectId)),
       }));
       return { success: true };
@@ -415,6 +433,7 @@ const useProjectStore = create((set, get) => ({
     try {
       await projectApi.leaveProject(projectId);
       set(state => ({
+        allProjects: state.allProjects.filter(p => p.id !== Number(projectId)),
         projects: state.projects.filter(p => p.id !== Number(projectId)),
       }));
       return { success: true };
@@ -431,6 +450,9 @@ const useProjectStore = create((set, get) => ({
     if (IS_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 300));
       set(state => ({
+        allProjects: state.allProjects.map(p =>
+          p.id === Number(projectId) ? { ...p, ownerId: newOwnerId } : p
+        ),
         projects: state.projects.map(p =>
           p.id === Number(projectId) ? { ...p, ownerId: newOwnerId } : p
         ),
@@ -441,6 +463,9 @@ const useProjectStore = create((set, get) => ({
     try {
       await projectApi.transferOwnership(projectId, newOwnerId);
       set(state => ({
+        allProjects: state.allProjects.map(p =>
+          p.id === Number(projectId) ? { ...p, ownerId: newOwnerId } : p
+        ),
         projects: state.projects.map(p =>
           p.id === Number(projectId) ? { ...p, ownerId: newOwnerId } : p
         ),
