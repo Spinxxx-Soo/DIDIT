@@ -71,10 +71,11 @@ services:
     image: openvidu/openvidu-dev:2.32.1
     networks:
       internal:
-      aliases:
-        - openvidu
+        aliases:
+          - openvidu
     environment:
       OPENVIDU_SECRET: ${OPENVIDU_SECRET}
+
   redis:
     image: redis:7.2-alpine
     container_name: redis
