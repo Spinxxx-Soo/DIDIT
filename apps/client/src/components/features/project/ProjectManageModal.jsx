@@ -20,7 +20,8 @@ import { getProjectColor, getProjectInitial } from '@/utils/projectUtils';
 export function ProjectManageModal({ isOpen, onClose }) {
   const { user } = useAuthStore();
   const {
-    projects,
+    allProjects,
+    fetchAllProjects,
     updateProjectName,
     leaveProject,
     transferOwnership,
@@ -50,7 +51,10 @@ export function ProjectManageModal({ isOpen, onClose }) {
 
   // 모달 닫힐 때 상태 초기화
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      fetchAllProjects(); // 모달이 열릴 때 전체 목록을 서버에서 새로 가져옴
+    } 
+    else {
       setEditingProjectId(null);
       setEditingName('');
       setNameError('');
@@ -58,7 +62,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
       setTransferTarget(null);
       setIsCreateModalOpen(false);
     }
-  }, [isOpen]);
+  }, [isOpen, fetchAllProjects]);
 
   // 팀장 여부 확인
   const isOwner = (project) => project.ownerId === user?.userId;
@@ -75,7 +79,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
     if (!editingName.trim()) return;
 
     // 현재 프로젝트 찾기
-    const currentProject = projects.find(p => p.id === projectId);
+    const currentProject = allProjects.find(p => p.id === projectId);
     if (!currentProject) return;
 
     // 같은 이름이면 그냥 종료
@@ -153,12 +157,12 @@ export function ProjectManageModal({ isOpen, onClose }) {
       >
         {/* 프로젝트 목록 */}
         <div className="flex flex-col gap-3">
-          {projects.length === 0 ? (
+          {allProjects.length === 0 ? (
             <p className="text-[14px] text-[var(--text-tertiary)] text-center py-8">
               참여 중인 프로젝트가 없습니다.
             </p>
           ) : (
-            projects.map((project) => {
+            allProjects.map((project) => {
               const editing = editingProjectId === project.id;
               const owner = isOwner(project);
 
