@@ -151,11 +151,53 @@ const useChatStore = create((set, get) => ({
             return;
         }
 
+        // 1. 임시 메시지 생성 (Optimistic UI)
+        const tempId = Date.now() + Math.random(); // 유니크성을 위해 난수 추가
+        const user = useAuthStore.getState().user;
+        const tempMsg = {
+            id: tempId,
+            content: content,
+            sender: user?.userId,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isMine: true,
+            isTemp: true, // 임시 상태 표시
+        };
+
+        // 2. 스토어에 즉시 추가
+        set(state => ({ messages: [...state.messages, tempMsg] }));
+
         try {
-            await chatApi.createChat(channelId, { content });
-            // SSE를 통해 메시지가 들어오므로 여기서 수동으로 추가하지 않음 (중복 방지)
+            // 3. API 호출
+            const response = await chatApi.createChat(channelId, { content });
+            const { id: realId, createdAt } = response.data;
+
+            // 4. 성공 처리: ID 교체 및 데이터 동기화
+            set(state => {
+                // Case A: 그 사이에 SSE로 이미 실데이터가 들어왔는지 확인
+                const exists = state.messages.find(m => m.id === realId);
+                if (exists) {
+                    // 이미 있으면 임시 메시지만 제거 (중복 방지)
+                    return { messages: state.messages.filter(m => m.id !== tempId) };
+                }
+
+                // Case B: 아직 안 들어왔으면 임시 메시지를 실데이터로 업데이트
+                return {
+                    messages: state.messages.map(m =>
+                        m.id === tempId
+                            ? {
+                                ...m,
+                                id: realId,
+                                time: new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                isTemp: false
+                            }
+                            : m
+                    )
+                };
+            });
         } catch (error) {
             console.error("Message send failed:", error);
+            // 실패 시 임시 메시지 제거
+            set(state => ({ messages: state.messages.filter(m => m.id !== tempId) }));
             throw error;
         }
     },
