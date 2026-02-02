@@ -157,12 +157,20 @@ export const projectApi = {
     api.patch(`/api/v1/projects/${projectId}`, { projectName: name }),
 
   /**
+ * 프로젝트 삭제 (팀장이 혼자일 때)
+ * @param {number} projectId
+ * @returns {Promise}
+ */
+  deleteProject: (projectId) =>
+    api.delete(`/api/v1/projects/${projectId}`),
+
+  /**
    * 프로젝트 떠나기
    * @param {number} projectId
    * @returns {Promise}
    */
   leaveProject: (projectId) =>
-    api.delete(`/api/v1/projects/${projectId}/participants/me`),
+    api.delete(`/api/v1/projects/${projectId}/leave`),
 
   /**
    * 팀장 위임
