@@ -14,6 +14,7 @@ const useOpenVidu = () => {
     isSpeakerOn,
     isScreenSharing,
     meetingId,
+    currentChannelId,
     setMicOn,
     setScreenSharing,
     setScreenShareStream,
@@ -147,8 +148,8 @@ const useOpenVidu = () => {
   const leaveSession = useCallback(async () => {
     try {
       // API 호출로 서버에 나가기 알림
-      if (meetingId) {
-        await meetingApi.leaveSession(meetingId);
+      if (currentChannelId) {
+        await meetingApi.leaveWebRTC(currentChannelId);
       }
     } catch (error) {
       console.error('회의 나가기 API 실패:', error);
@@ -156,7 +157,7 @@ const useOpenVidu = () => {
 
     cleanup();
     leaveMeeting();
-  }, [meetingId, leaveMeeting]);
+  }, [currentChannelId, leaveMeeting]);
 
   // ------------------------------------------------------------------
   // 마이크 토글
