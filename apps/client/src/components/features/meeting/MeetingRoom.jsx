@@ -48,13 +48,25 @@ const MeetingRoom = () => {
         console.log('[DEV] Mock 모드: 백엔드 없이 회의 화면 표시');
       } else {
         // 1. API로 토큰 발급
-        const response = await meetingApi.joinVoice(projectId, {
-          meetingId: Number(channelId),
-        });
+        const response = await meetingApi.joinWebRTC(Number(channelId));
         ({ token, sessionId, openviduUrl } = response.data);
+
+        // 2. 현재 참가자 목록 조회
+        try {
+          const usersResponse = await meetingApi.getWebRTCUsers(Number(channelId));
+          const webRTCUsers = usersResponse.data || [];
+          setParticipants(webRTCUsers.map(user => ({
+            id: user.id,
+            name: user.name,
+            avatarUrl: user.avatarUrl,
+            isSpeaking: false,
+          })));
+        } catch (err) {
+          console.warn('참가자 목록 조회 실패:', err);
+        }
       }
 
-      // 2. 스토어에 회의 정보 저장
+      // 3. 스토어에 회의 정보 저장
       joinMeeting({
         meetingId: Number(channelId),
         sessionId,
@@ -63,7 +75,7 @@ const MeetingRoom = () => {
         title: currentChannelName || '회의',
       });
 
-      // 3. OpenVidu 세션 연결 (Mock 모드에서는 스킵)
+      // 4. OpenVidu 세션 연결 (Mock 모드에서는 스킵)
       if (useMock) {
         // Mock 모드: 테스트용 참가자 추가
         setParticipants([

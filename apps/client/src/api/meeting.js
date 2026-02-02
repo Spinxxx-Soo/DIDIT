@@ -34,13 +34,31 @@ export const meetingApi = {
   // 회의실 나가기
   // leaveSession: (meetingId) => api.delete(`/api/v1/meetings/${meetingId}/leave`),
 
-  // --- [OpenVidu / 미디어] ---
-  // [Disabled] 문서에 OpenVidu 관련 API 없음
-  // 음성 대화 참가 (토큰 발급)
-  // joinVoice: (projectId, data) => api.post(`/api/v1/projects/${projectId}/meetings/join`, data),
+  // --- [WebRTC 음성 회의] ---
 
-  // 화면 공유 상태 갱신
-  // updateScreenShare: (meetingId, data) => api.put(`/api/v1/meetings/${meetingId}/screen`, data),
+  /**
+   * 음성 회의 참가 (WebRTC 연결 생성)
+   * @param {number} channelId
+   * @returns {Promise<string>} - 연결 토큰
+   */
+  joinWebRTC: (channelId) =>
+    api.post(`/api/v1/channels/${channelId}/webrtc`),
+
+  /**
+   * 음성 회의 나가기 (WebRTC 연결 종료)
+   * @param {number} channelId
+   * @returns {Promise}
+   */
+  leaveWebRTC: (channelId) =>
+    api.delete(`/api/v1/channels/${channelId}/webrtc`),
+
+  /**
+   * 음성 회의 참가자 목록 조회
+   * @param {number} channelId
+   * @returns {Promise<UserResponse[]>}
+   */
+  getWebRTCUsers: (channelId) =>
+    api.get(`/api/v1/channels/${channelId}/webrtc/users`),
 
   // --- [AI 요약 및 녹음] ---
   // 회의 녹음 시작 (Mock)
