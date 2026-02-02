@@ -2,17 +2,37 @@
  * PriorityDistribution - Apple-Style Bar Chart
  * Shows issue priority distribution
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { loungeApi } from '@/api/lounge';
 
-const PRIORITY_DATA = [
-    { label: 'High', value: 4, color: '#EF4444', bgColor: 'bg-red-100' },
-    { label: 'Medium', value: 3, color: '#F59E0B', bgColor: 'bg-amber-100' },
-    { label: 'Low', value: 1, color: '#10B981', bgColor: 'bg-emerald-100' },
+const INITIAL_DATA = [
+    { label: 'High', value: 0, color: '#EF4444', bgColor: 'bg-red-100' },
+    { label: 'Medium', value: 0, color: '#F59E0B', bgColor: 'bg-amber-100' },
+    { label: 'Low', value: 0, color: '#10B981', bgColor: 'bg-emerald-100' },
 ];
 
-const MAX_VALUE = Math.max(...PRIORITY_DATA.map(d => d.value));
-
 const PriorityDistribution = () => {
+    const { projectId } = useParams();
+    const [priorityData, setPriorityData] = useState(INITIAL_DATA);
+
+    useEffect(() => {
+        const fetchPriority = async () => {
+            if (!projectId) return;
+            try {
+                const response = await loungeApi.getIssuePriority(projectId);
+                if (Array.isArray(response.data) && response.data.length > 0) {
+                    setPriorityData(response.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch priority distribution:', error);
+            }
+        };
+        fetchPriority();
+    }, [projectId]);
+
+    const maxValue = Math.max(...priorityData.map(d => d.value)) || 1;
+
     return (
         <div className="h-full flex flex-col">
             <div className="mb-4">
@@ -21,8 +41,8 @@ const PriorityDistribution = () => {
             </div>
 
             <div className="flex-1 flex flex-col justify-center space-y-4">
-                {PRIORITY_DATA.map((item, index) => {
-                    const percentage = (item.value / MAX_VALUE) * 100;
+                {priorityData.map((item, index) => {
+                    const percentage = (item.value / maxValue) * 100;
                     return (
                         <div
                             key={item.label}
@@ -56,7 +76,7 @@ const PriorityDistribution = () => {
                 <div className="flex items-center justify-between text-sm">
                     <span className="text-[var(--text-tertiary)]">전체 이슈</span>
                     <span className="font-semibold text-[var(--text-bright)]">
-                        {PRIORITY_DATA.reduce((acc, item) => acc + item.value, 0)}개
+                        {priorityData.reduce((acc, item) => acc + item.value, 0)}개
                     </span>
                 </div>
             </div>

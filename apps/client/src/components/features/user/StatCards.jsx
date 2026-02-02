@@ -2,14 +2,16 @@
  * StatCards - Apple-Style Dashboard Stat Cards
  * 4 key metrics at a glance
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { CheckCircle2, Clock, AlertTriangle, Calendar } from 'lucide-react';
+import { loungeApi } from '@/api/lounge';
 
-const STATS = [
+const INITIAL_STATS = [
     {
         id: 'completed',
         label: '완료된 이슈',
-        value: 12,
+        value: 0,
         subtext: '지난 7일',
         icon: CheckCircle2,
         gradient: 'from-emerald-50 to-emerald-100',
@@ -18,7 +20,7 @@ const STATS = [
     {
         id: 'inProgress',
         label: '진행 중',
-        value: 5,
+        value: 0,
         subtext: '현재',
         icon: Clock,
         gradient: 'from-blue-50 to-blue-100',
@@ -27,7 +29,7 @@ const STATS = [
     {
         id: 'deadline',
         label: '마감 임박',
-        value: 3,
+        value: 0,
         subtext: '3일 이내',
         icon: AlertTriangle,
         gradient: 'from-amber-50 to-amber-100',
@@ -36,7 +38,7 @@ const STATS = [
     {
         id: 'meetings',
         label: '이번 주 회의',
-        value: 2,
+        value: 0,
         subtext: '예정',
         icon: Calendar,
         gradient: 'from-violet-50 to-violet-100',
@@ -45,9 +47,33 @@ const STATS = [
 ];
 
 const StatCards = () => {
+    const { projectId } = useParams();
+    const [stats, setStats] = useState(INITIAL_STATS);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            if (!projectId) return;
+            try {
+                const response = await loungeApi.getDashboardStats(projectId);
+                const data = response.data; // { completed: 10, inProgress: 5, ... }
+
+                if (data) {
+                    setStats(prev => prev.map(stat => ({
+                        ...stat,
+                        value: data[stat.id] !== undefined ? data[stat.id] : stat.value
+                    })));
+                }
+            } catch (error) {
+                console.error('Failed to fetch dashboard stats:', error);
+            }
+        };
+
+        fetchStats();
+    }, [projectId]);
+
     return (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {STATS.map((stat, index) => {
+            {stats.map((stat, index) => {
                 const Icon = stat.icon;
                 return (
                     <div

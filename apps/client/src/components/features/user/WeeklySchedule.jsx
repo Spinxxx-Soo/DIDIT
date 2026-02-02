@@ -2,25 +2,21 @@
  * Apple-Style Weekly Schedule
  * Clean design, smooth interactions
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format, addDays, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { useParams } from 'react-router-dom';
 import { Modal } from '@/components/common/Modal/Modal';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input/Input';
 import { toast } from '@/store/useToastStore';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-
-// 임시 데이터
-const INITIAL_SCHEDULES = [
-  { id: 1, startDate: '2026-01-23', endDate: '2026-01-23', title: '기획 구상 및 마무리', type: 'planning' },
-  { id: 2, startDate: '2026-01-25', endDate: '2026-01-25', title: '데이터 수집 및 전처리', type: 'data' },
-  { id: 3, startDate: '2026-01-27', endDate: '2026-01-29', title: '스프린트 1', type: 'dev' },
-];
+import { meetingApi } from '@/api/meeting';
 
 const WeeklySchedule = () => {
+  const { projectId } = useParams();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [schedules, setSchedules] = useState(INITIAL_SCHEDULES);
+  const [schedules, setSchedules] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newSchedule, setNewSchedule] = useState({
     title: '',
@@ -31,6 +27,38 @@ const WeeklySchedule = () => {
 
   const startDate = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startDate, i));
+
+  // 일정 목록 불러오기
+  const fetchSchedules = async () => {
+    if (!projectId) return;
+
+    try {
+      const startStr = format(startDate, 'yyyy-MM-dd');
+      const endStr = format(endOfWeek(currentDate), 'yyyy-MM-dd');
+
+      // 기존 meetingApi.getMeetingsByDate 사용 (GET /api/{projectId}/channels/date)
+      const response = await meetingApi.getMeetingsByDate(projectId, startStr, endStr);
+
+      // API 응답 데이터를 컴포넌트 형식(startDate, endDate)으로 변환
+      // API가 { start: '...', end: '...', title: '...' } 형태라고 가정
+      const mappedSchedules = (response.data || []).map(item => ({
+        id: item.id || Math.random(),
+        title: item.title,
+        startDate: item.start ? item.start.split('T')[0] : '', // YYYY-MM-DD 추출
+        endDate: item.end ? item.end.split('T')[0] : '',
+        type: item.type || 'meeting', // API에 type이 없으면 기본값
+      }));
+
+      setSchedules(mappedSchedules);
+    } catch (error) {
+      console.error('Failed to fetch schedules:', error);
+      // 에러 발생 시 빈 배열 처리 혹은 토스트
+    }
+  };
+
+  useEffect(() => {
+    fetchSchedules();
+  }, [currentDate, projectId]);
 
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
@@ -55,7 +83,7 @@ const WeeklySchedule = () => {
     setIsModalOpen(false);
   };
 
-  const handleSaveSchedule = () => {
+  const handleSaveSchedule = async () => {
     if (!newSchedule.title || !newSchedule.startDate || !newSchedule.endDate) {
       toast.warning('일정 제목과 날짜를 입력해주세요.');
       return;
@@ -66,12 +94,23 @@ const WeeklySchedule = () => {
       return;
     }
 
-    const newId = Math.max(...schedules.map(s => s.id), 0) + 1;
-    const item = { id: newId, ...newSchedule };
+    try {
+      // 기존 meetingApi.bookMeeting 사용 (POST /api/{projectId}/book-channel)
+      // 필요한 데이터 포맷: { title, start, end }
+      await meetingApi.bookMeeting(projectId, {
+        title: newSchedule.title,
+        start: newSchedule.startDate,
+        end: newSchedule.endDate,
+        // type: newSchedule.type // API가 type을 지원하지 않으면 무시됨
+      });
 
-    setSchedules([...schedules, item]);
-    toast.success('일정이 추가되었습니다.');
-    handleCloseModal();
+      toast.success('일정이 추가되었습니다.');
+      handleCloseModal();
+      fetchSchedules(); // 목록 갱신
+    } catch (error) {
+      console.error('Failed to save schedule:', error);
+      toast.error('일정 추가에 실패했습니다.');
+    }
   };
 
   // 일정 타입별 스타일
@@ -82,7 +121,7 @@ const WeeklySchedule = () => {
       data: 'bg-amber-50 text-amber-600 border-amber-100',
       dev: 'bg-[var(--success-bg)] text-[var(--color-green-primary)] border-[var(--color-green-100)]',
     };
-    return styles[type] || styles.planning;
+    return styles[type] || styles.meeting;
   };
 
   return (

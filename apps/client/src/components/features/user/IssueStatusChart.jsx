@@ -2,31 +2,52 @@
  * IssueStatusChart - Apple-Style Donut Chart
  * Shows issue status distribution
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import useLoungeStore from '@/store/useLoungeStore';
 import { ExternalLink } from 'lucide-react';
+import { loungeApi } from '@/api/lounge';
 
-const STATUS_DATA = [
-    { label: '완료', value: 31, color: '#10B981' },
-    { label: '진행중', value: 8, color: '#3B82F6' },
-    { label: '대기중', value: 1, color: '#E5E7EB' },
+const INITIAL_DATA = [
+    { label: '완료', value: 0, color: '#10B981' },
+    { label: '진행중', value: 0, color: '#3B82F6' },
+    { label: '대기중', value: 0, color: '#E5E7EB' },
 ];
 
-const TOTAL = STATUS_DATA.reduce((acc, item) => acc + item.value, 0);
-
 const IssueStatusChart = () => {
+    const { projectId } = useParams();
     const { openIssueMode } = useLoungeStore();
+    const [statusData, setStatusData] = useState(INITIAL_DATA);
+
+    useEffect(() => {
+        const fetchStatus = async () => {
+            if (!projectId) return;
+            try {
+                const response = await loungeApi.getIssueStatus(projectId);
+                if (Array.isArray(response.data) && response.data.length > 0) {
+                    setStatusData(response.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch issue status:', error);
+            }
+        };
+        fetchStatus();
+    }, [projectId]);
+
+    const total = statusData.reduce((acc, item) => acc + item.value, 0);
 
     // Calculate SVG arc paths for donut chart
     const createDonutSegments = () => {
+        if (total === 0) return null;
+
         let cumulativePercentage = 0;
         const segments = [];
         const radius = 40;
         const strokeWidth = 12;
         const center = 50;
 
-        STATUS_DATA.forEach((item, index) => {
-            const percentage = (item.value / TOTAL) * 100;
+        statusData.forEach((item, index) => {
+            const percentage = (item.value / total) * 100;
             const circumference = 2 * Math.PI * radius;
             const strokeDasharray = (percentage / 100) * circumference;
             const strokeDashoffset = -cumulativePercentage / 100 * circumference;
@@ -82,12 +103,14 @@ const IssueStatusChart = () => {
                 <div className="relative">
                     {/* Donut Chart */}
                     <svg width="160" height="160" viewBox="0 0 100 100" className="animate-fade-up">
+                        {/* Background Circle for Empty State */}
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#f3f4f6" strokeWidth="12" />
                         {createDonutSegments()}
                     </svg>
 
                     {/* Center Text */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-3xl font-bold text-[var(--text-bright)]">{TOTAL}</span>
+                        <span className="text-3xl font-bold text-[var(--text-bright)]">{total}</span>
                         <span className="text-xs text-[var(--text-tertiary)]">총 업무 수</span>
                     </div>
                 </div>
@@ -95,7 +118,7 @@ const IssueStatusChart = () => {
 
             {/* Legend */}
             <div className="flex justify-center gap-6 mt-4">
-                {STATUS_DATA.map((item) => (
+                {statusData.map((item) => (
                     <div key={item.label} className="flex items-center gap-2">
                         <div
                             className="w-3 h-3 rounded-full"
