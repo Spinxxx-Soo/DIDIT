@@ -223,12 +223,6 @@ const useOpenVidu = () => {
         .addEventListener('ended', handleEnded);
 
       await session.current.publish(screenPublisher.current);
-
-      // TODO: 화면 공유 상태 API (백엔드 미구현)
-      // if (currentChannelId) {
-      //   await meetingApi.updateScreenShare(currentChannelId, { enabled: true });
-      // }
-
       setScreenSharing(true);
       return { success: true };
     } catch (error) {
@@ -258,12 +252,6 @@ const useOpenVidu = () => {
 
         await session.current.unpublish(screenPublisher.current);
         screenPublisher.current = null;
-
-        // TODO: 화면 공유 상태 API (백엔드 미구현)
-        // if (currentChannelId) {
-        //   await meetingApi.updateScreenShare(currentChannelId, { enabled: false });
-        // }
-
         setScreenSharing(false);
       } catch (error) {
         console.error('화면 공유 중지 실패:', error);
