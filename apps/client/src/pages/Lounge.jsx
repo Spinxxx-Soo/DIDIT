@@ -1,27 +1,177 @@
-// src/pages/Lounge.jsx 수정
-import React from 'react';
-// 주간 일정 컴포넌트 경로 주의 (아까 만드신 경로로)
+/**
+ * Apple-Style Lounge Page
+ * Jira-inspired dashboard with floating navigation
+ */
+import React, { useRef } from 'react';
 import WeeklySchedule from '@/components/features/user/WeeklySchedule';
-import RecentMinutes from "@/components/features/user/RecentMinutes";
-import IssueTracker from "@/components/features/user/IssueTracker"; // ★ 아직 없으니 주석 처리
+import RecentMinutes from '@/components/features/user/RecentMinutes';
+import StatCards from '@/components/features/user/StatCards';
+import IssueStatusChart from '@/components/features/user/IssueStatusChart';
+import PriorityDistribution from '@/components/features/user/PriorityDistribution';
+import { Calendar, FileText, BarChart3, LayoutGrid, ChevronRight } from 'lucide-react';
+
+const SectionHeader = ({ icon, title, subtitle }) => (
+  <div className="flex items-center gap-4 mb-6">
+    <div
+      className="
+        w-12 h-12 
+        rounded-[var(--radius-xl)] 
+        bg-gradient-to-br from-[var(--color-green-50)] to-[var(--success-bg)]
+        flex items-center justify-center
+        text-[var(--color-green-primary)]
+        shadow-[var(--shadow-sm)]
+      "
+    >
+      {icon}
+    </div>
+    <div>
+      <h2 className="text-2xl font-bold text-[var(--text-bright)]">{title}</h2>
+      {subtitle && (
+        <p className="text-sm text-[var(--text-tertiary)] mt-0.5">{subtitle}</p>
+      )}
+    </div>
+  </div>
+);
+
+const DashboardCard = ({ children, className = '', hover = true }) => (
+  <div
+    className={`
+      bg-[var(--bg-panel)]
+      rounded-[var(--radius-2xl)]
+      border border-[var(--border-subtle)]
+      shadow-[var(--shadow-card)]
+      p-6
+      transition-all duration-300
+      ${hover ? 'hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-0.5' : ''}
+      ${className}
+    `}
+  >
+    {children}
+  </div>
+);
+
+// 플로팅 네비게이션 아이템
+const NAV_ITEMS = [
+  { id: 'stats', label: '통계', icon: LayoutGrid },
+  { id: 'issues', label: '이슈', icon: BarChart3 },
+  { id: 'minutes', label: '회의', icon: FileText },
+  { id: 'schedule', label: '일정', icon: Calendar },
+];
 
 const Lounge = () => {
+  const sectionRefs = {
+    stats: useRef(null),
+    issues: useRef(null),
+    minutes: useRef(null),
+    schedule: useRef(null),
+  };
+
+  const scrollToSection = (sectionId) => {
+    sectionRefs[sectionId]?.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  };
+
   return (
-    <div className="flex flex-col gap-6 w-full h-full">
-      {/* 1. 이번 주 일정 */}
-      <section className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-        <WeeklySchedule />
-      </section>
+    <div className="relative">
+      {/* 플로팅 네비게이션 리모컨 */}
+      <div
+        className="
+          fixed right-6 top-1/2 -translate-y-1/2 z-40
+          flex flex-col gap-2
+          p-2
+          bg-white/70
+          backdrop-blur-xl
+          rounded-2xl
+          border border-white/50
+          shadow-lg
+          animate-fade-in
+        "
+        style={{ animationDelay: '400ms' }}
+      >
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              onClick={() => scrollToSection(item.id)}
+              className="
+                group
+                flex items-center gap-2
+                px-3 py-2.5
+                rounded-xl
+                text-gray-600
+                hover:bg-[var(--color-green-primary)]
+                hover:text-white
+                transition-all duration-200
+                min-w-[44px]
+              "
+              title={item.label}
+            >
+              <Icon size={18} className="shrink-0" />
+              <span
+                className="
+                  text-sm font-medium
+                  max-w-0 overflow-hidden opacity-0
+                  group-hover:max-w-[80px] group-hover:opacity-100
+                  transition-all duration-300
+                  whitespace-nowrap
+                "
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-      {/* 2. 최근 회의록 */}
-      <section className="bg-white rounded-lg shadow-sm p-4 border border-gray-100 min-h-[200px]">
-        <RecentMinutes />
-      </section>
+      {/* 메인 콘텐츠 */}
+      <div className="space-y-6">
+        {/* 1. 통계 카드 */}
+        <div ref={sectionRefs.stats} className="animate-fade-up" style={{ animationDelay: '0ms' }}>
+          <StatCards />
+        </div>
 
-      {/* 3. 이슈 트래커 (나중에 풀기) */}
-      <section className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-        <IssueTracker />
-      </section> 
+        {/* 2. 이슈 섹션 */}
+        <div ref={sectionRefs.issues} className="animate-fade-up" style={{ animationDelay: '100ms' }}>
+          <DashboardCard hover={false}>
+            <SectionHeader
+              icon={<BarChart3 size={22} />}
+              title="이슈 현황"
+              subtitle="상태 및 우선순위 분포"
+            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <IssueStatusChart />
+              <PriorityDistribution />
+            </div>
+          </DashboardCard>
+        </div>
+
+        {/* 3. 최근 회의록 */}
+        <div ref={sectionRefs.minutes} className="animate-fade-up" style={{ animationDelay: '200ms' }}>
+          <DashboardCard hover={false}>
+            <SectionHeader
+              icon={<FileText size={22} />}
+              title="최근 회의록"
+              subtitle="AI가 요약한 회의 내용"
+            />
+            <RecentMinutes />
+          </DashboardCard>
+        </div>
+
+        {/* 4. 이번 주 일정 */}
+        <div ref={sectionRefs.schedule} className="animate-fade-up" style={{ animationDelay: '300ms' }}>
+          <DashboardCard hover={false}>
+            <SectionHeader
+              icon={<Calendar size={22} />}
+              title="주간 캘린더"
+              subtitle="예정된 회의와 일정"
+            />
+            <WeeklySchedule />
+          </DashboardCard>
+        </div>
+      </div>
     </div>
   );
 };
