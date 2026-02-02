@@ -50,3 +50,8 @@ spring:
 openvidu:
   url: ${OPENVIDU_URL}
   secret: ${OPENVIDU_SECRET}
+
+springdoc:
+  swagger-ui:
+    url: /openapi.yaml
+    disable-swagger-default-url: true
