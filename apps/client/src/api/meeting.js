@@ -2,6 +2,22 @@
 import api from './axios';
 
 export const meetingApi = {
+  bookMeeting: (projectId, data) => {
+    return api.post(`/api/v1/projects/${projectId}/book-channel`, {
+      title: data.title,
+      start: data.start,
+      end: data.end
+    });
+  },
+
+  // 2. 날짜별 회의 목록 조회 (GET 요청)
+  getMeetingsByDate: (projectId, start, end) => {
+    // 백엔드: @GetMapping("/{projectId}/channels/date")
+    return api.get(`/api/v1/projects/${projectId}/channels/date`, {
+      params: { start, end }
+    });
+  },
+
   // [Refactor Notice] 'Meetings' 용어는 문서상 'Channels'로 통일되어 있습니다.
   // 목록 조회 등은 projectApi.getChannels를 사용해야 합니다.
 
