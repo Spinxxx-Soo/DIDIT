@@ -33,8 +33,8 @@ const WeeklySchedule = () => {
     if (!projectId) return;
 
     try {
-      const startStr = format(startDate, 'yyyy-MM-dd');
-      const endStr = format(endOfWeek(currentDate), 'yyyy-MM-dd');
+      const startStr = format(startDate, "yyyy-MM-dd");
+      const endStr = format(endOfWeek(currentDate), "yyyy-MM-dd");
 
       // 기존 meetingApi.getMeetingsByDate 사용 (GET /api/{projectId}/channels/date)
       const response = await meetingApi.getMeetingsByDate(projectId, startStr, endStr);
