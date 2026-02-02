@@ -36,8 +36,9 @@ export function LeaveProjectModal({
         </h3>
         <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed">
           {isDeleteMode
-            ? `'${projectName}' 프로젝트의 유일한 멤버입니다. 나가면 프로젝트가 영구적으로 삭제됩니다.`
-            : `프로젝트를 나가게 되면 '${projectName}'에 더 이상 접속할 수 없으며, 프로젝트 내에 자료들에 대한 접근 권한을 모두 잃습니다.`}
+            ? (<>'${projectName}' 프로젝트의 유일한 멤버입니다.<br /> 나가면 프로젝트가 영구적으로 삭제됩니다.</>)
+            : (<>`프로젝트를 나가게 되면 '${projectName}'에 더 이상 접속할 수 없으며,<br /> 프로젝트 내에 자료들에 대한 접근 권한을 모두 잃습니다.</>)
+          }
         </p>
       </div>
 
