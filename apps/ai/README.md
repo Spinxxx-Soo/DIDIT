@@ -59,11 +59,11 @@ MAX_BATCH_SIZE=100
 # 로깅 설정
 LOG_LEVEL=INFO
 
-# Redis 설정 (현재 미사용 - 이후 추가)
-# REDIS_HOST=localhost
-# REDIS_PORT=6379
-# REDIS_DB=0
-# REDIS_PASSWORD=
+# Redis 설정
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_TIMEOUT=2
 ```
 
 ### 5. 서버 실행
