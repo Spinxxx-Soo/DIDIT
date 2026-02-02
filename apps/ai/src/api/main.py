@@ -1,81 +1,44 @@
 # api/main.py
-from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from api.routers import issue_priority, meeting_summary
-from api.exceptions import BaseAPIException
-from api.schemas.error import ErrorResponse
+"""최소한의 FastAPI 앱 - 운영용 엔드포인트만 제공"""
+from fastapi import FastAPI
 from common.settings import settings
-import uvicorn
+import redis
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="AI 모델 서비스 API",
+    description="AI 서버 운영용 엔드포인트",
     version=settings.APP_VERSION
 )
 
 
-# 커스텀 예외 핸들러
-@app.exception_handler(BaseAPIException)
-async def api_exception_handler(request: Request, exc: BaseAPIException):
-    """API 예외 핸들러"""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "message": exc.message,
-            "code": exc.code
-        }
-    )
-
-
-# FastAPI Validation Error 핸들러
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """요청 검증 에러 핸들러"""
-    errors = exc.errors()
-    message = "요청 데이터가 유효하지 않습니다"
-    if errors:
-        first_error = errors[0]
-        field = ".".join(str(loc) for loc in first_error.get("loc", []))
-        message = f"{field}: {first_error.get('msg', message)}"
-    
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={
-            "message": message,
-            "code": "VALIDATION_ERROR"
-        }
-    )
-
-
-# 일반 예외 핸들러
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """일반 예외 핸들러"""
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "message": "서버 내부 오류가 발생했습니다",
-            "code": "INTERNAL_SERVER_ERROR"
-        }
-    )
-
-
-# 라우터 등록
-app.include_router(issue_priority.router, prefix="/api/v1")
-app.include_router(meeting_summary.router, prefix="/api/v1")
-
-
 @app.get("/health")
 async def health():
-    """AI 체크 엔드포인트"""
+    """헬스 체크 엔드포인트"""
     return {"status": "ok"}
 
 
+@app.get("/health/redis")
+async def health_redis():
+    """Redis 연결 상태 확인"""
+    try:
+        client = redis.Redis(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            password=settings.REDIS_PASSWORD if settings.REDIS_PASSWORD else None,
+            db=settings.REDIS_DB,
+            socket_timeout=settings.REDIS_TIMEOUT
+        )
+        client.ping()
+        return {"status": "ok", "redis": "connected"}
+    except Exception as e:
+        return {"status": "error", "redis": "disconnected", "error": str(e)}
+
+
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(
         "api.main:app",
         host=settings.HOST,
         port=settings.PORT,
-        reload=True
+        reload=False
     )
