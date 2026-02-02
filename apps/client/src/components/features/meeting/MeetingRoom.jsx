@@ -48,8 +48,15 @@ const MeetingRoom = () => {
         console.log('[DEV] Mock 모드: 백엔드 없이 회의 화면 표시');
       } else {
         // 1. API로 토큰 발급
+        // 응답 형식: "ws://localhost:4443?sessionId=xxx&token=tok_xxx"
         const response = await meetingApi.joinWebRTC(Number(channelId));
-        ({ token, sessionId, openviduUrl } = response.data);
+        const tokenUrl = response.data;
+
+        // URL 파싱하여 필요한 값 추출
+        const url = new URL(tokenUrl);
+        openviduUrl = url.origin; // "ws://localhost:4443"
+        sessionId = url.searchParams.get('sessionId');
+        token = tokenUrl; // OpenVidu는 전체 URL을 토큰으로 사용
 
         // 2. 현재 참가자 목록 조회
         try {
