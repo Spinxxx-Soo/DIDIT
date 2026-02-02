@@ -25,18 +25,16 @@ export const issueApi = {
   // deleteCalendar: (calendarId) => api.delete(`/api/v1/calendar/${calendarId}`),
 };
 
-// [Disabled] 문서에 채팅 API 없음
-// src/api/chat.js
 export const chatApi = {
   // 텍스트 채팅 불러오기
-  getChats: (projectId, params) => api.get(`/api/v1/rooms/${projectId}/chats`, { params }),
+  getChats: (channelId, params) => api.get(`/api/v1/channels/${channelId}/chats`, { params }),
 
   // 채팅 수정
-  updateChat: (chatId, data) => api.patch(`/api/v1/chats/${chatId}`, data),
+  updateChat: (chatId, data) => api.patch(`/api/v1/channels/chats/${chatId}`, data),
 
   // 채팅 삭제
-  deleteChat: (chatId) => api.delete(`/api/v1/chats/${chatId}`),
+  deleteChat: (chatId) => api.delete(`/api/v1/channels/chats/${chatId}`),
 
   // 채팅 전송
-  createChat: (projectId, data) => api.post(`/api/v1/rooms/${projectId}/chats`, data),
+  createChat: (channelId, data) => api.post(`/api/v1/channels/${channelId}/chats`, data),
 };
