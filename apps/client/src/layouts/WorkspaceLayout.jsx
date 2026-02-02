@@ -62,7 +62,6 @@ const WorkspaceLayout = () => {
           <ProjectSidebar />
         </aside>
 
-<<<<<<< HEAD
         {/* 2열: 채널 사이드바 */}
         <aside
           className="
@@ -75,11 +74,7 @@ const WorkspaceLayout = () => {
             border-[var(--border-default)]
           "
         >
-          <ChannelSidebar />
-=======
-        <aside className="w-[240px] bg-[var(--bg-sidebar)] border-r border-[var(--border-default)] flex-shrink-0 flex flex-col">
           <ChannelSidebar key={projectId} />
->>>>>>> 77a7f3d7ce0cbfa9a9e9e540bffdd053ef41a514
         </aside>
 
         {/* 메인 콘텐츠 */}
