@@ -36,6 +36,12 @@ const useLoungeStore = create((set, get) => ({
     selectedIssueId: null
   }),
 
+  // 이슈 트래커 패널 열기
+  openIssueMode: () => set({
+    activePanel: 'issue',
+    selectedIssueId: null
+  }),
+
   // 이슈 CRUD
   fetchIssues: async (roomId) => {
     set({ isLoading: true });

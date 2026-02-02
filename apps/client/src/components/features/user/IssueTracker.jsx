@@ -1,115 +1,177 @@
+/**
+ * Apple-Style Issue Tracker
+ * Table layout with pagination
+ */
 import React, { useState } from 'react';
-import useLoungeStore from '@/store/useLoungeStore'; // ★ 무전기 가져오기
+import useLoungeStore from '@/store/useLoungeStore';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 // 임시 데이터 (나중에 API 연결)
 const MOCK_ISSUES = [
-  { id: 143, priority: 'High', title: '로그인 버그 수정', assignee: '김도연', status: '진행중', author: '김이', date: '2025-01-20' },
-  { id: 142, priority: 'Medium', title: 'UI 컴포넌트 리팩토링', assignee: '이다연', status: '대기중', author: '손율준', date: '2025-01-19' },
-  { id: 141, priority: 'Low', title: '문서 업데이트', assignee: '하지연', status: '완료', author: '홍수민', date: '2025-01-18' },
-  { id: 140, priority: 'High', title: '결제 모듈 연동 실패', assignee: '박지성', status: '진행중', author: '김이', date: '2025-01-17' },
-  { id: 139, priority: 'Medium', title: '메인 페이지 배너 교체', assignee: '손흥민', status: '대기중', author: '이강인', date: '2025-01-16' },
-  { id: 138, priority: 'Low', title: '폰트 사이즈 조정', assignee: '김민재', status: '완료', author: '황희찬', date: '2025-01-15' },
+  { id: 143, priority: 'High', title: '로그인 버그 수정', assignee: '김도연', status: '진행중', date: '2025-01-20' },
+  { id: 142, priority: 'Medium', title: 'UI 컴포넌트 리팩토링', assignee: '이다연', status: '대기중', date: '2025-01-19' },
+  { id: 141, priority: 'Low', title: '문서 업데이트', assignee: '하지연', status: '완료', date: '2025-01-18' },
+  { id: 140, priority: 'High', title: '결제 모듈 연동 실패', assignee: '홍수민', status: '진행중', date: '2025-01-17' },
+  { id: 139, priority: 'Medium', title: '메인 페이지 배너 교체', assignee: '김이', status: '대기중', date: '2025-01-16' },
+  { id: 138, priority: 'Low', title: 'API 응답 최적화', assignee: '손을준', status: '완료', date: '2025-01-15' },
+  { id: 137, priority: 'High', title: '보안 취약점 패치', assignee: '이강인', status: '진행중', date: '2025-01-14' },
 ];
 
 const ITEMS_PER_PAGE = 5;
 
 const IssueTracker = () => {
-  const { openIssueDetail } = useLoungeStore(); // ★ 스토어에서 함수 꺼내기
+  const { openIssueDetail } = useLoungeStore();
   const [currentPage, setCurrentPage] = useState(1);
 
-  // 페이지네이션 로직
   const totalPages = Math.ceil(MOCK_ISSUES.length / ITEMS_PER_PAGE);
   const currentIssues = MOCK_ISSUES.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
 
-  // 뱃지 스타일 도우미 함수
-  const getPriorityBadge = (p) => {
+  // 우선순위 스타일
+  const getPriorityStyle = (priority) => {
     const styles = {
-      High: 'bg-red-100 text-red-700 border-red-200',
-      Medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-      Low: 'bg-green-100 text-green-700 border-green-200',
+      High: 'bg-red-50 text-red-600',
+      Medium: 'bg-amber-50 text-amber-600',
+      Low: 'bg-emerald-50 text-emerald-600',
     };
-    return styles[p] || 'bg-gray-100 text-gray-700';
+    return styles[priority] || 'bg-gray-50 text-gray-600';
+  };
+
+  // 상태 스타일
+  const getStatusStyle = (status) => {
+    const styles = {
+      '진행중': 'bg-blue-50 text-blue-600',
+      '대기중': 'bg-gray-100 text-gray-600',
+      '완료': 'bg-emerald-50 text-emerald-600',
+    };
+    return styles[status] || 'bg-gray-100 text-gray-600';
   };
 
   return (
-    <div className="w-full flex flex-col h-full">
-      <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-        ⚙️ 진행중인 이슈 (이슈 트래커)
-      </h2>
+    <div className="w-full">
+      {/* 테이블 */}
+      <div className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-subtle)]">
+        {/* 테이블 바디 */}
+        <div className="divide-y divide-[var(--border-subtle)] bg-white">
+          {currentIssues.map((issue, index) => (
+            <div
+              key={issue.id}
+              onClick={() => openIssueDetail(issue.id)}
+              className="
+                grid grid-cols-[80px_1fr_100px_100px_80px_60px] gap-4 px-4 py-3.5
+                cursor-pointer
+                transition-all duration-200
+                hover:bg-[var(--bg-input)]
+                animate-fade-up
+              "
+              style={{ animationDelay: `${index * 30}ms` }}
+            >
+              {/* 우선순위 */}
+              <span className={`
+                inline-flex items-center justify-center
+                px-2 py-0.5
+                text-[11px] font-semibold
+                rounded-full
+                w-fit
+                ${getPriorityStyle(issue.priority)}
+              `}>
+                {issue.priority}
+              </span>
 
-      {/* 테이블 영역 */}
-      <div className="overflow-hidden border border-gray-200 rounded-lg shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">우선순위</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">제목</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">번호</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">담당자</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">작성자</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">수정일</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {currentIssues.map((issue) => (
-              <tr 
-                key={issue.id} 
-                onClick={() => openIssueDetail(issue.id)} // ★ 클릭 시 사이드바 열기!
-                className="hover:bg-blue-50 cursor-pointer transition-colors"
-              >
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-md border ${getPriorityBadge(issue.priority)}`}>
-                    {issue.priority}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">{issue.title}</td>
-                <td className="px-4 py-3 text-sm text-gray-500 text-center">#{issue.id}</td>
-                <td className="px-4 py-3 text-sm text-gray-500 text-center">{issue.assignee}</td>
-                <td className="px-4 py-3 text-center">
-                  <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
-                    {issue.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-500 text-center">{issue.author}</td>
-                <td className="px-4 py-3 text-sm text-gray-500 text-center">{issue.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              {/* 제목 */}
+              <span className="text-sm font-medium text-[var(--text-bright)] truncate">
+                {issue.title}
+              </span>
+
+              {/* 담당자 */}
+              <span className="text-sm text-[var(--text-secondary)]">
+                {issue.assignee}
+              </span>
+
+              {/* 날짜 */}
+              <span className="text-sm text-[var(--text-tertiary)]">
+                {issue.date}
+              </span>
+
+              {/* 상태 */}
+              <span className={`
+                inline-flex items-center justify-center
+                px-2 py-0.5
+                text-[11px] font-medium
+                rounded-full
+                w-fit
+                ${getStatusStyle(issue.status)}
+              `}>
+                {issue.status}
+              </span>
+
+              {/* ID */}
+              <span className="text-sm text-[var(--text-tertiary)] text-right">
+                #{issue.id}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 페이지네이션 */}
-      <div className="flex items-center justify-center gap-2 mt-4">
-        <button 
-          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-          disabled={currentPage === 1}
-          className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 text-sm"
-        >
-          Prev
-        </button>
-        {Array.from({ length: totalPages }).map((_, i) => (
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1 mt-4 pt-4">
           <button
-            key={i}
-            onClick={() => setCurrentPage(i + 1)}
-            className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium transition-colors
-              ${currentPage === i + 1 ? 'bg-gray-800 text-white' : 'hover:bg-gray-100 text-gray-700'}
-            `}
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="
+                w-8 h-8
+                flex items-center justify-center
+                rounded-lg
+                text-[var(--text-secondary)]
+                transition-all duration-200
+                hover:bg-[var(--bg-input)]
+                disabled:opacity-30 disabled:cursor-not-allowed
+              "
           >
-            {i + 1}
+            <ChevronLeft size={16} />
           </button>
-        ))}
-        <button 
-          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-          disabled={currentPage === totalPages}
-          className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 text-sm"
-        >
-          Next
-        </button>
-      </div>
+
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentPage(i + 1)}
+              className={`
+                  w-8 h-8
+                  flex items-center justify-center
+                  rounded-lg
+                  text-sm font-medium
+                  transition-all duration-200
+                  ${currentPage === i + 1
+                  ? 'bg-[var(--color-green-primary)] text-white'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-input)]'
+                }
+                `}
+            >
+              {i + 1}
+            </button>
+          ))}
+
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="
+              w-8 h-8
+              flex items-center justify-center
+              rounded-lg
+              text-[var(--text-secondary)]
+              transition-all duration-200
+              hover:bg-[var(--bg-input)]
+              disabled:opacity-30 disabled:cursor-not-allowed
+            "
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

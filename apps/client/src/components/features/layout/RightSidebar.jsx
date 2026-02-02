@@ -229,23 +229,23 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
         </div>
       )}
 
-      {/* 2. 이슈 모드 (Existing) */}
+      {/* 2. 이슈 모드 */}
       {isIssueMode && (
-        <div className="absolute inset-0 w-full h-full overflow-hidden bg-[var(--bg-panel)]">
+        <div className="absolute inset-0 w-full h-full overflow-hidden bg-[#F8F9FA] z-10">
           {/* [LAYER 1] 이슈 목록 화면 */}
           <div
             className={`
-              absolute inset-0 w-full h-full flex flex-col bg-[var(--bg-panel)] transition-transform duration-300 ease-in-out
+              absolute inset-0 w-full h-full flex flex-col bg-[#F8F9FA] transition-transform duration-300 ease-in-out
               ${isDetailView ? '-translate-x-[20%]' : 'translate-x-0'} 
             `}
             style={{ pointerEvents: isDetailView ? 'none' : 'auto' }}
           >
-            <div className="h-14 flex items-center justify-between px-5 border-b border-[var(--border-default)]">
-              <h2 className="font-bold text-lg text-[var(--text-bright)]">이슈 트래커</h2>
+            <div className="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-100 shadow-sm shrink-0">
+              <h2 className="font-bold text-lg text-gray-800">이슈 트래커</h2>
               <IconButton variant="ghost" size="sm" icon={<X size={18} />} onClick={onClose} />
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[var(--bg-app)]">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F8F9FA]">
               {sortedIssues.map((issue) => (
                 <Card
                   key={issue.id}
