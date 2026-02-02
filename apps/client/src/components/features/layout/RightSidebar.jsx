@@ -273,7 +273,7 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
                         </Badge>
                       </div>
                       <span className="text-xs text-[var(--text-tertiary)] font-mono">
-                        #{issue.id}
+                        #{issue.issueNo || issue.id}
                       </span>
                     </div>
 
