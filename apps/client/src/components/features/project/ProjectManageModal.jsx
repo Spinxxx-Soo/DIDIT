@@ -20,9 +20,11 @@ import { getProjectColor, getProjectInitial } from '@/utils/projectUtils';
 export function ProjectManageModal({ isOpen, onClose }) {
   const { user } = useAuthStore();
   const {
-    projects,
+    allProjects,
+    fetchAllProjects,
     updateProjectName,
     leaveProject,
+    deleteProject,
     transferOwnership,
     fetchParticipants,
     createProject,
@@ -40,6 +42,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
   // Leave 모달 상태
   const [leaveTarget, setLeaveTarget] = useState(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
 
   // Transfer 모달 상태
   const [transferTarget, setTransferTarget] = useState(null);
@@ -50,15 +53,19 @@ export function ProjectManageModal({ isOpen, onClose }) {
 
   // 모달 닫힐 때 상태 초기화
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      fetchAllProjects(); // 모달이 열릴 때 전체 목록을 서버에서 새로 가져옴
+    } 
+    else {
       setEditingProjectId(null);
       setEditingName('');
       setNameError('');
       setLeaveTarget(null);
       setTransferTarget(null);
       setIsCreateModalOpen(false);
+      setIsDeleteMode(false);
     }
-  }, [isOpen]);
+  }, [isOpen, fetchAllProjects]);
 
   // 팀장 여부 확인
   const isOwner = (project) => project.ownerId === user?.userId;
@@ -75,7 +82,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
     if (!editingName.trim()) return;
 
     // 현재 프로젝트 찾기
-    const currentProject = projects.find(p => p.id === projectId);
+    const currentProject = allProjects.find(p => p.id === projectId);
     if (!currentProject) return;
 
     // 같은 이름이면 그냥 종료
@@ -104,12 +111,21 @@ export function ProjectManageModal({ isOpen, onClose }) {
   // Leave 버튼 클릭
   const handleLeaveClick = async (project) => {
     if (isOwner(project)) {
-      // 팀장인 경우 참여자 목록 조회 후 Transfer 모달 열기
+      // 팀장인 경우 참여자 목록 조회
       const participantList = await fetchParticipants(project.id);
-      setParticipants(participantList);
-      setTransferTarget(project);
+
+      if (participantList.length === 1) {
+        // Case A: 팀장이 혼자 → 삭제 모드로 LeaveProjectModal 열기
+        setIsDeleteMode(true);
+        setLeaveTarget(project);
+      } else {
+        // Case B: 팀장 + 멤버 있음 → Transfer 모달 열기
+        setParticipants(participantList);
+        setTransferTarget(project);
+      }
     } else {
-      // 일반 멤버인 경우 Leave 확인 모달 열기
+      // Case C: 일반 멤버 → 나가기 모드로 LeaveProjectModal 열기
+      setIsDeleteMode(false);
       setLeaveTarget(project);
     }
   };
@@ -119,9 +135,18 @@ export function ProjectManageModal({ isOpen, onClose }) {
     if (!leaveTarget) return;
 
     setIsLeaving(true);
-    await leaveProject(leaveTarget.id);
+
+    if (isDeleteMode) {
+      // 삭제 모드: deleteProject 호출
+      await deleteProject(leaveTarget.id);
+    } else {
+      // 나가기 모드: leaveProject 호출
+      await leaveProject(leaveTarget.id);
+    }
+
     setIsLeaving(false);
     setLeaveTarget(null);
+    setIsDeleteMode(false);
   };
 
   // Transfer 확인 (팀장 위임 후 Leave)
@@ -153,12 +178,12 @@ export function ProjectManageModal({ isOpen, onClose }) {
       >
         {/* 프로젝트 목록 */}
         <div className="flex flex-col gap-3">
-          {projects.length === 0 ? (
+          {allProjects.length === 0 ? (
             <p className="text-[14px] text-[var(--text-tertiary)] text-center py-8">
               참여 중인 프로젝트가 없습니다.
             </p>
           ) : (
-            projects.map((project) => {
+            allProjects.map((project) => {
               const editing = editingProjectId === project.id;
               const owner = isOwner(project);
 
@@ -272,13 +297,17 @@ export function ProjectManageModal({ isOpen, onClose }) {
         </section>
       </Modal>
 
-      {/* Leave 확인 모달 */}
+      {/* Leave/Delete 확인 모달 */}
       <LeaveProjectModal
         isOpen={!!leaveTarget}
-        onClose={() => setLeaveTarget(null)}
+        onClose={() => {
+          setLeaveTarget(null);
+          setIsDeleteMode(false);
+        }}
         onConfirm={handleLeaveConfirm}
         projectName={leaveTarget?.name || ''}
         isLoading={isLeaving}
+        isDeleteMode={isDeleteMode}
       />
 
       {/* 팀장 위임 모달 */}

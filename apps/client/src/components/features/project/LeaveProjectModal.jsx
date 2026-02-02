@@ -9,6 +9,7 @@ import { Button } from '@/components/common/Button';
  * @param {Function} props.onConfirm - 확인 핸들러
  * @param {string} props.projectName - 프로젝트 이름
  * @param {boolean} props.isLoading - 로딩 상태
+ * @param {boolean} props.isDeleteMode - 삭제 모드 여부
  */
 export function LeaveProjectModal({
   isOpen,
@@ -16,6 +17,7 @@ export function LeaveProjectModal({
   onConfirm,
   projectName,
   isLoading = false,
+  isDeleteMode = false,
 }) {
   return (
     <Modal
@@ -28,11 +30,15 @@ export function LeaveProjectModal({
       {/* Content */}
       <div className="text-center">
         <h3 className="text-[18px] font-semibold text-[var(--text-bright)] mb-3">
-          정말 프로젝트를 떠나시겠습니까?
+          {isDeleteMode
+            ? '프로젝트를 삭제하시겠습니까?'
+            : '정말 프로젝트를 떠나시겠습니까?'}
         </h3>
         <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed">
-          프로젝트를 나가게 되면 '{projectName}'에 더 이상 접속할 수 없으며,
-          프로젝트 내에 자료들에 대한 접근 권한을 모두 잃습니다.
+          {isDeleteMode
+            ? (<>{projectName} 프로젝트의 유일한 멤버입니다.<br /> 나가면 프로젝트가 영구적으로 삭제됩니다.</>)
+            : (<>`프로젝트를 나가게 되면 {projectName}에 더 이상 접속할 수 없으며,<br /> 프로젝트 내에 자료들에 대한 접근 권한을 모두 잃습니다.</>)
+          }
         </p>
       </div>
 
@@ -44,7 +50,7 @@ export function LeaveProjectModal({
           isLoading={isLoading}
           className="w-full"
         >
-          나가기
+          {isDeleteMode ? '삭제하기' : '나가기'}
         </Button>
         <Button
           variant="secondary"

@@ -1,80 +1,130 @@
-// src/pages/components/RecentMinutes.jsx
+/**
+ * Apple-Style Recent Minutes
+ * Card-based layout, clean design
+ */
 import React, { useState } from 'react';
-import { Rnd } from 'react-rnd'; // ★ 드래그 & 리사이징 핵심 라이브러리
+import { FileText, Calendar } from 'lucide-react';
+import DraggableSummaryWindow from '@/components/features/meeting/DraggableSummaryWindow';
 
-// 임시 데이터
+// 임시 데이터 (AiSummaryModal 형식에 맞춤)
 const MOCK_MINUTES = [
-  { id: 1, title: '[2025-01-10] 개발회의.md - 로그인 버그', date: '2025-01-10', content: '로그인 버그 관련 논의 내용입니다...' },
-  { id: 2, title: '[2025-01-08] 개발회의.md - UI 개선', date: '2025-01-08', content: 'UI 컴포넌트 통일화 작업 논의...' },
-  { id: 3, title: '[2025-01-09] 긴급버그.md - 결제 오류', date: '2025-01-09', content: 'PG사 연동 오류 수정 건...' },
+  {
+    id: 1,
+    title: '개발회의 - 로그인 버그',
+    date: '2025-01-10T10:00:00',
+    channel: '개발팀',
+    content: [
+      '로그인 세션 만료 시 자동 갱신 로직이 실패하는 문제 확인',
+      'Refresh Token의 만료 시간을 2주로 연장하기로 결정',
+      '클라이언트 측 인터셉터에서 401 에러 처리를 보강하기로 함'
+    ],
+    actionItems: [
+      { id: 1, text: 'Refresh Token 만료 시간 설정 변경', checked: false },
+      { id: 2, text: 'Axios 인터셉터 로직 수정', checked: true }
+    ]
+  },
+  {
+    id: 2,
+    title: '개발회의 - UI 개선',
+    date: '2025-01-08T14:30:00',
+    channel: '디자인팀',
+    content: [
+      '전체적인 UI 디자인 시스템을 Apple 스타일로 통일하기로 함',
+      '버튼, 카드, 모달 등의 Radius를 키우고 그림자 효과를 부드럽게 적용',
+      '폰트는 Pretendard Variable을 사용하며 가독성을 높임'
+    ],
+    actionItems: [
+      { id: 1, text: '공통 컴포넌트 스타일 업데이트', checked: false },
+      { id: 2, text: 'Lounge 페이지 디자인 시안 적용', checked: true }
+    ]
+  },
+  {
+    id: 3,
+    title: '긴급버그 - 결제 오류',
+    date: '2025-01-09T09:15:00',
+    channel: '결제팀',
+    content: [
+      'PG사 연동 시 간헐적으로 결제 승인이 누락되는 현상 발견',
+      'API 응답 지연으로 인한 타임아웃 처리가 원인으로 파악됨',
+      '타임아웃 설정을 30초에서 60초로 늘리고 재시도 로직 추가'
+    ],
+    actionItems: [
+      { id: 1, text: 'PG사 API 타임아웃 설정 변경', checked: true },
+      { id: 2, text: '결제 실패 시 재시도 모달 구현', checked: false }
+    ]
+  },
 ];
 
 const RecentMinutes = () => {
-  // 어떤 회의록이 열렸는지 관리 (null이면 닫힘)
   const [openedMinute, setOpenedMinute] = useState(null);
 
   return (
-    <div className="h-full flex flex-col max-h-full overflow-hidden">
-      <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-        📋 최근 회의록
-      </h2>
-
-      {/* 회의록 리스트 */}
-      <ul className="space-y-2 flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-1">
-        {MOCK_MINUTES.map((minute) => (
-          <li
+    <div className="w-full">
+      {/* 회의록 카드 그리드 - 전체 너비 반응형 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {MOCK_MINUTES.map((minute, index) => (
+          <div
             key={minute.id}
             onClick={() => setOpenedMinute(minute)}
-            className="p-3 bg-gray-50 hover:bg-blue-50 border border-gray-100 rounded-lg cursor-pointer transition-colors flex items-center justify-between group"
+            className="
+              p-4
+              bg-[var(--bg-input)]
+              rounded-[var(--radius-xl)]
+              border border-[var(--border-subtle)]
+              cursor-pointer
+              transition-all duration-300
+              hover:-translate-y-1
+              hover:shadow-[var(--shadow-md)]
+              hover:border-[var(--border-strong)]
+              group
+              animate-fade-up
+            "
+            style={{ animationDelay: `${index * 50}ms` }}
           >
-            <span className="text-sm text-gray-700 truncate font-medium group-hover:text-blue-700">
+            {/* 아이콘 + 채널 */}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="
+                w-8 h-8
+                flex items-center justify-center
+                rounded-[var(--radius-lg)]
+                bg-[var(--success-bg)]
+                text-[var(--color-green-primary)]
+              ">
+                <FileText size={14} />
+              </div>
+              <span className="text-xs text-[var(--text-tertiary)]">
+                {minute.channel}
+              </span>
+            </div>
+
+            {/* 제목 */}
+            <h4 className="text-sm font-semibold text-[var(--text-bright)] mb-2 line-clamp-1 group-hover:text-[var(--color-green-primary)] transition-colors">
               {minute.title}
-            </span>
-          </li>
-        ))}
-      </ul>
+            </h4>
 
-      {/* ★ Draggable Modal (Rnd) 영역 */}
-      {openedMinute && (
-        <Rnd
-          default={{
-            x: 100, y: 100, // 초기 위치
-            width: 400, height: 300, // 초기 크기
-          }}
-          minWidth={300}
-          minHeight={200}
-          bounds="window" // 화면 밖으로 못 나가게
-          className="z-50 border rounded-lg shadow-2xl bg-white overflow-hidden flex flex-col"
-          dragHandleClassName="modal-header" // 이 클래스를 가진 영역을 잡아야 드래그 됨
-        >
-          {/* 모달 헤더 (드래그 손잡이) */}
-          <div className="modal-header bg-gray-100 p-3 border-b flex justify-between items-center cursor-move select-none">
-            <span className="font-bold text-sm text-gray-700 truncate pr-4">
-              {openedMinute.title}
-            </span>
-            {/* 닫기 버튼 (드래그 이벤트 전파 방지) */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // 중요: 드래그랑 겹치지 않게
-                setOpenedMinute(null);
-              }}
-              className="text-gray-400 hover:text-red-500 cursor-pointer"
-            >
-              ✖
-            </button>
-          </div>
-
-          {/* 모달 내용 (여기는 드래그 안됨) */}
-          <div className="p-4 overflow-y-auto flex-1 bg-white cursor-default">
-            <p className="text-sm text-gray-600 whitespace-pre-wrap">
-              {openedMinute.content}
+            {/* 미리보기 (첫 번째 항목) */}
+            <p className="text-xs text-[var(--text-tertiary)] line-clamp-2 mb-3">
+              {minute.content[0]}
             </p>
-            <div className="mt-4 pt-4 border-t text-xs text-gray-400">
-              작성일: {openedMinute.date}
+
+            {/* 날짜 */}
+            <div className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">
+              <Calendar size={12} />
+              {new Date(minute.date).toLocaleDateString('ko-KR', {
+                month: 'long',
+                day: 'numeric'
+              })}
             </div>
           </div>
-        </Rnd>
-      )}
+        ))}
+      </div>
+
+      {/* DraggableSummaryWindow 사용 (사이드바와 동일) */}
+      <DraggableSummaryWindow
+        isOpen={!!openedMinute}
+        onClose={() => setOpenedMinute(null)}
+        summary={openedMinute}
+      />
     </div>
   );
 };

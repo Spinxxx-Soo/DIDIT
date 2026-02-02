@@ -1,5 +1,9 @@
+/**
+ * Apple-Style Global Navigation Bar
+ * Glassmorphism, clean design, subtle interactions
+ */
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import logo from '@/assets/didit_logo.png';
 import { MessageCircle, ClipboardList } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
@@ -8,7 +12,7 @@ import { Button } from '@/components/common/Button';
 import { GithubRepoSection } from './GithubRepoSection';
 
 /**
- * Global Navigation Bar 컴포넌트
+ * Global Navigation Bar 컴포넌트 - Apple Style
  * @param {Object} props
  * @param {'landing' | 'workspace'} props.variant - GNB 모드
  * @param {Function} props.onChatClick - 채팅 버튼 클릭 핸들러
@@ -41,15 +45,43 @@ const GNB = ({
     }
   }, [projectId, fetchProject]);
 
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
   return (
-    <header className="h-16 border-b border-[var(--border-default)] px-6 flex items-center justify-between bg-[var(--bg-panel)] flex-shrink-0">
+    <header
+      className="
+        h-16 
+        pl-[18px]
+        pr-6 
+        flex 
+        items-center 
+        justify-between 
+        flex-shrink-0
+        bg-[var(--bg-glass)]
+        backdrop-blur-xl
+        backdrop-saturate-[180%]
+        border-b 
+        border-[var(--border-default)]
+        sticky
+        top-0
+        z-40
+      "
+    >
       {/* 로고 + 저장소 영역 */}
-      <div className="flex items-center gap-4">
-        <Link to={isWorkspace ? "/mypage" : "/"} className="flex items-center gap-2">
+      <div className="flex items-center gap-5">
+        <Link
+          to={isWorkspace ? "/mypage" : "/"}
+          className="flex items-center gap-2 transition-opacity hover:opacity-80"
+        >
           <img
             src={logo}
             alt="로고"
-            className="h-10 w-auto"
+            className="h-9 w-auto"
           />
         </Link>
 
@@ -65,7 +97,7 @@ const GNB = ({
       </div>
 
       {/* 네비게이션 영역 */}
-      <nav className="flex items-center gap-3 text-[15px]">
+      <nav className="flex items-center gap-2">
         {isWorkspace ? (
           <>
             {showChat && (
@@ -74,7 +106,13 @@ const GNB = ({
                 size="sm"
                 leftIcon={<MessageCircle size={16} />}
                 onClick={onChatClick}
-                className={activePanel === 'chat' ? 'border-[var(--color-green-primary)] text-[var(--color-green-primary)]' : ''}
+                className={`
+                  rounded-full
+                  ${activePanel === 'chat'
+                    ? 'border-[var(--color-green-primary)] text-[var(--color-green-primary)] bg-[var(--success-bg)]'
+                    : ''
+                  }
+                `}
               >
                 채팅
               </Button>
@@ -84,7 +122,13 @@ const GNB = ({
               size="sm"
               leftIcon={<ClipboardList size={16} />}
               onClick={onIssueClick}
-              className={activePanel === 'issue' ? 'border-[var(--color-green-primary)] text-[var(--color-green-primary)]' : ''}
+              className={`
+                rounded-full
+                ${activePanel === 'issue'
+                  ? 'border-[var(--color-green-primary)] text-[var(--color-green-primary)] bg-[var(--success-bg)]'
+                  : ''
+                }
+              `}
             >
               이슈
             </Button>
@@ -92,13 +136,22 @@ const GNB = ({
         ) : (
           <>
             {isAuthenticated ? (
-              <Button variant="secondary" size="sm" onClick={logout}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="rounded-full"
+              >
                 Logout
               </Button>
             ) : (
               <Link to="/login">
-                <Button variant="primary" size="sm">
-                  Login
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="shadow-none hover:shadow-[var(--shadow-glow-strong)]"
+                >
+                  시작하기
                 </Button>
               </Link>
             )}

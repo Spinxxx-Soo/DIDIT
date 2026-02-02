@@ -1,7 +1,32 @@
 import { create } from 'zustand';
 import { projectApi } from '@/api/project';
+import { all } from 'axios';
 
 const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+
+/**
+ * ISO 타임스탬프를 상대 시간으로 변환
+ * @param {string} isoString - ISO 8601 형식의 날짜 문자열
+ * @returns {string} - "2시간 전", "3일 전" 등
+ */
+const formatRelativeTime = (isoString) => {
+  if (!isoString) return '정보 없음';
+
+  const now = new Date();
+  const past = new Date(isoString);
+  const diffMs = now - past;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return '방금 전';
+  if (diffMins < 60) return `${diffMins}분 전`;
+  if (diffHours < 24) return `${diffHours}시간 전`;
+  if (diffDays < 30) return `${diffDays}일 전`;
+
+  return past.toLocaleDateString('ko-KR');
+};
+
 
 /**
  * Mock 프로젝트 데이터
@@ -53,12 +78,13 @@ const MOCK_PARTICIPANTS = [
 const useProjectStore = create((set, get) => ({
   // State
   projects: [],
+  allProjects: [], // 전체 프로젝트 목록 (사이드바용)
   currentProject: null,
   isLoading: false,
   error: null,
 
   // ------------------------------------------------------------------
-  // [1] 프로젝트 목록 조회
+  // [1] 프로젝트 목록 조회 (최근 조회 프로젝트)
   // ------------------------------------------------------------------
   fetchProjects: async () => {
     set({ isLoading: true, error: null });
@@ -70,13 +96,67 @@ const useProjectStore = create((set, get) => ({
     }
 
     try {
-      const response = await projectApi.getProjects();
-      const projectsData = Array.isArray(response.data) ? response.data : [];
-      set({ projects: projectsData, isLoading: false });
+      // 최근 조회 프로젝트 목록 가져오기
+      const response = await projectApi.getRecentProjects();
+      const recentProjects = Array.isArray(response.data) ? response.data : [];
+
+      // 각 프로젝트의 참여자 수 조회
+      const projectsWithCounts = await Promise.all(
+        recentProjects.map(async (recent) => {
+          try {
+            const participantsRes = await projectApi.getParticipants(recent.project.id);
+            const memberCount = Array.isArray(participantsRes.data) ? participantsRes.data.length : 0;
+
+            // lastViewedAt을 상대 시간으로 변환
+            const lastAccessed = formatRelativeTime(recent.lastViewedAt);
+
+            return {
+              ...recent.project,
+              memberCount,
+              lastAccessed,
+            };
+          } catch (error) {
+            console.error(`프로젝트 ${recent.project.id} 참여자 조회 실패:`, error);
+            return {
+              ...recent.project,
+              memberCount: 0,
+              lastAccessed: formatRelativeTime(recent.lastViewedAt),
+            };
+          }
+        })
+      );
+
+      set({ projects: projectsWithCounts, isLoading: false });
     } catch (error) {
       console.error('프로젝트 목록 조회 실패:', error);
       set({
         projects: [],
+        error: '프로젝트 목록을 불러올 수 없습니다',
+        isLoading: false
+      });
+    }
+  },
+
+  // ------------------------------------------------------------------
+  // [1-2] 전체 프로젝트 목록 조회 (사이드바용)
+  // ------------------------------------------------------------------
+  fetchAllProjects: async () => {
+    set({ isLoading: true, error: null });
+
+    if (IS_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      set({ allProjects: MOCK_PROJECTS, isLoading: false });
+      return;
+    }
+
+    try {
+      const response = await projectApi.getProjects();
+      const projectsData = Array.isArray(response.data) ? response.data : [];
+      set({ allProjects: projectsData, isLoading: false });
+    } catch (error) {
+      console.error('전체 프로젝트 목록 조회 실패:', error);
+      set({
+        allProjects: [],
         error: '프로젝트 목록을 불러올 수 없습니다',
         isLoading: false
       });
@@ -126,6 +206,7 @@ const useProjectStore = create((set, get) => ({
 
       set(state => ({
         projects: [...state.projects, newProject],
+        allProjects: [...state.allProjects, newProject],
         isLoading: false,
       }));
 
@@ -146,6 +227,7 @@ const useProjectStore = create((set, get) => ({
 
       set(state => ({
         projects: [...state.projects, response.data],
+        allProjects: [...state.allProjects, response.data],
         isLoading: false,
       }));
 
@@ -164,8 +246,8 @@ const useProjectStore = create((set, get) => ({
   validateProjectName: async (name) => {
     if (IS_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 200));
-      const { projects } = get();
-      const isDuplicate = projects.some(
+      const { allProjects } = get();
+      const isDuplicate = allProjects.some(
         p => p.name.toLowerCase() === name.toLowerCase()
       );
       return isDuplicate;
@@ -226,6 +308,7 @@ const useProjectStore = create((set, get) => ({
       await new Promise(resolve => setTimeout(resolve, 300));
       set(state => ({
         projects: state.projects.filter(p => p.id !== projectId),
+        allProjects: state.allProjects.filter(p => p.id !== projectId),
         isLoading: false,
       }));
       return { success: true };
@@ -235,6 +318,7 @@ const useProjectStore = create((set, get) => ({
       await projectApi.deleteProject(projectId);
       set(state => ({
         projects: state.projects.filter(p => p.id !== projectId),
+        allProjects: state.allProjects.filter(p => p.id !== projectId),
         isLoading: false,
       }));
       return { success: true };
@@ -255,6 +339,9 @@ const useProjectStore = create((set, get) => ({
       await new Promise(resolve => setTimeout(resolve, 300));
 
       set(state => ({
+        allProjects: state.allProjects.map(p =>
+          p.id === Number(projectId) ? { ...p, repoFullName } : p
+        ),
         projects: state.projects.map(p =>
           p.id === Number(projectId) ? { ...p, repoFullName } : p
         ),
@@ -271,6 +358,9 @@ const useProjectStore = create((set, get) => ({
       await projectApi.updateProjectRepo(projectId, repoFullName);
 
       set(state => ({
+        allProjects: state.allProjects.map(p =>
+          p.id === Number(projectId) ? { ...p, repoFullName } : p
+        ),
         projects: state.projects.map(p =>
           p.id === Number(projectId) ? { ...p, repoFullName } : p
         ),
@@ -303,6 +393,9 @@ const useProjectStore = create((set, get) => ({
         projects: state.projects.map(p =>
           p.id === Number(projectId) ? { ...p, name } : p
         ),
+        allProjects: state.allProjects.map(p =>
+          p.id === Number(projectId) ? { ...p, name } : p
+        ),
       }));
       return { success: true };
     }
@@ -311,6 +404,9 @@ const useProjectStore = create((set, get) => ({
       await projectApi.updateProjectName(projectId, name);
       set(state => ({
         projects: state.projects.map(p =>
+          p.id === Number(projectId) ? { ...p, name } : p
+        ),
+        allProjects: state.allProjects.map(p =>
           p.id === Number(projectId) ? { ...p, name } : p
         ),
       }));
@@ -328,6 +424,7 @@ const useProjectStore = create((set, get) => ({
     if (IS_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 300));
       set(state => ({
+        allProjects: state.allProjects.filter(p => p.id !== Number(projectId)),
         projects: state.projects.filter(p => p.id !== Number(projectId)),
       }));
       return { success: true };
@@ -336,6 +433,7 @@ const useProjectStore = create((set, get) => ({
     try {
       await projectApi.leaveProject(projectId);
       set(state => ({
+        allProjects: state.allProjects.filter(p => p.id !== Number(projectId)),
         projects: state.projects.filter(p => p.id !== Number(projectId)),
       }));
       return { success: true };
@@ -352,6 +450,9 @@ const useProjectStore = create((set, get) => ({
     if (IS_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 300));
       set(state => ({
+        allProjects: state.allProjects.map(p =>
+          p.id === Number(projectId) ? { ...p, ownerId: newOwnerId } : p
+        ),
         projects: state.projects.map(p =>
           p.id === Number(projectId) ? { ...p, ownerId: newOwnerId } : p
         ),
@@ -362,6 +463,9 @@ const useProjectStore = create((set, get) => ({
     try {
       await projectApi.transferOwnership(projectId, newOwnerId);
       set(state => ({
+        allProjects: state.allProjects.map(p =>
+          p.id === Number(projectId) ? { ...p, ownerId: newOwnerId } : p
+        ),
         projects: state.projects.map(p =>
           p.id === Number(projectId) ? { ...p, ownerId: newOwnerId } : p
         ),
