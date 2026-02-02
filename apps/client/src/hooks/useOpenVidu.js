@@ -10,12 +10,8 @@ const useOpenVidu = () => {
   const screenPublisher = useRef(null);
 
   const {
-    isMicOn,
-    isSpeakerOn,
-    isScreenSharing,
     meetingId,
     currentChannelId,
-    setMicOn,
     setScreenSharing,
     setScreenShareStream,
     clearScreenShare,
@@ -161,8 +157,10 @@ const useOpenVidu = () => {
 
   // ------------------------------------------------------------------
   // 마이크 토글
+  // NOTE: getState()는 항상 최신 상태를 반환하므로 의존성 배열 비워도 정상 동작
   // ------------------------------------------------------------------
   const toggleMic = useCallback(() => {
+    const { isMicOn, setMicOn } = useMeetingStore.getState();
     const newMicState = !isMicOn;
     // 세션에 연결된 경우 실제 오디오 스트림도 제어
     if (publisher.current) {
@@ -170,7 +168,7 @@ const useOpenVidu = () => {
     }
     // 상태는 항상 업데이트 (회의 참가 전 미리 설정 가능)
     setMicOn(newMicState);
-  }, [isMicOn, setMicOn]);
+  }, []);
 
   // ------------------------------------------------------------------
   // 스피커 토글 (볼륨 뮤트)
@@ -261,14 +259,16 @@ const useOpenVidu = () => {
 
   // ------------------------------------------------------------------
   // 화면 공유 토글
+  // NOTE: getState()는 항상 최신 상태를 반환하므로 의존성 배열에서 isScreenSharing 제외
   // ------------------------------------------------------------------
   const toggleScreenShare = useCallback(async () => {
+    const { isScreenSharing } = useMeetingStore.getState();
     if (isScreenSharing) {
       await stopScreenShare();
     } else {
       await startScreenShare();
     }
-  }, [isScreenSharing, startScreenShare, stopScreenShare]);
+  }, [startScreenShare, stopScreenShare]);
 
   // ------------------------------------------------------------------
   // 정리

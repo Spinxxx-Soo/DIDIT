@@ -241,7 +241,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
                         {owner && (
                           <Pencil
                             size={12}
-                            className="text-[var(--text-tertiary)] flex-shrink-0"
+                            className="text-[var(--text-tertiary)] cursor-pointer hover:text-[var(--text-primary)] flex-shrink-0"
                             onClick={() => handleEditClick(project)}
                           />
                         )}
