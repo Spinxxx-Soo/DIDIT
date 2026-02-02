@@ -24,8 +24,9 @@ const useChatStore = create((set, get) => ({
 
         console.log(`[SSE] Connecting to channel ${channelId}...`);
 
-        // EventSource with credentials for cookie-based auth
-        const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+        // 환경변수를 못잡아서 일단은 이렇게
+        const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.did-it.xyz';
+        console.log(`[SSE] Connecting using Base URL: ${baseUrl}`);
         const es = new EventSource(`${baseUrl}/api/v1/channels/${channelId}/stream`, {
             withCredentials: true
         });
