@@ -52,6 +52,7 @@ services:
       REDIS_HOST: ${REDIS_HOST:-default}
       REDIS_PORT: ${REDIS_PORT:-default}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-default}
+      SPRING_PROFILES_ACTIVE: prod
     networks:
       - internal
       - caddy_default

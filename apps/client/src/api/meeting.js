@@ -2,19 +2,22 @@
 import api from './axios';
 
 export const meetingApi = {
+  // src/api/meeting.js
   bookMeeting: (projectId, data) => {
     return api.post(`/api/v1/projects/${projectId}/book-channel`, {
       title: data.title,
-      start: data.start,
-      end: data.end
+      start: `${data.start}T00:00:00`,
+      end: `${data.end}T23:59:59`
     });
   },
 
   // 2. 날짜별 회의 목록 조회 (GET 요청)
   getMeetingsByDate: (projectId, start, end) => {
-    // 백엔드: @GetMapping("/{projectId}/channels/date")
     return api.get(`/api/v1/projects/${projectId}/channels/date`, {
-      params: { start, end }
+      params: {
+        start: `${start}T00:00:00`,
+        end: `${end}T23:59:59`
+      }
     });
   },
 
