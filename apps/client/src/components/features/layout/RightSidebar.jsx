@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { IconButton } from '@/components/common/Button/IconButton';
@@ -8,8 +8,8 @@ import { Avatar } from '@/components/common/Avatar';
 import { Card } from '@/components/common/Card';
 
 import { useParams } from 'react-router-dom'; // Added
-
-import { chatApi } from '@/api/features';
+import useProjectStore from '@/store/useProjectStore';
+import useChatStore from '@/store/useChatStore';
 import useAuthStore from '@/store/useAuthStore';
 import useLoungeStore from '@/store/useLoungeStore';
 import IssueDetailPanel from './IssueDetailPanel';
@@ -43,20 +43,29 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
   const { projectId } = useParams(); // Added
   const { openIssueDetail, openCreateIssue, issues, fetchIssues } = useLoungeStore(); // Added fetchIssues
   const { user } = useAuthStore();
+  const { fetchParticipants } = useProjectStore();
+  const [memberMap, setMemberMap] = useState({});
 
   const isChat = activePanel === 'chat';
   const isIssueMode = activePanel === 'issue' || activePanel === 'issue_detail';
   const isDetailView = activePanel === 'issue_detail';
 
+  // Local input state
   const [chatMessage, setChatMessage] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [isLoadingChat, setIsLoadingChat] = useState(false);
+
+  // Store hooks
+  const { messages, isLoading: isLoadingChat, connect, disconnect, fetchRecentChats, sendMessage } = useChatStore();
 
   const messagesEndRef = useRef(null);
 
   // Priority별로 정렬
   const priorityOrder = { high: 0, medium: 1, low: 2 };
-  const sortedIssues = [...issues].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+  const sortedIssues = useMemo(() => {
+    return [...(issues || [])].sort((a, b) =>
+      (priorityOrder[a?.priority] ?? 2) - (priorityOrder[b?.priority] ?? 2)
+    );
+  }, [issues]);
 
   // 이슈 목록 불러오기
   useEffect(() => {
@@ -65,53 +74,16 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
     }
   }, [isIssueMode, projectId, fetchIssues]);
 
-  // 채팅 불러오기
-  const fetchChats = React.useCallback(async () => {
-    if (!channelId) return;
-
-    // Mock Mode Check
-    const isMock = import.meta.env.VITE_USE_MOCK === 'true';
-
-    try {
-      setIsLoadingChat(true);
-
-      if (isMock) {
-        // Mock Data
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        const mockMessages = [
-          { id: 1, content: `채널 ${channelId}에 오신 것을 환영합니다!`, sender: 'System', time: '오전 09:00', isMine: false },
-          { id: 2, content: '새로운 기능을 확인해보세요.', sender: '김도연', time: '오전 09:05', isMine: false },
-        ];
-
-        setMessages(mockMessages);
-
-      } else {
-        // Real API
-        const response = await chatApi.getChats(channelId);
-        const fetchedMessages = response.data.map(msg => ({
-          id: msg.id,
-          content: msg.content,
-          sender: msg.senderName || msg.sender?.name || '알 수 없음',
-          time: msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-          isMine: msg.senderId === user?.userId || msg.sender?.id === user?.userId,
-        }));
-        setMessages(fetchedMessages);
-      }
-
-    } catch (error) {
-      console.error('채팅 불러오기 실패:', error);
-    } finally {
-      setIsLoadingChat(false);
-    }
-  }, [channelId, user]);
-
-  // 채널이 바뀌거나 패널 열릴 때 로드
+  // 채팅 연결 및 데이터 로드
   useEffect(() => {
     if (isChat && channelId) {
-      fetchChats();
+      fetchRecentChats(channelId);
+      connect(channelId);
     }
-  }, [isChat, channelId, fetchChats]);
+    return () => {
+      disconnect();
+    };
+  }, [isChat, channelId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 스크롤 자동 이동
   useEffect(() => {
@@ -120,28 +92,41 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
     }
   }, [messages, isChat]);
 
+  // 참여자 정보
+  useEffect(() => {
+    let ignore = false;
+
+    const loadParticipants = async () => {
+      if (isChat && projectId) {
+        try {
+          const participants = await fetchParticipants(projectId);
+          if (!ignore) {
+            const mapping = {};
+            participants.forEach(p => {
+              mapping[p.id] = p.name;
+            });
+            setMemberMap(mapping);
+          }
+        } catch (error) {
+          console.error("Failed to load participants:", error);
+        }
+      }
+    };
+    loadParticipants();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isChat, projectId, fetchParticipants]);
+
   const handleSendMessage = async () => {
     if (!chatMessage.trim() || !channelId) return;
-    const isMock = import.meta.env.VITE_USE_MOCK === 'true';
 
     try {
-      if (isMock) {
-        const newMsg = {
-          id: Date.now(),
-          content: chatMessage,
-          sender: '나',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isMine: true
-        };
-        setMessages(prev => [...prev, newMsg]);
-        setChatMessage('');
-      } else {
-        await chatApi.createChat(channelId, { content: chatMessage });
-        setChatMessage('');
-        fetchChats();
-      }
+      await sendMessage(channelId, chatMessage);
+      setChatMessage('');
     } catch (error) {
-      console.error('메시지 전송 실패:', error);
+      // Error handled in store
     }
   };
 
@@ -183,7 +168,11 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
               messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-3 ${msg.isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                   {!msg.isMine && (
-                    <Avatar name={msg.sender} size="sm" className="mt-1" />
+                    <Avatar
+                      name={memberMap[msg.sender] || `User(${msg.sender})`}
+                      size="sm"
+                      className="mt-1"
+                    />
                   )}
                   <div className={`flex flex-col ${msg.isMine ? 'items-end' : 'items-start'} max-w-[75%]`}>
                     {!msg.isMine && (
@@ -259,17 +248,17 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Badge
-                          variant={PRIORITY_CONFIG[issue.priority].variant}
+                          variant={(PRIORITY_CONFIG[issue.priority] || PRIORITY_CONFIG.medium).variant}
                           size="sm"
-                          leftIcon={PRIORITY_CONFIG[issue.priority].icon}
+                          leftIcon={(PRIORITY_CONFIG[issue.priority] || PRIORITY_CONFIG.medium).icon}
                         >
-                          {PRIORITY_CONFIG[issue.priority].label}
+                          {(PRIORITY_CONFIG[issue.priority] || PRIORITY_CONFIG.medium).label}
                         </Badge>
                         <Badge
-                          variant={STATUS_CONFIG[issue.status].variant}
+                          variant={(STATUS_CONFIG[issue.status] || STATUS_CONFIG.open).variant}
                           size="sm"
                         >
-                          {STATUS_CONFIG[issue.status].label}
+                          {(STATUS_CONFIG[issue.status] || STATUS_CONFIG.open).label}
                         </Badge>
                       </div>
                       <span className="text-xs text-[var(--text-tertiary)] font-mono">
@@ -284,16 +273,16 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
 
                     {/* 담당자 */}
                     <div className="flex items-center gap-2">
-                      {issue.assignees.length > 0 ? (
+                      {(issue.assignees || []).length > 0 ? (
                         <>
                           <div className="flex -space-x-2">
-                            {issue.assignees.slice(0, 3).map((name, idx) => (
+                            {(issue.assignees || []).slice(0, 3).map((name, idx) => (
                               <Avatar key={idx} name={name} size="xs" className="ring-2 ring-white" />
                             ))}
                           </div>
                           <span className="text-xs text-[var(--text-secondary)]">
-                            {issue.assignees.slice(0, 2).join(', ')}
-                            {issue.assignees.length > 2 && ` +${issue.assignees.length - 2}`}
+                            {(issue.assignees || []).slice(0, 2).join(', ')}
+                            {(issue.assignees || []).length > 2 && ` +${(issue.assignees || []).length - 2}`}
                           </span>
                         </>
                       ) : (
