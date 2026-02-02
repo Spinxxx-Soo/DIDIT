@@ -28,7 +28,13 @@ public class SecurityConfig {
                     config.setAllowCredentials(true);
                     return config;
                 }))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/", "/api/v1/auth/login", "/api/v1/auth/logout","/login/**", "/oauth2/**", "/error").permitAll()
+                .authorizeHttpRequests(auth -> auth.requestMatchers(
+                                "/", "/openapi.yaml",
+                                "/swagger-ui.html", "/swagger-ui/**",
+                                "/v3/api-docs/swagger-config",
+                                "/api/v1/auth/login", "/api/v1/auth/logout",
+                                "/login/**", "/oauth2/**", "/error"
+                                ).permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
