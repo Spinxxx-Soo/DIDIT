@@ -159,7 +159,9 @@ const useLoungeStore = create((set, get) => ({
     try {
       // TODO: API 완성 후 features.js에서 getIssues 주석 해제 (Deprecated -> loungeApi 사용)
       const response = await loungeApi.getIssues(projectId);
-      const normalizedIssues = response.data.map(normalizeIssue);
+      const data = response?.data;
+      const issueList = Array.isArray(data) ? data : [];
+      const normalizedIssues = issueList.map(normalizeIssue);
       set({ issues: normalizedIssues, isLoading: false });
     } catch (error) {
       console.error('이슈 목록 조회 실패:', error);
