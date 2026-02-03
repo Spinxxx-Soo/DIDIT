@@ -74,4 +74,30 @@ public interface MeetingMediaService {
      * - <404>: 존재하지 않는 meetingId
      */
     Result<List<UserEntity>> getConnectedUsers(Long meetingId);
+
+    /**
+     * Action: meeting의 녹화를 시작함
+     * Input:
+     * - Long meetingId: meeting ID
+     * Success:
+     * - ok()
+     * Persistence:
+     * - (수정)
+     * Failures:
+     * - <404>: 존재하지 않는 meetingId
+     */
+    Result StartRecording(Long meetingId);
+
+    /**
+     * Action: meeting의 녹화를 중단함
+     * Input:
+     * - Long meetingId: meeting ID
+     * Success:
+     * - ok()
+     * Persistence:
+     * - (수정)
+     * Failures:
+     * - <404>: 존재하지 않는 meetingId
+     */
+    Result StopRecording(Long meetingId);
 }

@@ -93,4 +93,30 @@ public interface OpenViduClient {
      *  - 500: <오픈비두 fetch중 예외 발생.>ServerError("exception", ex)
      */
     Result fetch();
+
+    /**
+     * Action: 세션의 녹화 시작
+     * Input:
+     *  - String sessionId
+     * Success:
+     *  - ok()
+     * Persistence:
+     *  - (수정)
+     * Failures:  // ★ 블랙박스 테스트의 핵심
+     *  - 500: <오픈비두 커넥션 조회중 세션을 찾을수가 없음.>ServerError("세션을 찾을수가 없음", sessionId)
+     */
+    Result startRecording(String sessionId);
+
+    /**
+     * Action: 세션의 녹화 중단
+     * Input:
+     *  - String sessionId
+     * Success:
+     *  - ok()
+     * Persistence:
+     *  - (수정)
+     * Failures:  // ★ 블랙박스 테스트의 핵심
+     *  - 500: <오픈비두 커넥션 조회중 세션을 찾을수가 없음.>ServerError("세션을 찾을수가 없음", sessionId)
+     */
+    Result stopRecording(String sessionId);
 }

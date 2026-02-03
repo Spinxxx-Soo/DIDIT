@@ -137,4 +137,14 @@ public class OpenViduClientImpl implements OpenViduClient {
             return Result.fail(new ServerError("exception", ex));
         }
     }
+
+    @Override
+    public Result startRecording(String sessionId) {
+        return null;
+    }
+
+    @Override
+    public Result stopRecording(String sessionId) {
+        return null;
+    }
 }
