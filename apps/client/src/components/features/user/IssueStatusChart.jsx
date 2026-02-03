@@ -8,30 +8,34 @@ import useLoungeStore from '@/store/useLoungeStore';
 import { ExternalLink } from 'lucide-react';
 import { loungeApi } from '@/api/lounge';
 
-const INITIAL_DATA = [
-    { label: '완료', value: 0, color: '#10B981' },
-    { label: '진행중', value: 0, color: '#3B82F6' },
-    { label: '대기중', value: 0, color: '#E5E7EB' },
-];
-
 const IssueStatusChart = () => {
     const { projectId } = useParams();
     const { openIssueMode } = useLoungeStore();
-    const [statusData, setStatusData] = useState(INITIAL_DATA);
+    const [statusData, setStatusData] = useState([
+        { label: '진행 중', value: 0, color: '#3B82F6' },
+        { label: '완료', value: 0, color: '#10B981' },
+    ]);
 
     useEffect(() => {
-        const fetchStatus = async () => {
+        const fetchAndAggregate = async () => {
             if (!projectId) return;
             try {
-                const response = await loungeApi.getIssueStatus(projectId);
-                if (Array.isArray(response.data) && response.data.length > 0) {
-                    setStatusData(response.data);
-                }
+                const response = await loungeApi.getIssues(projectId);
+                const issues = response.data || [];
+
+                // 프론트엔드에서 상태별 집계
+                const openCount = issues.filter(issue => issue.status === 'OPEN').length;
+                const closedCount = issues.filter(issue => issue.status === 'CLOSED').length;
+
+                setStatusData([
+                    { label: '진행 중', value: openCount, color: '#3B82F6' },
+                    { label: '완료', value: closedCount, color: '#10B981' },
+                ]);
             } catch (error) {
-                console.error('Failed to fetch issue status:', error);
+                console.error('Failed to fetch issues:', error);
             }
         };
-        fetchStatus();
+        fetchAndAggregate();
     }, [projectId]);
 
     const total = statusData.reduce((acc, item) => acc + item.value, 0);

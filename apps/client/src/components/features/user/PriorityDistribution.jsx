@@ -6,29 +6,36 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { loungeApi } from '@/api/lounge';
 
-const INITIAL_DATA = [
-    { label: 'High', value: 0, color: '#EF4444', bgColor: 'bg-red-100' },
-    { label: 'Medium', value: 0, color: '#F59E0B', bgColor: 'bg-amber-100' },
-    { label: 'Low', value: 0, color: '#10B981', bgColor: 'bg-emerald-100' },
-];
-
 const PriorityDistribution = () => {
     const { projectId } = useParams();
-    const [priorityData, setPriorityData] = useState(INITIAL_DATA);
+    const [priorityData, setPriorityData] = useState([
+        { label: 'High', value: 0, color: '#EF4444' },
+        { label: 'Medium', value: 0, color: '#F59E0B' },
+        { label: 'Low', value: 0, color: '#10B981' },
+    ]);
 
     useEffect(() => {
-        const fetchPriority = async () => {
+        const fetchAndAggregate = async () => {
             if (!projectId) return;
             try {
-                const response = await loungeApi.getIssuePriority(projectId);
-                if (Array.isArray(response.data) && response.data.length > 0) {
-                    setPriorityData(response.data);
-                }
+                const response = await loungeApi.getIssues(projectId);
+                const issues = response.data || [];
+
+                // 프론트엔드에서 우선순위별 집계
+                const highCount = issues.filter(issue => issue.priority === 'HIGH').length;
+                const mediumCount = issues.filter(issue => issue.priority === 'MEDIUM').length;
+                const lowCount = issues.filter(issue => issue.priority === 'LOW').length;
+
+                setPriorityData([
+                    { label: 'High', value: highCount, color: '#EF4444' },
+                    { label: 'Medium', value: mediumCount, color: '#F59E0B' },
+                    { label: 'Low', value: lowCount, color: '#10B981' },
+                ]);
             } catch (error) {
-                console.error('Failed to fetch priority distribution:', error);
+                console.error('Failed to fetch issues:', error);
             }
         };
-        fetchPriority();
+        fetchAndAggregate();
     }, [projectId]);
 
     const maxValue = Math.max(...priorityData.map(d => d.value)) || 1;
