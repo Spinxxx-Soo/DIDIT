@@ -7,11 +7,11 @@ import { Badge } from '@/components/common/Badge';
 import { Avatar } from '@/components/common/Avatar';
 import { Card } from '@/components/common/Card';
 
-import { useParams } from 'react-router-dom'; // Added
+import { useParams } from 'react-router-dom';
 import useProjectStore from '@/store/useProjectStore';
-import useChatStore from '@/store/useChatStore';
 import useAuthStore from '@/store/useAuthStore';
 import useLoungeStore from '@/store/useLoungeStore';
+import useChatStore from '@/store/useChatStore';
 import IssueDetailPanel from './IssueDetailPanel';
 
 // Priority 설정
@@ -40,11 +40,22 @@ const STATUS_CONFIG = {
 };
 
 const RightSidebar = ({ activePanel, onClose, channelId }) => {
-  const { projectId } = useParams(); // Added
-  const { openIssueDetail, openCreateIssue, issues, fetchIssues } = useLoungeStore(); // Added fetchIssues
+  const { projectId } = useParams();
+  const { openIssueDetail, openCreateIssue, issues, fetchIssues } = useLoungeStore();
   const { user } = useAuthStore();
   const { fetchParticipants } = useProjectStore();
   const [memberMap, setMemberMap] = useState({});
+
+  // useChatStore hooks
+  const {
+    messages,
+    isConnected,
+    connect,
+    disconnect,
+    sendMessage,
+    fetchRecentChats,
+    isLoading: isLoadingChat
+  } = useChatStore();
 
   const isChat = activePanel === 'chat';
   const isIssueMode = activePanel === 'issue' || activePanel === 'issue_detail';
@@ -52,9 +63,6 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
 
   // Local input state
   const [chatMessage, setChatMessage] = useState('');
-
-  // Store hooks
-  const { messages, isLoading: isLoadingChat, connect, disconnect, fetchRecentChats, sendMessage } = useChatStore();
 
   const messagesEndRef = useRef(null);
 
@@ -74,16 +82,21 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
     }
   }, [isIssueMode, projectId, fetchIssues]);
 
-  // 채팅 연결 및 데이터 로드
+  // 채팅 및 SSE 연결 관리
   useEffect(() => {
     if (isChat && channelId) {
-      fetchRecentChats(channelId);
-      connect(channelId);
+      console.log(`[RightSidebar] Connecting to chat room: ${channelId}`);
+      fetchRecentChats(channelId); // 이전 대화 내용 불러오기
+      connect(channelId); // SSE 연결
     }
+
     return () => {
-      disconnect();
+      // 컴포넌트 언마운트 시 또는 채널 변경 시 연결 종료
+      if (!isChat) {
+        disconnect();
+      }
     };
-  }, [isChat, channelId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isChat, channelId, connect, disconnect, fetchRecentChats]);
 
   // 스크롤 자동 이동
   useEffect(() => {
@@ -126,7 +139,8 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
       await sendMessage(channelId, chatMessage);
       setChatMessage('');
     } catch (error) {
-      // Error handled in store
+      console.error("Failed to send message:", error);
+      // Error handled in store or UI can show toast
     }
   };
 
