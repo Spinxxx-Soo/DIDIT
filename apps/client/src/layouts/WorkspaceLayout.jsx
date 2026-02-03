@@ -15,7 +15,7 @@ const WorkspaceLayout = () => {
   const { projectId, channelId } = useParams();
 
   const { activePanel, setActivePanel, closeSidebar, resetToIssueList } = useLoungeStore();
-  const { isInMeeting } = useMeetingStore();
+  const { isInMeeting, currentChannelMode } = useMeetingStore();
 
   const handleChatClick = () => {
     setActivePanel(activePanel === 'chat' ? null : 'chat');
@@ -29,12 +29,12 @@ const WorkspaceLayout = () => {
     }
   };
 
-  // 채널 밖에 있을 때 채팅창이 열려있다면 닫기
+  // 채널 밖에 있을 때 또는 채팅 채널일 때 채팅창이 열려있다면 닫기
   React.useEffect(() => {
-    if (!channelId && activePanel === 'chat' && !isInMeeting) {
+    if ((!channelId && activePanel === 'chat' && !isInMeeting) || (currentChannelMode === 'CHAT' && activePanel === 'chat')) {
       closeSidebar();
     }
-  }, [channelId, activePanel, closeSidebar, isInMeeting]);
+  }, [channelId, activePanel, closeSidebar, isInMeeting, currentChannelMode]);
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-[var(--bg-app)]">
@@ -44,7 +44,7 @@ const WorkspaceLayout = () => {
         activePanel={activePanel}
         onChatClick={handleChatClick}
         onIssueClick={handleIssueClick}
-        showChat={!!channelId || isInMeeting}
+        showChat={(!!channelId || isInMeeting) && currentChannelMode !== 'CHAT'}
       />
 
       <div className="flex flex-1 overflow-hidden">
