@@ -6,11 +6,6 @@ import useAuthStore from '@/store/useAuthStore';
 
 const useOpenVidu = () => {
   // ------------------------------------------------------------------
-  // 스토어 액션 및 상태 가져오기 (필요할 때 getState() 사용)
-  // ------------------------------------------------------------------
-  const store = useMeetingStore();
-
-  // ------------------------------------------------------------------
   // 정리 (최상위로 이동 - 호이스팅 방지)
   // ------------------------------------------------------------------
   const cleanup = useCallback(() => {
@@ -280,13 +275,13 @@ const useOpenVidu = () => {
       removeParticipant(event.connection.connectionId);
     });
 
-    session.on('sessionDisconnected', (event) => {
+    session.on('sessionDisconnected', async (event) => {
       console.log('세션 연결 끊김:', event.reason);
       // 이미 스토어에서 세션이 사라진 경우(정상 종료 과정) redundant 호출 방지
       const currentSession = useMeetingStore.getState().openviduSession;
       if (currentSession) {
         cleanup();
-        leaveMeeting();
+        await leaveMeeting();
       }
     });
 
@@ -360,19 +355,9 @@ const useOpenVidu = () => {
   // 세션 나가기
   // ------------------------------------------------------------------
   const leaveSession = useCallback(async () => {
-    const { currentChannelId, leaveMeeting } = useMeetingStore.getState();
-
-    try {
-      if (currentChannelId) {
-        await meetingApi.leaveWebRTC(currentChannelId);
-      }
-    } catch (error) {
-      console.error('회의 나가기 API 실패:', error);
-    }
-
-    cleanup();
-    leaveMeeting();
-  }, [cleanup]);
+    const { leaveMeeting } = useMeetingStore.getState();
+    await leaveMeeting();
+  }, []);
 
   // ------------------------------------------------------------------
   // 마이크 토글
