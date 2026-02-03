@@ -1,10 +1,13 @@
 package com.didit.server.service.service.impl;
 
 import com.didit.server.data.entity.UserEntity;
+import com.didit.server.data.entity.UserGithubAuthEntity;
+import com.didit.server.data.repository.UserGithubAuthRepository;
 import com.didit.server.data.repository.UserRepository;
 import com.didit.server.service.service.UserService;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.impl.NotFoundError;
+import com.didit.server.share.result.impl.ServerError;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,6 +19,7 @@ import java.time.LocalDateTime;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final UserGithubAuthRepository userGithubAuthRepository;
 
     @Transactional
     public Result<UserEntity> joinOrUpdate(Long githubId, String login, String name, String avatarUrl) {
@@ -38,7 +42,8 @@ public class UserServiceImpl implements UserService {
                 user.setLastLoginAt(LocalDateTime.now());
             }
 
-            return Result.ok(userRepository.save(user));
+            var result = userRepository.saveAndFlush(user);
+            return Result.ok(result);
         } catch (Exception e) {
             return Result.fail(500, "Internal Server Error");
         }
@@ -48,7 +53,30 @@ public class UserServiceImpl implements UserService {
     public Result<UserEntity> findUserById(Long userId) {
         var user = userRepository.findById(userId);
         return user.map(Result::ok).orElseGet(() -> Result.fail(new NotFoundError("userId", userId)));
+    }
 
+    @Override
+    @Transactional
+    public Result<Void> saveUserGithubAuthInfo(Long userId, String token, String scope){
+        if (userId == null) {
+            throw new IllegalStateException("userId is null");
+        }
+
+        UserEntity managedUser = userRepository.getReferenceById(userId);
+
+        UserGithubAuthEntity auth = userGithubAuthRepository.findById(userId)
+                .orElseGet(() -> {
+                    UserGithubAuthEntity a = new UserGithubAuthEntity();
+                    a.setUser(managedUser);   // @MapsId: PK가 user.id로 잡힘
+                    return a;
+                });
+
+        auth.setAccessToken(token);
+        auth.setScope(scope);
+        auth.setTokenUpdatedAt(LocalDateTime.now());
+
+        userGithubAuthRepository.save(auth);
+        return Result.ok();
     }
 }
 

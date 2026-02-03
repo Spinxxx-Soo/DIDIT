@@ -27,4 +27,6 @@ public interface UserService {
     Result<UserEntity> joinOrUpdate(Long githubId, String login, String name, String avatarUrl);
 
     Result<UserEntity> findUserById(Long userId);
+
+    Result<Void> saveUserGithubAuthInfo(Long userId, String token, String scope);
 }

@@ -5,7 +5,6 @@ import { meetingApi } from '@/api/meeting';
 import useAuthStore from '@/store/useAuthStore';
 
 const useOpenVidu = () => {
-
   // ------------------------------------------------------------------
   // 정리 (최상위로 이동 - 호이스팅 방지)
   // ------------------------------------------------------------------

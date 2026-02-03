@@ -6,7 +6,7 @@ from common.redis_client import RedisClient
 from common.settings import settings
 from models.common.logger import get_logger
 from models.common.text_utils import build_issue_text
-from models.issue_priority_commit import IssuePriorityModel, PriorityLevel
+from models.issue_priority_commit import IssuePriorityModel, PriorityLevel, PRIORITY_LABEL_MAP
 from models.issue_priority_commit.config import REORDER_USE_RULES, REORDER_BOOST_SCORE, REORDER_PENALTY_SCORE
 
 logger = get_logger(__name__)
@@ -40,7 +40,7 @@ class IssuePriorityReorderService:
     def _group_by_priority(self, issues: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
         groups = defaultdict(list)
         for issue in issues:
-            p = issue.get("priority") #정규화 안하고 바로 저장된 중요도 쓰기
+            p = issue.get("priority")
             if p:
                 groups[p].append(issue)
         return dict(groups)
@@ -100,7 +100,16 @@ class IssuePriorityReorderService:
             logger.error("invalid task(no issues): %s", task)
             return None
 
-        result = {"result": self.reorder(issues, return_scores)}
+        # self.reorder()
+        result = {
+            "result": self.reorder(issues, return_scores)
+            }
+        
+        # result = {
+        #     "userId":user_id,
+        #     "projectId":project_id,
+        #     "issues": [ {"issue_id": .., "title":.., "body": ..}]
+        # }
         key = f"{settings.REDIS_RESULT_TOPIC_BATCH}"
         self.redis.set_result(key, result, expire=3600)
 
