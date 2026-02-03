@@ -26,10 +26,12 @@ class Settings(BaseSettings):
     # Redis 큐 이름 설정 (백엔드 → AI 작업 요청)
     REDIS_QUEUE_ISSUE_SINGLE: str = "queue:issue:priority:single"  # 단일 이슈 라벨링 작업 큐
     REDIS_QUEUE_ISSUE_BATCH: str = "queue:issue:priority:sort"  # 이슈 목록 재정렬 작업 큐
+    REDIS_QUEUE_MEETING_SUMMARY: str = "queue:meeting:summary"  # 회의 요약 작업 큐
     
     # Redis 결과 토픽 설정 (AI → 백엔드 결과 전송)
     REDIS_RESULT_TOPIC_SINGLE: str = "issue:priority:result_topic"  # 단일 이슈 분석 결과 토픽
     REDIS_RESULT_TOPIC_BATCH: str = "issue:priority:result_topic_sort"  # 배치 이슈 정렬 결과 토픽
+    REDIS_RESULT_TOPIC_MEETING_SUMMARY: str = "meeting:summary:result"  # 회의 요약 결과 토픽
     
     # Whisper API 프록시 설정
     WHISPER_PROXY_URL: str = "https://gms.ssafy.io/gmsapi/api.openai.com"  # Whisper 프록시 서버 URL (SDK가 자동으로 /v1 추가)

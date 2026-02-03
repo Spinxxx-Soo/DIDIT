@@ -12,6 +12,7 @@ from openai import OpenAI
 
 from models.meeting_summary.model import MeetingSummaryModel
 from models.common.logger import get_logger
+from common.redis_client import RedisClient
 from common.settings import settings
 
 logger = get_logger(__name__)
@@ -22,6 +23,9 @@ class MeetingSummaryService:
 
     def __init__(self):
         logger.info("회의 요약 서비스 초기화 중...")
+        # Redis 클라이언트 초기화
+        self.redis = RedisClient()
+        
         # 모델 초기화
         # 프록시 서버를 통해 Whisper API 사용
         gms_key = os.getenv("GMS_KEY")
@@ -165,3 +169,47 @@ class MeetingSummaryService:
 
         logger.info("Whisper API STT 완료")
         return text
+    
+    # ======================
+    # Redis Entry Point
+    # ======================
+    def process_from_redis(self) -> Optional[Dict[str, Any]]:
+        """Redis 큐에서 작업을 가져와 처리합니다.
+        
+        Returns:
+            처리 결과 딕셔너리 또는 None (작업이 없을 경우)
+        """
+        # 큐에서 작업 가져오기
+        task = self.redis.pop_from_queue(settings.REDIS_QUEUE_MEETING_SUMMARY, timeout=1)
+        
+        if not task:
+            return None
+        
+        # meeting_file 형식: {"meetingID": 123, "filePath": "/mnt/shared/meetings/123.webm"}
+        meeting_file = task.get("meeting_file") or task
+        
+        if not meeting_file:
+            logger.error("잘못된 task (meeting_file 없음): %s", task)
+            return None
+        
+        # 회의 요약 처리
+        result = self.process_meeting_summary_model(meeting_file)
+        
+        if not result:
+            logger.error("회의 요약 처리 실패: meeting_file=%s", meeting_file)
+            return None
+        
+        # 결과를 Redis에 저장
+        result_key = f"{settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY}:{result.get('meetingId')}"
+        self.redis.set_result(result_key, result, expire=3600)
+        
+        logger.info("회의 요약 작업 완료: meetingId=%s", result.get("meetingId"))
+        return result
+    
+    def close(self):
+        """리소스 정리"""
+        try:
+            self.redis.close()
+            logger.info("Redis 연결 종료")
+        except Exception as e:
+            logger.error("리소스 정리 중 오류 발생: %s", str(e))
