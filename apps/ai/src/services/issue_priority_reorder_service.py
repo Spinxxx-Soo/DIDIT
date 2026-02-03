@@ -93,23 +93,48 @@ class IssuePriorityReorderService:
         if not task:
             return None
 
+        # Redis에서 받은 데이터 추출
+        user_id = task.get("userId")
+        project_id = task.get("projectId")
         issues = task.get("issues") or []
         return_scores = bool(task.get("return_scores", False))
+
+        if not user_id or not project_id:
+            logger.error("invalid task (userId/projectId 없음): %s", task)
+            return None
 
         if not issues:
             logger.error("invalid task(no issues): %s", task)
             return None
 
-        # self.reorder()
-        result = {
-            "result": self.reorder(issues, return_scores)
+        # 이슈 재정렬
+        reordered_issues = self.reorder(issues, return_scores)
+
+        # 반환 형식에 맞게 변환: {"issue_id": .., "title": .., "body": ..}
+        formatted_issues = []
+        for issue in reordered_issues:
+            formatted_issue = {
+                "issue_id": issue.get("issue_id") or issue.get("id"),
+                "title": issue.get("title") or issue.get("subject"),
+                "body": issue.get("body") or ""
             }
+            # priority가 있으면 포함
+            if "priority" in issue:
+                formatted_issue["priority"] = issue["priority"]
+            # score가 있으면 포함 (return_scores가 True인 경우)
+            if return_scores and "score" in issue:
+                formatted_issue["score"] = issue["score"]
+            
+            formatted_issues.append(formatted_issue)
+
+        # 최종 결과 형식
+        result = {
+            "userId": user_id,
+            "projectId": project_id,
+            "issues": formatted_issues
+        }
         
-        # result = {
-        #     "userId":user_id,
-        #     "projectId":project_id,
-        #     "issues": [ {"issue_id": .., "title":.., "body": ..}]
-        # }
+        # 결과를 Redis에 저장
         key = f"{settings.REDIS_RESULT_TOPIC_BATCH}"
         self.redis.set_result(key, result, expire=3600)
 
