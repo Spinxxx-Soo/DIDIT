@@ -140,15 +140,27 @@ const MeetingRoom = () => {
     }
   }, [channelId, isInMeeting, isLoading, handleJoinMeeting, currentChannelMode]);
 
-  // 페이지 떠날 때 정리
+  // 페이지 떠날 때 정리 (새로고침/탭 닫기 포함)
   useEffect(() => {
+    const handleBeforeUnload = () => {
+      const { openviduSession } = useMeetingStore.getState();
+      if (openviduSession) {
+        openviduSession.disconnect();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
-      if (isInMeeting) {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // 컴포넌트 언마운트 시 (라우트 이동 등)
+      const { isInMeeting: currentlyInMeeting } = useMeetingStore.getState();
+      if (currentlyInMeeting) {
         leaveSession();
       }
       hasJoined.current = false;
     };
-  }, []);
+  }, [leaveSession]);
 
   // channelId 없음 (잘못된 URL)
   if (!channelId) {

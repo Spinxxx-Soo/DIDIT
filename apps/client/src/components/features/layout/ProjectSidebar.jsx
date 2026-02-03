@@ -11,6 +11,8 @@ import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
 import { ProjectManageModal } from '@/components/features/project/ProjectManageModal';
 import useAuthStore from '@/store/useAuthStore';
 import useProjectStore from '@/store/useProjectStore';
+import useMeetingStore from '@/store/useMeetingStore';
+import useOpenVidu from '@/hooks/useOpenVidu';
 import { getProjectColor, getProjectInitial } from '@/utils/projectUtils';
 
 const ProjectSidebar = () => {
@@ -19,8 +21,14 @@ const ProjectSidebar = () => {
   const { logout } = useAuthStore();
   const { allProjects, fetchAllProjects, error, isLoading } = useProjectStore();
 
+  // 회의 상태
+  const { isInMeeting } = useMeetingStore();
+  const { leaveSession } = useOpenVidu();
+
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [pendingProjectId, setPendingProjectId] = useState(null);
 
   // 툴팁 상태 관리
   const [hoveredItem, setHoveredItem] = useState(null); // { text: string, top: number, left: number }
@@ -49,7 +57,23 @@ const ProjectSidebar = () => {
   }, [allProjects]);
 
   const handleProjectClick = (id) => {
+    // 회의 중이고, 다른 프로젝트를 클릭했을 때만 경고 모달 표시
+    if (isInMeeting && String(id) !== projectId) {
+      setPendingProjectId(id);
+      setIsLeaveModalOpen(true);
+      return;
+    }
     navigate(`/workspace/${id}`);
+  };
+
+  // 회의 종료 후 프로젝트 이동
+  const handleConfirmLeave = async () => {
+    await leaveSession();
+    setIsLeaveModalOpen(false);
+    if (pendingProjectId) {
+      navigate(`/workspace/${pendingProjectId}`);
+      setPendingProjectId(null);
+    }
   };
 
   const handleManageClick = () => {
@@ -210,6 +234,20 @@ const ProjectSidebar = () => {
       <ProjectManageModal
         isOpen={isManageModalOpen}
         onClose={() => setIsManageModalOpen(false)}
+      />
+
+      {/* === 6. 회의 종료 확인 모달 === */}
+      <ConfirmModal
+        isOpen={isLeaveModalOpen}
+        onClose={() => {
+          setIsLeaveModalOpen(false);
+          setPendingProjectId(null);
+        }}
+        onConfirm={handleConfirmLeave}
+        title="회의 종료"
+        message="현재 회의에서 나가시겠습니까?"
+        confirmText="나가기"
+        confirmVariant="danger"
       />
 
       {/* === 6. 공통 툴팁 (Fixed Position) === */}
