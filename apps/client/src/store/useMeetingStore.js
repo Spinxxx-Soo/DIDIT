@@ -73,7 +73,13 @@ const useMeetingStore = create((set, get) => ({
 
     // 2. 미디어 트랙 종료
     [publisher, screenPublisher].forEach(p => {
-      if (p) p.stream.getMediaStream().getTracks().forEach(track => track.stop());
+      if (p?.stream?.getMediaStream) {
+        try {
+          p.stream.getMediaStream().getTracks().forEach(track => track.stop());
+        } catch (e) {
+          console.warn('미디어 트랙 종료 중 오류:', e);
+        }
+      }
     });
 
     // 3. [Backend] 백엔드에 나갔음을 알림
