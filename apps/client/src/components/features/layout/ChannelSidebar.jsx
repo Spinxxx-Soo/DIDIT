@@ -544,7 +544,7 @@ const ChannelSidebar = () => {
                       {participants.map((p) => (
                         <li key={p.id} className={`flex items-center gap-3 px-2 py-1.5 rounded-[var(--radius-md)] ${p.isSpeaking ? 'bg-[var(--success-bg)] ring-2 ring-[var(--color-green-primary)]' : ''}`}>
                           <Avatar name={p.name} size="xs" status="online" />
-                          <span className="text-[14px] flex-1">{p.name}</span>
+                          <span className="text-[14px] flex-1">{p.name}{p.isLocal ? ' (나)' : ''}</span>
                           {p.isSpeaking && <Mic size={14} className="text-[var(--color-green-primary)] animate-pulse" />}
                         </li>
                       ))}

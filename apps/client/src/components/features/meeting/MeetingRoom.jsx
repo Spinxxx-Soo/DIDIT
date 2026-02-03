@@ -89,19 +89,8 @@ const MeetingRoom = () => {
         sessionId = url.searchParams.get('sessionId');
         token = tokenUrl; // OpenVidu는 전체 URL을 토큰으로 사용
 
-        // 2. 현재 참가자 목록 조회
-        try {
-          const usersResponse = await meetingApi.getWebRTCUsers(Number(channelId));
-          const webRTCUsers = usersResponse.data || [];
-          setParticipants(webRTCUsers.map(user => ({
-            id: user.id,
-            name: user.name,
-            avatarUrl: user.avatarUrl,
-            isSpeaking: false,
-          })));
-        } catch (err) {
-          console.warn('참가자 목록 조회 실패:', err);
-        }
+        // 참가자 목록은 OpenVidu connectionCreated 이벤트로 관리
+        // (백엔드 user.id와 OpenVidu connectionId가 달라 중복 발생 방지)
       }
 
       // 3. 스토어에 회의 정보 저장
