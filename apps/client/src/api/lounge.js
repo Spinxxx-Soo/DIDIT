@@ -36,6 +36,20 @@ export const loungeApi = {
     getActiveIssues: (projectId) => api.get(`/api/v1/projects/${projectId}/issues/active`),
 
     /**
+     * 이슈 생성
+     * @param {number} projectId
+     * @param {Object} data - { orgName, repoName, title, body, assigneeIds, issueId, issuePriority }
+     */
+    createIssue: (projectId, data) => api.post(`/api/v1/projects/${projectId}/issues`, data),
+
+    /**
+     * 이슈 우선순위 분석
+     * @param {number} projectId
+     * @param {Object} data - { title, status, body, assigneeIds }
+     */
+    analyzeIssue: (projectId, data) => api.post(`/api/v1/projects/${projectId}/issue/analyze`, data),
+
+    /**
      * 최근 회의록 조회 (최대 4개) (Mock)
      */
     getRecentMinutes: (projectId) => {

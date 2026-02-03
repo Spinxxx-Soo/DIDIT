@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { issueApi } from '@/api/features';
+import { loungeApi } from '@/api/lounge';
 
 // 환경변수로 Mock 모드 전환 (.env에서 VITE_USE_MOCK=true/false)
 const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
@@ -157,8 +157,8 @@ const useLoungeStore = create((set, get) => ({
     }
 
     try {
-      // TODO: API 완성 후 features.js에서 getIssues 주석 해제
-      const response = await issueApi.getIssues(projectId);
+      // TODO: API 완성 후 features.js에서 getIssues 주석 해제 (Deprecated -> loungeApi 사용)
+      const response = await loungeApi.getIssues(projectId);
       const normalizedIssues = response.data.map(normalizeIssue);
       set({ issues: normalizedIssues, isLoading: false });
     } catch (error) {
@@ -190,8 +190,8 @@ const useLoungeStore = create((set, get) => ({
     }
 
     try {
-      // TODO: API 완성 후 features.js에서 createIssue 주석 해제
-      const response = await issueApi.createIssue(projectId, issueData);
+      // TODO: API 완성 후 features.js에서 createIssue 주석 해제 (Deprecated -> loungeApi 사용)
+      const response = await loungeApi.createIssue(projectId, issueData);
       const normalizedIssue = normalizeIssue(response.data);
       set((state) => ({
         issues: [normalizedIssue, ...state.issues],
