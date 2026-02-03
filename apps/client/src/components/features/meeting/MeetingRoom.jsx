@@ -2,6 +2,7 @@ import React, { useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MeetingHeader from './MeetingHeader';
 import ScreenShare from './ScreenShare';
+import AudioContainer from './AudioContainer';
 import useMeetingStore from '@/store/useMeetingStore';
 import useOpenVidu from '@/hooks/useOpenVidu';
 import { meetingApi } from '@/api/meeting';
@@ -223,6 +224,8 @@ const MeetingRoom = () => {
 
   return (
     <div className="flex-1 flex flex-col" style={{ backgroundColor: 'var(--bg-app)' }}>
+      {/* 원격 참가자 오디오 재생 (숨김) */}
+      <AudioContainer />
       {/* 헤더 */}
       <MeetingHeader />
 
