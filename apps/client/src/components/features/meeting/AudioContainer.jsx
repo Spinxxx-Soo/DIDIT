@@ -24,9 +24,11 @@ const AudioContainer = () => {
 
   return (
     <div style={{ display: 'none' }}>
-      {participants.map((p) => (
-        <ParticipantAudio key={p.id} participant={p} />
-      ))}
+      {participants
+        .filter((p) => !p.isLocal) // 본인 오디오는 재생하지 않음
+        .map((p) => (
+          <ParticipantAudio key={p.id} participant={p} />
+        ))}
     </div>
   );
 };

@@ -279,15 +279,14 @@ const useOpenVidu = () => {
       const data = parseConnectionData(event.connection.data);
       const participantName = data.clientData || '참가자';
 
-      // 본인 연결은 제외 (이미 로컬에서 관리)
-      if (event.connection.connectionId !== session.connection.connectionId) {
-        addParticipant({
-          id: event.connection.connectionId,
-          name: participantName,
-          stream: null,
-          isSpeaking: false,
-        });
-      }
+      // 본인 포함 모든 참가자 추가 (발언 표시를 위해)
+      addParticipant({
+        id: event.connection.connectionId,
+        name: participantName,
+        stream: null,
+        isSpeaking: false,
+        isLocal: event.connection.connectionId === session.connection.connectionId,
+      });
     });
 
     session.on('connectionDestroyed', (event) => {
