@@ -30,6 +30,7 @@ const ChannelSidebar = () => {
     isMicOn,
     isSpeakerOn,
     isScreenSharing,
+    isScreenShareLoading,
     isRecording,
     currentChannelId,
     setCurrentChannel,
@@ -607,7 +608,14 @@ const ChannelSidebar = () => {
 
           {isInMeeting && (
             <>
-              <IconButton icon={isScreenSharing ? <MonitorOff size={18} /> : <Monitor size={18} />} variant="ghost" size="sm" onClick={toggleScreenShare} />
+              <IconButton
+                icon={isScreenSharing ? <MonitorOff size={18} /> : <Monitor size={18} />}
+                variant="ghost"
+                size="sm"
+                onClick={toggleScreenShare}
+                disabled={isScreenShareLoading}
+                className={isScreenShareLoading ? "opacity-50 cursor-not-allowed" : ""}
+              />
               {isRecording && <div className="flex items-center justify-center w-8 h-8"><Circle size={10} className="text-[var(--color-error)] fill-current animate-pulse" /></div>}
               <IconButton icon={<PhoneOff size={18} />} variant="ghost" size="sm" onClick={handleLeaveMeeting} className="text-[var(--text-primary)] bg-[var(--color-error)] hover:bg-red-600" />
             </>

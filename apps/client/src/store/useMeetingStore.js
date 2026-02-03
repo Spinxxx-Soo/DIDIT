@@ -18,6 +18,7 @@ const useMeetingStore = create((set, get) => ({
   isMicOn: false,
   isSpeakerOn: true,
   isScreenSharing: false,
+  isScreenShareLoading: false, // 화면 공유 상태 전환 중인지 여부
   isRecording: false,
 
   // 참가자 목록
@@ -118,6 +119,10 @@ const useMeetingStore = create((set, get) => ({
   // ------------------------------------------------------------------
   setScreenSharing: (isSharing) => {
     set({ isScreenSharing: isSharing });
+  },
+
+  setScreenShareLoading: (isLoading) => {
+    set({ isScreenShareLoading: isLoading });
   },
 
   setScreenShareStream: (stream, userName) => {
