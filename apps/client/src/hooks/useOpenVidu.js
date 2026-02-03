@@ -309,10 +309,16 @@ const useOpenVidu = () => {
     });
 
     session.on('publisherStartSpeaking', (event) => {
+      console.log('[Speaking] 발언 시작:', {
+        connectionId: event.connection.connectionId,
+        localConnectionId: session.connection?.connectionId,
+        isLocal: event.connection.connectionId === session.connection?.connectionId,
+      });
       updateParticipant(event.connection.connectionId, { isSpeaking: true });
     });
 
     session.on('publisherStopSpeaking', (event) => {
+      console.log('[Speaking] 발언 종료:', event.connection.connectionId);
       updateParticipant(event.connection.connectionId, { isSpeaking: false });
     });
   }, [cleanup]);
@@ -333,6 +339,10 @@ const useOpenVidu = () => {
 
       OV.setAdvancedConfiguration({
         logLevel: import.meta.env.DEV ? 'DEBUG' : 'WARN',
+        publisherSpeakingEventsOptions: {
+          interval: 100,   // 발언 감지 체크 주기 (ms)
+          threshold: -50,  // 발언 감지 임계값 (dB)
+        },
       });
 
       const session = OV.initSession();
