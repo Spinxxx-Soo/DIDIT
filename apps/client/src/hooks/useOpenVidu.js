@@ -4,12 +4,19 @@ import useMeetingStore from '@/store/useMeetingStore';
 import { meetingApi } from '@/api/meeting';
 import useAuthStore from '@/store/useAuthStore';
 
-const useOpenVidu = () => {
-  // ------------------------------------------------------------------
-  // 스토어 액션 및 상태 가져오기 (필요할 때 getState() 사용)
-  // ------------------------------------------------------------------
-  const store = useMeetingStore();
+// OpenVidu connection.data 파싱 헬퍼 (형식: clientData%/%serverData)
+const parseConnectionData = (data) => {
+  if (!data) return {};
+  try {
+    const clientDataStr = data.split('%/%')[0];
+    return JSON.parse(clientDataStr);
+  } catch (e) {
+    console.warn('connection.data 파싱 실패:', data);
+    return {};
+  }
+};
 
+const useOpenVidu = () => {
   // ------------------------------------------------------------------
   // 정리 (최상위로 이동 - 호이스팅 방지)
   // ------------------------------------------------------------------
@@ -233,8 +240,8 @@ const useOpenVidu = () => {
     session.on('streamCreated', (event) => {
       const subscriber = session.subscribe(event.stream, undefined);
       const connectionId = event.stream.connection.connectionId;
-      const data = JSON.parse(event.stream.connection.data || '{}');
-      const participantName = data.clientData || '가나디';
+      const data = parseConnectionData(event.stream.connection.data);
+      const participantName = data.clientData || '참가자';
 
       if (event.stream.typeOfVideo === 'SCREEN') {
         const { setScreenShareStream, setScreenSharing } = useMeetingStore.getState();
@@ -261,8 +268,8 @@ const useOpenVidu = () => {
 
     session.on('connectionCreated', (event) => {
       console.log('새 연결 생성:', event.connection.connectionId);
-      const data = JSON.parse(event.connection.data || '{}');
-      const participantName = data.clientData || '가나디';
+      const data = parseConnectionData(event.connection.data);
+      const participantName = data.clientData || '참가자';
 
       // 본인 연결은 제외 (이미 로컬에서 관리)
       if (event.connection.connectionId !== session.connection.connectionId) {
@@ -280,13 +287,13 @@ const useOpenVidu = () => {
       removeParticipant(event.connection.connectionId);
     });
 
-    session.on('sessionDisconnected', (event) => {
+    session.on('sessionDisconnected', async (event) => {
       console.log('세션 연결 끊김:', event.reason);
       // 이미 스토어에서 세션이 사라진 경우(정상 종료 과정) redundant 호출 방지
       const currentSession = useMeetingStore.getState().openviduSession;
       if (currentSession) {
         cleanup();
-        leaveMeeting();
+        await leaveMeeting();
       }
     });
 
@@ -329,7 +336,7 @@ const useOpenVidu = () => {
       setupSessionEventListeners(session);
 
       const { user } = useAuthStore.getState();
-      await session.connect(token, { clientData: user?.name || '가나디' });
+      await session.connect(token, { clientData: user?.name || '참여자' });
 
       const currentMicState = useMeetingStore.getState().isMicOn;
       console.log(`[Mic Check] Initial Join - publishAudio: ${currentMicState}`);
@@ -360,19 +367,9 @@ const useOpenVidu = () => {
   // 세션 나가기
   // ------------------------------------------------------------------
   const leaveSession = useCallback(async () => {
-    const { currentChannelId, leaveMeeting } = useMeetingStore.getState();
-
-    try {
-      if (currentChannelId) {
-        await meetingApi.leaveWebRTC(currentChannelId);
-      }
-    } catch (error) {
-      console.error('회의 나가기 API 실패:', error);
-    }
-
-    cleanup();
-    leaveMeeting();
-  }, [cleanup]);
+    const { leaveMeeting } = useMeetingStore.getState();
+    await leaveMeeting();
+  }, []);
 
   // ------------------------------------------------------------------
   // 마이크 토글
