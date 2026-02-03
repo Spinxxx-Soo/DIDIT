@@ -40,10 +40,10 @@ public class IssueEntity {
     @JoinColumn(name = "project_id", nullable = false)
     private ProjectEntity project;
 
-    @Column(name = "github_issue_id", nullable = false)
+    @Column(name = "github_issue_id", nullable = true)
     private Long githubIssueId;
 
-    @Column(name = "issue_no", nullable = false)
+    @Column(name = "issue_no", nullable = true)
     private Integer issueNo;
 
     @Column(name = "title", nullable = false, length = 255)

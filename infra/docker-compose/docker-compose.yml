@@ -47,12 +47,54 @@ services:
       MYSQL_PORT: 3306
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-defaultId}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-defaultSecret}
+      OPENVIDU_URL: ${OPENVIDU_URL:-default}
+      OPENVIDU_SECRET: ${OPENVIDU_SECRET:-default}
+      REDIS_HOST: ${REDIS_HOST:-default}
+      REDIS_PORT: ${REDIS_PORT:-default}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-default}
+      SPRING_PROFILES_ACTIVE: prod
     networks:
       - internal
-      - caddy_default   # ✅ Caddy 네트워크에 붙이기
+      - caddy_default
+        
+  client:
+    image: ghcr.io/pjtdidit/client-image:latest
+    container_name: didit-client
+    restart: unless-stopped
+    networks:
+      - internal
+      - caddy_default
+
+  openvidu:
+    container_name: didit-openvidu
+    image: openvidu/openvidu-dev:2.32.1
+    networks:
+      internal:
+        aliases:
+          - openvidu
+    environment:
+      OPENVIDU_SECRET: ${OPENVIDU_SECRET}
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - ${REDIS_PORT:-6379}:6379
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    command: >
+      sh -c "redis-server
+      --appendonly yes
+      --requirepass $$REDIS_PASSWORD"
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
 
 volumes:
   mysql-data:
+  redis_data:
 
 networks:
   internal:

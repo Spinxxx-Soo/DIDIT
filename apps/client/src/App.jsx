@@ -9,7 +9,7 @@ import MainLayout from './layouts/MainLayout';
 import WorkspaceLayout from './layouts/WorkspaceLayout';
 
 // 페이지
-import Landing from './pages/Landing';
+import LandingPage from './pages/LandingPage';
 import { DevTest } from '@/pages/DevTest';
 import MyPage from './pages/MyPage';
 import LoginPage from './pages/LoginPage';
@@ -20,7 +20,6 @@ import JoinPage from '@/pages/JoinPage';
 import MeetingRoom from '@/components/features/meeting/MeetingRoom';
 
 // 임시 컴포넌트
-// const LandingPage = () => <div className="text-2xl font-bold p-10">🏠 랜딩 페이지</div>;
 const ProjectList = () => <div className="text-2xl font-bold p-10">📂 내 프로젝트 목록</div>;
 
 // 로그인이 필요한 페이지를 감싸는 컴포넌트
@@ -46,7 +45,7 @@ function App() {
         <Route path="/invite/:inviteCode" element={<JoinPage />} />
 
         <Route element={<BaseLayout />}>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<LandingPage />} />
         </Route>
 
         <Route path="/dev" element={<DevTest />} />

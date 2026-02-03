@@ -46,13 +46,18 @@ export function Avatar({
   const styles = sizeStyles[size];
 
   // 이름에서 이니셜 추출
+  // 이름에서 이니셜 추출
   const getInitials = (name) => {
-    if (!name) return '';
-    const words = name.trim().split(' ');
+    if (!name || !name.trim()) return '';
+    const words = name.trim().split(/\s+/); // Handle multiple spaces
+    if (words.length === 0) return '';
+
+    const firstInitial = words[0].charAt(0).toUpperCase();
     if (words.length === 1) {
-      return words[0].charAt(0).toUpperCase();
+      return firstInitial;
     }
-    return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
+    const lastInitial = words[words.length - 1].charAt(0).toUpperCase();
+    return firstInitial + lastInitial;
   };
 
   return (

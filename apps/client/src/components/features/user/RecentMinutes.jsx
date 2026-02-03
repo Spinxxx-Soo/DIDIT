@@ -1,80 +1,107 @@
-// src/pages/components/RecentMinutes.jsx
-import React, { useState } from 'react';
-import { Rnd } from 'react-rnd'; // ★ 드래그 & 리사이징 핵심 라이브러리
-
-// 임시 데이터
-const MOCK_MINUTES = [
-  { id: 1, title: '[2025-01-10] 개발회의.md - 로그인 버그', date: '2025-01-10', content: '로그인 버그 관련 논의 내용입니다...' },
-  { id: 2, title: '[2025-01-08] 개발회의.md - UI 개선', date: '2025-01-08', content: 'UI 컴포넌트 통일화 작업 논의...' },
-  { id: 3, title: '[2025-01-09] 긴급버그.md - 결제 오류', date: '2025-01-09', content: 'PG사 연동 오류 수정 건...' },
-];
+/**
+ * Apple-Style Recent Minutes
+ * Card-based layout, clean design
+ */
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { FileText, Calendar } from 'lucide-react';
+import DraggableSummaryWindow from '@/components/features/meeting/DraggableSummaryWindow';
+import { loungeApi } from '@/api/lounge';
 
 const RecentMinutes = () => {
-  // 어떤 회의록이 열렸는지 관리 (null이면 닫힘)
+  const { projectId } = useParams();
+  const [minutes, setMinutes] = useState([]);
   const [openedMinute, setOpenedMinute] = useState(null);
 
+  useEffect(() => {
+    const fetchMinutes = async () => {
+      if (!projectId) return;
+      try {
+        const response = await loungeApi.getRecentMinutes(projectId);
+        if (Array.isArray(response.data)) {
+          setMinutes(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch recent minutes:', error);
+      }
+    };
+
+    fetchMinutes();
+  }, [projectId]);
+
   return (
-    <div className="h-full flex flex-col max-h-full overflow-hidden">
-      <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-        📋 최근 회의록
-      </h2>
-
-      {/* 회의록 리스트 */}
-      <ul className="space-y-2 flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-1">
-        {MOCK_MINUTES.map((minute) => (
-          <li
-            key={minute.id}
-            onClick={() => setOpenedMinute(minute)}
-            className="p-3 bg-gray-50 hover:bg-blue-50 border border-gray-100 rounded-lg cursor-pointer transition-colors flex items-center justify-between group"
-          >
-            <span className="text-sm text-gray-700 truncate font-medium group-hover:text-blue-700">
-              {minute.title}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      {/* ★ Draggable Modal (Rnd) 영역 */}
-      {openedMinute && (
-        <Rnd
-          default={{
-            x: 100, y: 100, // 초기 위치
-            width: 400, height: 300, // 초기 크기
-          }}
-          minWidth={300}
-          minHeight={200}
-          bounds="window" // 화면 밖으로 못 나가게
-          className="z-50 border rounded-lg shadow-2xl bg-white overflow-hidden flex flex-col"
-          dragHandleClassName="modal-header" // 이 클래스를 가진 영역을 잡아야 드래그 됨
-        >
-          {/* 모달 헤더 (드래그 손잡이) */}
-          <div className="modal-header bg-gray-100 p-3 border-b flex justify-between items-center cursor-move select-none">
-            <span className="font-bold text-sm text-gray-700 truncate pr-4">
-              {openedMinute.title}
-            </span>
-            {/* 닫기 버튼 (드래그 이벤트 전파 방지) */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // 중요: 드래그랑 겹치지 않게
-                setOpenedMinute(null);
-              }}
-              className="text-gray-400 hover:text-red-500 cursor-pointer"
+    <div className="w-full">
+      {/* 회의록 카드 그리드 - 전체 너비 반응형 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {minutes.length === 0 ? (
+          <div className="col-span-full py-10 text-center text-[var(--text-tertiary)] border border-dashed border-[var(--border-subtle)] rounded-[var(--radius-xl)]">
+            최근 작성된 회의록이 없습니다.
+          </div>
+        ) : (
+          minutes.map((minute, index) => (
+            <div
+              key={minute.id}
+              onClick={() => setOpenedMinute(minute)}
+              className="
+                p-4
+                bg-[var(--bg-input)]
+                rounded-[var(--radius-xl)]
+                border border-[var(--border-subtle)]
+                cursor-pointer
+                transition-all duration-300
+                hover:-translate-y-1
+                hover:shadow-[var(--shadow-md)]
+                hover:border-[var(--border-strong)]
+                group
+                animate-fade-up
+              "
+              style={{ animationDelay: `${index * 50}ms` }}
             >
-              ✖
-            </button>
-          </div>
+              {/* 아이콘 + 채널 */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className="
+                  w-8 h-8
+                  flex items-center justify-center
+                  rounded-[var(--radius-lg)]
+                  bg-[var(--success-bg)]
+                  text-[var(--color-green-primary)]
+                ">
+                  <FileText size={14} />
+                </div>
+                <span className="text-xs text-[var(--text-tertiary)]">
+                  {minute.channel || '공통'}
+                </span>
+              </div>
 
-          {/* 모달 내용 (여기는 드래그 안됨) */}
-          <div className="p-4 overflow-y-auto flex-1 bg-white cursor-default">
-            <p className="text-sm text-gray-600 whitespace-pre-wrap">
-              {openedMinute.content}
-            </p>
-            <div className="mt-4 pt-4 border-t text-xs text-gray-400">
-              작성일: {openedMinute.date}
+              {/* 제목 */}
+              <h4 className="text-sm font-semibold text-[var(--text-bright)] mb-2 line-clamp-1 group-hover:text-[var(--color-green-primary)] transition-colors">
+                {minute.title}
+              </h4>
+
+              {/* 미리보기 (첫 번째 항목) */}
+              <p className="text-xs text-[var(--text-tertiary)] line-clamp-2 mb-3">
+                {Array.isArray(minute.content) ? minute.content[0] : (minute.summary || '내용 없음')}
+              </p>
+
+              {/* 날짜 */}
+              <div className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">
+                <Calendar size={12} />
+                {new Date(minute.date).toLocaleDateString('ko-KR', {
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </div>
             </div>
-          </div>
-        </Rnd>
-      )}
+          ))
+        )}
+      </div>
+
+      {/* DraggableSummaryWindow 사용 (사이드바와 동일) */}
+      <DraggableSummaryWindow
+        isOpen={!!openedMinute}
+        onClose={() => setOpenedMinute(null)}
+        summary={openedMinute}
+      />
     </div>
   );
 };

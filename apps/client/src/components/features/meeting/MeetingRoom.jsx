@@ -36,7 +36,7 @@ const MeetingRoom = () => {
     try {
       // Mock 모드: VITE_USE_MOCK=true/True 또는 백엔드 URL 없을 때
       const useMock = String(import.meta.env.VITE_USE_MOCK).trim().toLowerCase() === 'true' ||
-                      (import.meta.env.DEV && !import.meta.env.VITE_BACKEND_URL);
+        (import.meta.env.DEV && !import.meta.env.VITE_BACKEND_URL);
 
       let token, sessionId, openviduUrl;
 
@@ -48,13 +48,32 @@ const MeetingRoom = () => {
         console.log('[DEV] Mock 모드: 백엔드 없이 회의 화면 표시');
       } else {
         // 1. API로 토큰 발급
-        const response = await meetingApi.joinVoice(projectId, {
-          meetingId: Number(channelId),
-        });
-        ({ token, sessionId, openviduUrl } = response.data);
+        // 응답 형식: "ws://localhost:4443?sessionId=xxx&token=tok_xxx"
+        const response = await meetingApi.joinWebRTC(Number(channelId));
+        const tokenUrl = response.data;
+
+        // URL 파싱하여 필요한 값 추출
+        const url = new URL(tokenUrl);
+        openviduUrl = url.origin; // "ws://localhost:4443"
+        sessionId = url.searchParams.get('sessionId');
+        token = tokenUrl; // OpenVidu는 전체 URL을 토큰으로 사용
+
+        // 2. 현재 참가자 목록 조회
+        try {
+          const usersResponse = await meetingApi.getWebRTCUsers(Number(channelId));
+          const webRTCUsers = usersResponse.data || [];
+          setParticipants(webRTCUsers.map(user => ({
+            id: user.id,
+            name: user.name,
+            avatarUrl: user.avatarUrl,
+            isSpeaking: false,
+          })));
+        } catch (err) {
+          console.warn('참가자 목록 조회 실패:', err);
+        }
       }
 
-      // 2. 스토어에 회의 정보 저장
+      // 3. 스토어에 회의 정보 저장
       joinMeeting({
         meetingId: Number(channelId),
         sessionId,
@@ -63,7 +82,7 @@ const MeetingRoom = () => {
         title: currentChannelName || '회의',
       });
 
-      // 3. OpenVidu 세션 연결 (Mock 모드에서는 스킵)
+      // 4. OpenVidu 세션 연결 (Mock 모드에서는 스킵)
       if (useMock) {
         // Mock 모드: 테스트용 참가자 추가
         setParticipants([
@@ -86,11 +105,12 @@ const MeetingRoom = () => {
     }
   }, [projectId, channelId, currentChannelName, isInMeeting, joinMeeting, joinSession, setLoading, setError, setParticipants]);
 
-  // URL에서 channelId가 바뀌면 스토어에도 반영 + hasJoined 리셋 (채널 변경 대응)
+  // URL에서 channelId가 바뀌면 hasJoined 리셋 (채널 변경 대응)
   useEffect(() => {
     if (channelId) {
       hasJoined.current = false; // 채널 변경 시 리셋하여 새 회의 참가 가능하게
-      setCurrentChannel(Number(channelId), currentChannelName || '', null);
+      // setCurrentChannel 호출 제거: ChannelSidebar에서 이미 mode를 포함하여 설정함.
+      // 여기서 호출하면 mode가 undefined로 덮어씌워져 버튼이 사라지는 문제 발생.
     }
   }, [channelId]);
 

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { X, AlertCircle, CheckCircle2, Clock, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { IconButton } from '@/components/common/Button/IconButton';
 import { Input } from '@/components/common/Input';
@@ -7,11 +7,11 @@ import { Badge } from '@/components/common/Badge';
 import { Avatar } from '@/components/common/Avatar';
 import { Card } from '@/components/common/Card';
 
-import { useParams } from 'react-router-dom'; // Added
-
-import { chatApi } from '@/api/features';
+import { useParams } from 'react-router-dom';
+import useProjectStore from '@/store/useProjectStore';
 import useAuthStore from '@/store/useAuthStore';
 import useLoungeStore from '@/store/useLoungeStore';
+import useChatStore from '@/store/useChatStore';
 import IssueDetailPanel from './IssueDetailPanel';
 
 // Priority 설정
@@ -40,78 +40,87 @@ const STATUS_CONFIG = {
 };
 
 const RightSidebar = ({ activePanel, onClose, channelId }) => {
-  const { projectId } = useParams(); // Added
-  const { openIssueDetail, openCreateIssue, issues, fetchIssues } = useLoungeStore(); // Added fetchIssues
+  const { projectId } = useParams();
+  const { openIssueDetail, openCreateIssue, issues, fetchIssues } = useLoungeStore();
   const { user } = useAuthStore();
+  const { fetchParticipants } = useProjectStore();
+  const [memberMap, setMemberMap] = useState({});
+
+  // useChatStore hooks
+  const {
+    messages,
+    isConnected,
+    connect,
+    disconnect,
+    sendMessage,
+    editMessage,
+    deleteMessage,
+    fetchRecentChats,
+    isLoading: isLoadingChat
+  } = useChatStore();
 
   const isChat = activePanel === 'chat';
   const isIssueMode = activePanel === 'issue' || activePanel === 'issue_detail';
   const isDetailView = activePanel === 'issue_detail';
 
+  // Local input state
   const [chatMessage, setChatMessage] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [showOptionId, setShowOptionId] = useState(null); // 매번 렌더링 시 menu open 여부 확인용
 
   const messagesEndRef = useRef(null);
 
   // Priority별로 정렬
   const priorityOrder = { high: 0, medium: 1, low: 2 };
-  const sortedIssues = [...issues].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
-  // 이슈 목록 불러오기
+  const sortedIssues = useMemo(() => {
+    return [...(issues || [])].sort((a, b) =>
+      (priorityOrder[a?.priority] ?? 2) - (priorityOrder[b?.priority] ?? 2)
+    );
+  }, [issues]);
+
+  // 이슈 목록 불러오기 + 실시간 동기화 (polling + visibility)
   useEffect(() => {
-    if (isIssueMode && projectId) {
+    if (!isIssueMode || !projectId) return;
+
+    // 1. 패널 열릴 때 즉시 fetch
+    fetchIssues(projectId);
+
+    // 2. 30초마다 polling (다른 사용자 변경사항 반영)
+    const interval = setInterval(() => {
       fetchIssues(projectId);
-    }
+    }, 30000);
+
+    // 3. 탭 복귀 시 fetch
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchIssues(projectId);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [isIssueMode, projectId, fetchIssues]);
 
-  // 채팅 불러오기
-  const fetchChats = React.useCallback(async () => {
-    if (!channelId) return;
-
-    // Mock Mode Check
-    const isMock = import.meta.env.VITE_USE_MOCK === 'true';
-
-    try {
-      setIsLoadingChat(true);
-
-      if (isMock) {
-        // Mock Data
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        const mockMessages = [
-          { id: 1, content: `채널 ${channelId}에 오신 것을 환영합니다!`, sender: 'System', time: '오전 09:00', isMine: false },
-          { id: 2, content: '새로운 기능을 확인해보세요.', sender: '김도연', time: '오전 09:05', isMine: false },
-        ];
-
-        setMessages(mockMessages);
-
-      } else {
-        // Real API
-        const response = await chatApi.getChats(channelId);
-        const fetchedMessages = response.data.map(msg => ({
-          id: msg.id,
-          content: msg.content,
-          sender: msg.senderName || msg.sender?.name || '알 수 없음',
-          time: msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-          isMine: msg.senderId === user?.userId || msg.sender?.id === user?.userId,
-        }));
-        setMessages(fetchedMessages);
-      }
-
-    } catch (error) {
-      console.error('채팅 불러오기 실패:', error);
-    } finally {
-      setIsLoadingChat(false);
-    }
-  }, [channelId, user]);
-
-  // 채널이 바뀌거나 패널 열릴 때 로드
+  // 채팅 및 SSE 연결 관리
   useEffect(() => {
     if (isChat && channelId) {
-      fetchChats();
+      console.log(`[RightSidebar] Connecting to chat room: ${channelId}`);
+      fetchRecentChats(channelId, user); // 이전 대화 내용 불러오기
+      connect(channelId, user); // SSE 연결
     }
-  }, [isChat, channelId, fetchChats]);
+
+    return () => {
+      // 컴포넌트 언마운트 시 또는 채널 변경 시 연결 종료
+      if (!isChat) {
+        disconnect();
+      }
+    };
+  }, [isChat, channelId, connect, disconnect, fetchRecentChats, user]);
 
   // 스크롤 자동 이동
   useEffect(() => {
@@ -120,28 +129,42 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
     }
   }, [messages, isChat]);
 
+  // 참여자 정보
+  useEffect(() => {
+    let ignore = false;
+
+    const loadParticipants = async () => {
+      if (isChat && projectId) {
+        try {
+          const participants = await fetchParticipants(projectId);
+          if (!ignore) {
+            const mapping = {};
+            participants.forEach(p => {
+              mapping[p.id] = p.name;
+            });
+            setMemberMap(mapping);
+          }
+        } catch (error) {
+          console.error("Failed to load participants:", error);
+        }
+      }
+    };
+    loadParticipants();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isChat, projectId, fetchParticipants]);
+
   const handleSendMessage = async () => {
     if (!chatMessage.trim() || !channelId) return;
-    const isMock = import.meta.env.VITE_USE_MOCK === 'true';
 
     try {
-      if (isMock) {
-        const newMsg = {
-          id: Date.now(),
-          content: chatMessage,
-          sender: '나',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isMine: true
-        };
-        setMessages(prev => [...prev, newMsg]);
-        setChatMessage('');
-      } else {
-        await chatApi.createChat(channelId, { content: chatMessage });
-        setChatMessage('');
-        fetchChats();
-      }
+      await sendMessage(channelId, chatMessage, user);
+      setChatMessage('');
     } catch (error) {
-      console.error('메시지 전송 실패:', error);
+      console.error("Failed to send message:", error);
+      // Error handled in store or UI can show toast
     }
   };
 
@@ -150,6 +173,43 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
       e.preventDefault();
       if (!e.nativeEvent.isComposing) {
         handleSendMessage();
+      }
+    }
+  };
+
+  // --- Chat Edit/Delete Handlers ---
+  const handleToggleOption = (id) => {
+    setShowOptionId(prev => (prev === id ? null : id));
+  };
+
+  const handleInitEdit = (msg) => {
+    setEditingId(msg.id);
+    setEditContent(msg.content);
+    setShowOptionId(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditContent('');
+  };
+
+  const handleSaveEdit = async (msgId) => {
+    if (!editContent.trim()) return;
+    try {
+      await editMessage(channelId, msgId, editContent);
+      setEditingId(null);
+      setEditContent('');
+    } catch (error) {
+      console.error("Edit failed", error);
+    }
+  };
+
+  const handleDeleteMessage = async (msgId) => {
+    if (window.confirm("메시지를 삭제하시겠습니까?")) {
+      try {
+        await deleteMessage(channelId, msgId);
+      } catch (error) {
+        console.error("Delete failed", error);
       }
     }
   };
@@ -181,20 +241,78 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
               <div className="flex justify-center p-4 text-gray-400 text-sm">대화 내용이 없습니다.</div>
             ) : (
               messages.map((msg) => (
-                <div key={msg.id} className={`flex gap-3 ${msg.isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div key={msg.id} className={`flex gap-3 ${msg.isMine ? 'flex-row-reverse' : 'flex-row'} group`}>
                   {!msg.isMine && (
-                    <Avatar name={msg.sender} size="sm" className="mt-1" />
+                    <Avatar
+                      name={memberMap[msg.sender] || `User(${msg.sender})`}
+                      size="sm"
+                      className="mt-1"
+                    />
                   )}
                   <div className={`flex flex-col ${msg.isMine ? 'items-end' : 'items-start'} max-w-[75%]`}>
                     {!msg.isMine && (
-                      <span className="text-[11px] text-gray-500 mb-1 ml-1">{msg.sender}</span>
+                      <span className="text-[11px] text-gray-500 mb-1 ml-1">{memberMap[msg.sender] || msg.sender}</span>
                     )}
-                    <div className={`px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed shadow-sm relative group ${msg.isMine
-                      ? 'bg-green-600 text-white rounded-tr-none'
-                      : 'bg-white text-gray-700 border border-gray-100 rounded-tl-none'
-                      }`}>
-                      {msg.content}
+
+                    <div className="flex items-end gap-2">
+                      {/* 내가 보낸 메시지이고, hover시 메뉴 버튼 표시 (수정 중이 아닐 때만) */}
+                      {msg.isMine && !msg.isTemp && editingId !== msg.id && (
+                        <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleToggleOption(msg.id)}
+                            className="p-1 hover:bg-gray-200 rounded-full text-gray-400 hover:text-gray-600"
+                          >
+                            <MoreVertical size={14} />
+                          </button>
+
+                          {/* Dropdown Menu */}
+                          {showOptionId === msg.id && (
+                            <div className="absolute top-6 right-0 bg-white border border-gray-100 shadow-lg rounded-lg py-1 w-24 z-20 overflow-hidden flex flex-col">
+                              <button
+                                onClick={() => handleInitEdit(msg)}
+                                className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 w-full text-left"
+                              >
+                                <Edit2 size={12} /> 수정
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMessage(msg.id)}
+                                className="flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 w-full text-left"
+                              >
+                                <Trash2 size={12} /> 삭제
+                              </button>
+                            </div>
+                          )}
+                          {/* Click outside closer could be added here or via global listener, but for simplicity relying on toggle */}
+                          {showOptionId === msg.id && (
+                            <div className="fixed inset-0 z-10" onClick={() => setShowOptionId(null)} />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Message Content or Edit Input */}
+                      {editingId === msg.id ? (
+                        <div className="flex flex-col items-end gap-1">
+                          <textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="p-2 text-sm border border-green-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 w-full min-w-[200px] resize-none"
+                            rows={2}
+                          />
+                          <div className="flex gap-1">
+                            <button onClick={handleCancelEdit} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">취소</button>
+                            <button onClick={() => handleSaveEdit(msg.id)} className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">저장</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={`px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed shadow-sm relative group/bubble ${msg.isMine
+                          ? 'bg-green-600 text-white rounded-tr-none'
+                          : 'bg-white text-gray-700 border border-gray-100 rounded-tl-none'
+                          }`}>
+                          {msg.content}
+                        </div>
+                      )}
                     </div>
+
                     <span className="text-[10px] text-gray-400 mt-1 px-1">{msg.time}</span>
                   </div>
                 </div>
@@ -229,23 +347,23 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
         </div>
       )}
 
-      {/* 2. 이슈 모드 (Existing) */}
+      {/* 2. 이슈 모드 */}
       {isIssueMode && (
-        <div className="absolute inset-0 w-full h-full overflow-hidden bg-[var(--bg-panel)]">
+        <div className="absolute inset-0 w-full h-full overflow-hidden bg-[#F8F9FA] z-10">
           {/* [LAYER 1] 이슈 목록 화면 */}
           <div
             className={`
-              absolute inset-0 w-full h-full flex flex-col bg-[var(--bg-panel)] transition-transform duration-300 ease-in-out
+              absolute inset-0 w-full h-full flex flex-col bg-[#F8F9FA] transition-transform duration-300 ease-in-out
               ${isDetailView ? '-translate-x-[20%]' : 'translate-x-0'} 
             `}
             style={{ pointerEvents: isDetailView ? 'none' : 'auto' }}
           >
-            <div className="h-14 flex items-center justify-between px-5 border-b border-[var(--border-default)]">
-              <h2 className="font-bold text-lg text-[var(--text-bright)]">이슈 트래커</h2>
+            <div className="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-100 shadow-sm shrink-0">
+              <h2 className="font-bold text-lg text-gray-800">이슈 트래커</h2>
               <IconButton variant="ghost" size="sm" icon={<X size={18} />} onClick={onClose} />
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[var(--bg-app)]">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F8F9FA]">
               {sortedIssues.map((issue) => (
                 <Card
                   key={issue.id}
@@ -259,21 +377,21 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Badge
-                          variant={PRIORITY_CONFIG[issue.priority].variant}
+                          variant={(PRIORITY_CONFIG[issue.priority] || PRIORITY_CONFIG.medium).variant}
                           size="sm"
-                          leftIcon={PRIORITY_CONFIG[issue.priority].icon}
+                          leftIcon={(PRIORITY_CONFIG[issue.priority] || PRIORITY_CONFIG.medium).icon}
                         >
-                          {PRIORITY_CONFIG[issue.priority].label}
+                          {(PRIORITY_CONFIG[issue.priority] || PRIORITY_CONFIG.medium).label}
                         </Badge>
                         <Badge
-                          variant={STATUS_CONFIG[issue.status].variant}
+                          variant={(STATUS_CONFIG[issue.status] || STATUS_CONFIG.open).variant}
                           size="sm"
                         >
-                          {STATUS_CONFIG[issue.status].label}
+                          {(STATUS_CONFIG[issue.status] || STATUS_CONFIG.open).label}
                         </Badge>
                       </div>
                       <span className="text-xs text-[var(--text-tertiary)] font-mono">
-                        #{issue.id}
+                        #{issue.issueNo || issue.id}
                       </span>
                     </div>
 
@@ -284,16 +402,16 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
 
                     {/* 담당자 */}
                     <div className="flex items-center gap-2">
-                      {issue.assignees.length > 0 ? (
+                      {(issue.assignees || []).length > 0 ? (
                         <>
                           <div className="flex -space-x-2">
-                            {issue.assignees.slice(0, 3).map((name, idx) => (
+                            {(issue.assignees || []).slice(0, 3).map((name, idx) => (
                               <Avatar key={idx} name={name} size="xs" className="ring-2 ring-white" />
                             ))}
                           </div>
                           <span className="text-xs text-[var(--text-secondary)]">
-                            {issue.assignees.slice(0, 2).join(', ')}
-                            {issue.assignees.length > 2 && ` +${issue.assignees.length - 2}`}
+                            {(issue.assignees || []).slice(0, 2).join(', ')}
+                            {(issue.assignees || []).length > 2 && ` +${(issue.assignees || []).length - 2}`}
                           </span>
                         </>
                       ) : (

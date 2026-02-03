@@ -1,7 +1,110 @@
 import { create } from 'zustand';
 import { issueApi } from '@/api/features';
 
-const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || true; // 강제 Mock
+// 환경변수로 Mock 모드 전환 (.env에서 VITE_USE_MOCK=true/false)
+const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+
+// API 응답 정규화 함수
+const normalizeIssue = (issue) => ({
+  id: issue.id,
+  issueNo: issue.issueNo,
+  title: issue.title,
+  body: issue.body || '',
+  status: issue.status?.toLowerCase() || 'open',
+  priority: issue.priority?.toLowerCase() || 'medium',
+  assignees: issue.assignees?.map((a) => a.name || a.nickname) || [],
+  author: issue.author?.name || issue.author?.nickname || '',
+  createdAt: issue.createdAt,
+  updatedAt: issue.updatedAt,
+});
+
+// Mock 데이터 (API 응답 구조와 동일)
+const MOCK_ISSUES = [
+  {
+    id: 101,
+    issueNo: 143,
+    title: '로그인 버그 수정',
+    body: '로그인 시 토큰이 제대로 저장되지 않는 문제',
+    status: 'OPEN',
+    priority: 'HIGH',
+    assignees: [{ name: '김도연' }],
+    author: { name: '홍길동' },
+    createdAt: '2025-01-20T10:00:00Z',
+    updatedAt: '2025-01-20T10:00:00Z',
+  },
+  {
+    id: 102,
+    issueNo: 142,
+    title: 'UI 컴포넌트 리팩토링',
+    body: 'Button 컴포넌트 공통화 작업',
+    status: 'OPEN',
+    priority: 'MEDIUM',
+    assignees: [{ name: '이다연' }],
+    author: { name: '김철수' },
+    createdAt: '2025-01-19T09:00:00Z',
+    updatedAt: '2025-01-19T09:00:00Z',
+  },
+  {
+    id: 103,
+    issueNo: 141,
+    title: '문서 업데이트',
+    body: 'README 파일 업데이트',
+    status: 'CLOSED',
+    priority: 'LOW',
+    assignees: [{ name: '하지연' }],
+    author: { name: '박영희' },
+    createdAt: '2025-01-18T14:00:00Z',
+    updatedAt: '2025-01-18T16:00:00Z',
+  },
+  {
+    id: 104,
+    issueNo: 140,
+    title: '결제 모듈 연동 실패',
+    body: 'PG사 API 연동 시 타임아웃 발생',
+    status: 'OPEN',
+    priority: 'HIGH',
+    assignees: [{ name: '홍수민' }],
+    author: { name: '이민수' },
+    createdAt: '2025-01-17T11:00:00Z',
+    updatedAt: '2025-01-17T11:00:00Z',
+  },
+  {
+    id: 105,
+    issueNo: 139,
+    title: '메인 페이지 배너 교체',
+    body: '신규 프로모션 배너로 교체 필요',
+    status: 'OPEN',
+    priority: 'MEDIUM',
+    assignees: [{ name: '김이' }],
+    author: { name: '최지우' },
+    createdAt: '2025-01-16T15:00:00Z',
+    updatedAt: '2025-01-16T15:00:00Z',
+  },
+  {
+    id: 106,
+    issueNo: 138,
+    title: 'API 응답 최적화',
+    body: '응답 시간 개선을 위한 쿼리 최적화',
+    status: 'CLOSED',
+    priority: 'LOW',
+    assignees: [{ name: '손을준' }],
+    author: { name: '정민호' },
+    createdAt: '2025-01-15T10:00:00Z',
+    updatedAt: '2025-01-15T18:00:00Z',
+  },
+  {
+    id: 107,
+    issueNo: 137,
+    title: '보안 취약점 패치',
+    body: 'XSS 취약점 수정',
+    status: 'OPEN',
+    priority: 'HIGH',
+    assignees: [{ name: '이강인' }],
+    author: { name: '김보안' },
+    createdAt: '2025-01-14T09:00:00Z',
+    updatedAt: '2025-01-14T09:00:00Z',
+  },
+];
 
 const useLoungeStore = create((set, get) => ({
   // 패널 관련 상태
@@ -36,56 +139,66 @@ const useLoungeStore = create((set, get) => ({
     selectedIssueId: null
   }),
 
+  // 이슈 트래커 패널 열기
+  openIssueMode: () => set({
+    activePanel: 'issue',
+    selectedIssueId: null
+  }),
+
   // 이슈 CRUD
-  fetchIssues: async (roomId) => {
-    set({ isLoading: true });
+  fetchIssues: async (projectId) => {
+    set({ isLoading: true, error: null });
 
     if (IS_MOCK) {
-      await new Promise(r => setTimeout(r, 500));
-      // 기존 임시 데이터 부활
-      const MOCK_ISSUES = [
-        { id: 101, title: '[Mock] 로그인 화면 수정', body: '테스트 이슈입니다', status: 'open', priority: 'high', assignees: ['나'] },
-        { id: 102, title: '[Mock] API 연결 테스트', body: 'Mock 모드입니다', status: 'open', priority: 'medium', assignees: [] },
-      ];
-      set({ issues: MOCK_ISSUES, isLoading: false });
+      await new Promise((r) => setTimeout(r, 500));
+      const normalizedIssues = MOCK_ISSUES.map(normalizeIssue);
+      set({ issues: normalizedIssues, isLoading: false });
       return;
     }
 
     try {
-      const response = await issueApi.getIssues(roomId);
-      set({ issues: response.data, isLoading: false });
+      // TODO: API 완성 후 features.js에서 getIssues 주석 해제
+      const response = await issueApi.getIssues(projectId);
+      const normalizedIssues = response.data.map(normalizeIssue);
+      set({ issues: normalizedIssues, isLoading: false });
     } catch (error) {
       console.error('이슈 목록 조회 실패:', error);
       set({ error: error.message, isLoading: false });
     }
   },
 
-  addIssue: async (roomId, issueData) => {
+  addIssue: async (projectId, issueData) => {
     if (IS_MOCK) {
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 500));
       const newIssue = {
         id: Date.now(),
+        issueNo: Date.now() % 1000,
         ...issueData,
-        assignees: [],
-        status: 'open',
-        priority: 'medium'
+        assignees: issueData.assignees || [],
+        status: issueData.status || 'open',
+        priority: issueData.priority || 'medium',
+        author: '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       set((state) => ({
         issues: [newIssue, ...state.issues],
         activePanel: 'issue',
-        selectedIssueId: null
+        selectedIssueId: null,
       }));
       return newIssue;
     }
 
     try {
-      const response = await issueApi.createIssue(roomId, issueData);
+      // TODO: API 완성 후 features.js에서 createIssue 주석 해제
+      const response = await issueApi.createIssue(projectId, issueData);
+      const normalizedIssue = normalizeIssue(response.data);
       set((state) => ({
-        issues: [response.data, ...state.issues],
+        issues: [normalizedIssue, ...state.issues],
         activePanel: 'issue',
-        selectedIssueId: null
+        selectedIssueId: null,
       }));
-      return response.data;
+      return normalizedIssue;
     } catch (error) {
       console.error('이슈 생성 실패:', error);
       throw error;

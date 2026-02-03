@@ -1,98 +1,293 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format, addDays, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
-
-// 임시 데이터 (나중에 API 연동)
-const MOCK_SCHEDULES = [
-  { id: 1, date: '2026-01-23', title: '기획 구상 및 마무리', type: 'planning' }, // 오늘 날짜로 테스트해보세요
-  { id: 2, date: '2026-01-25', title: '데이터 수집 및 전처리', type: 'data' },
-];
+import { useParams } from 'react-router-dom';
+import { Modal } from '@/components/common/Modal/Modal';
+import { Button } from '@/components/common/Button';
+import { Input } from '@/components/common/Input/Input';
+import { toast } from '@/store/useToastStore';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { meetingApi } from '@/api/meeting';
 
 const WeeklySchedule = () => {
+  const { projectId } = useParams();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [schedules, setSchedules] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newSchedule, setNewSchedule] = useState({
+    title: '',
+    startDate: '',
+    endDate: '',
+    startTime: '09:00',
+    endTime: '10:00',
+    type: 'planning',
+  });
 
-  // 이번 주의 시작(일요일)과 끝(토요일) 구하기
-  const startDate = startOfWeek(currentDate, { weekStartsOn: 0 }); // 0: 일요일 시작
+  const startDate = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startDate, i));
+
+  // 일정 목록 불러오기
+  const fetchSchedules = async () => {
+    if (!projectId) return;
+
+    try {
+      // [수정 1] API 명세(date-time)에 맞춰 ISO String으로 변환
+      // [수정] 조회 시에도 toISOString() 대신 로컬 시간 형식을 사용하여
+      // 서버가 정확한 범위 내의 데이터를 조회할 수 있도록 함.
+      const startStr = format(startDate, "yyyy-MM-dd'T'HH:mm:ss");
+      const endStr = format(endOfWeek(currentDate), "yyyy-MM-dd'T'HH:mm:ss");
+
+      const response = await meetingApi.getMeetingsByDate(projectId, startStr, endStr);
+
+      // [수정 2] API 응답 필드명(startedAt, endedAt)에 맞춰 매핑 변경
+      const mappedSchedules = (response.data || []).map(item => ({
+        id: item.id || Math.random(),
+        title: item.title,
+        startDate: item.startedAt ? item.startedAt.split('T')[0] : '', // start -> startedAt
+        endDate: item.endedAt ? item.endedAt.split('T')[0] : '',       // end -> endedAt
+        type: item.mode === 'CHAT' ? 'meeting' : 'planning', // 명세에 type 없으므로 임의 매핑 (필요 시 수정)
+      }));
+
+      setSchedules(mappedSchedules);
+    } catch (error) {
+      console.error('Failed to fetch schedules:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSchedules();
+  }, [currentDate, projectId]);
 
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
 
-  // 날짜 매칭 함수
   const getScheduleForDay = (date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    // 실제로는 배열 전체를 순회하거나, 해당 날짜의 여러 일정을 필터링해야 할 수 있습니다.
-    return MOCK_SCHEDULES.find(s => s.date === dateStr);
+    return schedules.find(s => s.startDate <= dateStr && dateStr <= s.endDate);
+  };
+
+  const handleOpenModal = (dateStr = '') => {
+    // 기본값: 현재 시간 기준 다음 정각 시간
+    const now = new Date();
+    const nextHour = new Date(now);
+    nextHour.setHours(now.getHours() + 1, 0, 0, 0); // 다음 시간 정각 (분, 초 0)
+
+    // 종료 시간은 1시간 뒤
+    const nextHourEnd = new Date(nextHour);
+    nextHourEnd.setHours(nextHour.getHours() + 1);
+
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const targetDateStr = dateStr || todayStr;
+
+    setNewSchedule({
+      title: '',
+      startDate: targetDateStr,
+      endDate: targetDateStr,
+      startTime: format(nextHour, 'HH:mm'),
+      endTime: format(nextHourEnd, 'HH:mm'),
+      type: 'planning',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!newSchedule.title || !newSchedule.startDate || !newSchedule.endDate) {
+      toast.warning('일정 제목과 날짜를 입력해주세요.');
+      return;
+    }
+
+    if (newSchedule.title.length > 50) {
+      toast.warning('일정 제목은 50자 이내여야 합니다.');
+      return;
+    }
+
+    const startDateTime = new Date(`${newSchedule.startDate}T${newSchedule.startTime}`);
+    const endDateTime = new Date(`${newSchedule.endDate}T${newSchedule.endTime}`);
+
+    // 현재 시간과 비교 (과거 시간 예약 방지)
+    if (startDateTime <= new Date()) {
+      toast.warning('시작 시간은 현재 시간보다 이후여야 합니다.');
+      return;
+    }
+
+    if (startDateTime >= endDateTime) {
+      toast.warning('종료 시간은 시작 시간보다 이후여야 합니다.');
+      return;
+    }
+
+    try {
+      // 로컬 시간 그대로 전송 (yyyy-MM-ddTHH:mm:ss)
+      const formattedStart = format(startDateTime, "yyyy-MM-dd'T'HH:mm:ss");
+      const formattedEnd = format(endDateTime, "yyyy-MM-dd'T'HH:mm:ss");
+
+      await meetingApi.bookMeeting(projectId, {
+        title: newSchedule.title,
+        start: formattedStart,
+        end: formattedEnd,
+      });
+
+      toast.success('일정이 추가되었습니다.');
+      handleCloseModal();
+      fetchSchedules();
+    } catch (error) {
+      console.error('Failed to save schedule:', error);
+      toast.error('일정 추가에 실패했습니다. (시간을 확인해주세요)');
+    }
+  };
+
+  const getTypeStyle = (type) => {
+    const styles = {
+      planning: 'bg-blue-50 text-blue-600 border-blue-100',
+      meeting: 'bg-purple-50 text-purple-600 border-purple-100',
+      data: 'bg-amber-50 text-amber-600 border-amber-100',
+      dev: 'bg-[var(--success-bg)] text-[var(--color-green-primary)] border-[var(--color-green-100)]',
+    };
+    return styles[type] || styles.meeting;
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
-      {/* 1. 헤더: 타이틀 & 주간 이동 컨트롤러 */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
-          📅 이번 주 일정
-          <button className="text-gray-400 hover:text-blue-600 text-lg transition-colors">+</button>
-        </h2>
-
-        <div className="flex items-center bg-white border border-gray-200 rounded-lg px-1 py-1 shadow-sm">
-          <button onClick={handlePrevWeek} className="p-1 hover:bg-gray-100 rounded text-gray-600">
-            &lt; {/* 아이콘으로 대체 가능 */}
+    <div className="w-full flex flex-col">
+      {/* 헤더: 주간 네비게이션 */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handlePrevWeek}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-all duration-200"
+          >
+            <ChevronLeft size={18} />
           </button>
-          <span className="mx-3 text-sm font-semibold text-gray-700 min-w-[100px] text-center">
-            {format(startDate, 'M/d')} - {format(endOfWeek(currentDate), 'M/d')}
+
+          <span className="text-[15px] font-semibold text-[var(--text-bright)] min-w-[120px] text-center">
+            {format(startDate, 'M월 d일')} - {format(endOfWeek(currentDate), 'M월 d일')}
           </span>
-          <button onClick={handleNextWeek} className="p-1 hover:bg-gray-100 rounded text-gray-600">
-            &gt;
+
+          <button
+            onClick={handleNextWeek}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-all duration-200"
+          >
+            <ChevronRight size={18} />
           </button>
         </div>
+
+        <button
+          onClick={() => handleOpenModal()}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[var(--color-green-primary)] bg-[var(--success-bg)] rounded-full border border-[var(--color-green-100)] transition-all duration-200 hover:shadow-[var(--shadow-glow)]"
+        >
+          <Plus size={14} />
+          일정 추가
+        </button>
       </div>
 
-      {/* 2. 달력 그리드 */}
-      <div className="flex border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm flex-1 min-h-[120px]">
-        {weekDays.map((day) => {
+      {/* 달력 그리드 */}
+      <div className="grid grid-cols-7 gap-2">
+        {weekDays.map((day, index) => {
           const schedule = getScheduleForDay(day);
           const isToday = isSameDay(day, new Date());
           const isSunday = day.getDay() === 0;
           const isSaturday = day.getDay() === 6;
+          const dayStr = format(day, 'yyyy-MM-dd');
 
           return (
             <div
               key={day.toString()}
-              className={`flex-1 border-r last:border-r-0 flex flex-col group relative transition-colors border-gray-100
-                ${isToday ? 'bg-blue-50/40' : 'bg-white'}
+              onClick={() => !schedule && handleOpenModal(dayStr)}
+              className={`
+                relative p-3 rounded-[var(--radius-xl)] border min-h-[100px] cursor-pointer transition-all duration-200 group animate-fade-up
+                ${isToday
+                  ? 'bg-[var(--success-bg)] border-[var(--color-green-200)]'
+                  : 'bg-[var(--bg-input)] border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)]'
+                }
               `}
+              style={{ animationDelay: `${index * 30}ms` }}
             >
-              {/* 날짜 헤더 */}
               <div className={`
-                text-center py-2 text-sm font-medium border-b border-gray-100
-                ${isSunday ? 'text-red-500' : isSaturday ? 'text-blue-500' : 'text-gray-500'}
-                ${isToday ? 'font-bold' : ''}
+                text-sm font-medium mb-2
+                ${isSunday ? 'text-red-500' : isSaturday ? 'text-blue-500' : 'text-[var(--text-secondary)]'}
+                ${isToday ? 'text-[var(--color-green-primary)] font-bold' : ''}
               `}>
-                {format(day, 'EEE (M/d)', { locale: ko })}
+                <span className="block text-xs opacity-70">
+                  {format(day, 'EEE', { locale: ko })}
+                </span>
+                <span className={`
+                  inline-flex items-center justify-center w-7 h-7 rounded-full
+                  ${isToday ? 'bg-[var(--color-green-primary)] text-white' : ''}
+                `}>
+                  {format(day, 'd')}
+                </span>
               </div>
 
-              {/* 일정 표시 영역 */}
-              <div className="p-2 flex-1 flex flex-col gap-1">
-                {schedule && (
-                  <div className={`
-                    text-xs px-2 py-1.5 rounded-md font-medium truncate shadow-sm cursor-pointer hover:opacity-80 transition-opacity
-                    ${schedule.type === 'planning'
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'bg-green-100 text-green-700 border border-green-200'}
-                  `}>
-                    {schedule.title}
-                  </div>
-                )}
+              {schedule && (
+                <div className={`
+                  text-xs px-2 py-1.5 rounded-[var(--radius-md)] font-medium truncate border
+                  ${getTypeStyle(schedule.type)}
+                `}>
+                  {schedule.title}
+                </div>
+              )}
 
-                {/* 호버 시 + 버튼 (선택사항) */}
-                <button className="opacity-0 group-hover:opacity-100 absolute bottom-2 right-2 text-gray-300 hover:text-blue-500 text-xs">
-                  +
-                </button>
-              </div>
+              {!schedule && (
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <Plus size={16} className="text-[var(--text-tertiary)]" />
+                </div>
+              )}
             </div>
           );
         })}
       </div>
+
+      {/* 일정 추가 모달 */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title="일정 추가"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={handleCloseModal}>취소</Button>
+            <Button variant="primary" onClick={handleSaveSchedule}>저장</Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-5">
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="시작 날짜"
+              type="date"
+              value={newSchedule.startDate}
+              onChange={(e) => setNewSchedule({ ...newSchedule, startDate: e.target.value })}
+            />
+            <Input
+              label="시작 시간"
+              type="time"
+              value={newSchedule.startTime}
+              onChange={(e) => setNewSchedule({ ...newSchedule, startTime: e.target.value })}
+            />
+            <Input
+              label="종료 날짜"
+              type="date"
+              value={newSchedule.endDate}
+              onChange={(e) => setNewSchedule({ ...newSchedule, endDate: e.target.value })}
+            />
+            <Input
+              label="종료 시간"
+              type="time"
+              value={newSchedule.endTime}
+              onChange={(e) => setNewSchedule({ ...newSchedule, endTime: e.target.value })}
+            />
+          </div>
+          <Input
+            label="일정 내용"
+            placeholder="할 일을 입력하세요"
+            value={newSchedule.title}
+            onChange={(e) => setNewSchedule({ ...newSchedule, title: e.target.value })}
+          />
+
+        </div>
+      </Modal>
     </div>
   );
 };

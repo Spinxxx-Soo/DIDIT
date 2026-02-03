@@ -1,9 +1,20 @@
+server:
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        same-site: none
+        secure: true
 spring:
   application:
     name: server
 
+  mvc:
+    async:
+      request-timeout: 1800000
+
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:db}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:default}?serverTimezone=Asia/Seoul&characterEncoding=utf8
+    url: jdbc:mysql://${MYSQL_HOST:db}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:didit}?serverTimezone=Asia/Seoul&characterEncoding=utf8
     username: ${MYSQL_USER:defaultId}
     password: ${MYSQL_PASSWORD:defaultPassword}
 
@@ -29,3 +40,20 @@ spring:
             scope:
               - read:user
               - user:email
+              - repo
+              - read:org
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:-}
+      timeout: 2s
+#openvidu
+openvidu:
+  url: ${OPENVIDU_URL}
+  secret: ${OPENVIDU_SECRET}
+
+springdoc:
+  swagger-ui:
+    url: /openapi.yaml
+    disable-swagger-default-url: true

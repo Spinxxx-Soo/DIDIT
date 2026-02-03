@@ -23,6 +23,7 @@ configurations {
 
 repositories {
     mavenCentral()
+    maven { url 'https://repo.jenkins-ci.org/public/' }
 }
 
 ext {
@@ -44,6 +45,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.flywaydb:flyway-mysql'
+    implementation 'org.kohsuke:github-api:2.0-rc.5'
+    // Source: https://mvnrepository.com/artifact/io.openvidu/openvidu-java-client
+    implementation("io.openvidu:openvidu-java-client:2.32.1")
+    // Source: https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-starter-webmvc-ui
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     runtimeOnly 'com.mysql:mysql-connector-j'

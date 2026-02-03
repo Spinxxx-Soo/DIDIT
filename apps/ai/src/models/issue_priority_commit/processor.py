@@ -1,53 +1,47 @@
 # models/issue_priority_commit/processor.py
-from typing import Optional
-import yaml
+from typing import Optional, Dict
+
+from models.common.logger import get_logger
+from models.issue_priority_commit.config import (
+    PriorityLevel,
+    PRIORITY_THRESHOLDS
+)
+
+logger = get_logger(__name__)
 
 
 class PriorityProcessor:
-    """우선순위 후처리 프로세서"""
+    """우선순위 후처리 프로세서
     
-    def __init__(self, model_name: str = "spinxxxx/git-issues-priority-ko", 
-                 use_rules: bool = True):
+    모델의 예측 점수를 HIGH/MED/LOW 우선순위로 변환합니다.
+    (현재 서비스에서는 사용 X)
+    
+    threshold 기반 변환만 수행합니다.
+    """
+    
+    def __init__(self, model_name: str = "", use_rules: bool = False):
         """
         Args:
-            model_name: 허깅페이스 모델 이름
-            use_rules: 후처리 규칙 사용 여부
+            model_name: 호환성을 위해 유지 (사용 안 함)
+            use_rules: 호환성을 위해 유지 (사용 안 함)
         """
-        self.model_name = model_name
-        self.use_rules = use_rules
-        
-        # 후처리 규칙 로드 (옵션)
-        if use_rules:
-            self.rules = self._load_rules()
-        else:
-            self.rules = None
+        pass
     
-    def _load_rules(self) -> Optional[dict]:
-        """후처리 규칙 로드 (옵션)"""
-        try:
-            from huggingface_hub import hf_hub_download
-            rules_path = hf_hub_download(
-                repo_id=self.model_name,
-                filename="postprocess/priority_rules.yaml"
-            )
-            with open(rules_path, "r", encoding="utf-8") as f:
-                return yaml.safe_load(f)
-        except Exception as e:
-            print(f"Warning: 후처리 규칙 로드 실패 ({e}), 규칙 없이 사용")
-            return None
-    
-    def to_priority(self, score: float, text: str = "", thresholds: dict = None) -> str:
-        """
-        점수를 HIGH/MED/LOW로 변환
+    def _convert_score_to_priority(
+        self, 
+        score: float, 
+        thresholds: Dict[str, float]
+    ) -> str:
+        """점수를 threshold 기반으로 우선순위로 변환합니다.
         
         Args:
             score: 우선순위 점수
-            text: 이슈 텍스트 (후처리 규칙 사용 시 필요)
             thresholds: threshold 딕셔너리
         
         Returns:
             "HIGH", "MED", 또는 "LOW"
         """
+<<<<<<< HEAD
         if thresholds is None:
             thresholds = {
                 "q_low": 0.794,
@@ -81,3 +75,35 @@ class PriorityProcessor:
             return "LOW"
         else:
             return "MED"
+=======
+        if score >= thresholds["q_high"]:
+            return PriorityLevel.HIGH
+        elif score <= thresholds["q_low"]:
+            return PriorityLevel.LOW
+        else:
+            return PriorityLevel.MED
+    
+    def to_priority(
+        self, 
+        score: float, 
+        text: str = "", 
+        thresholds: Optional[Dict[str, float]] = None
+    ) -> str:
+        """점수를 HIGH/MED/LOW 우선순위로 변환합니다.
+        
+        threshold 기반 변환만 수행합니다.
+        
+        Args:
+            score: 우선순위 점수
+            text: 호환성을 위해 유지 (사용 안 함)
+            thresholds: threshold 딕셔너리 (None이면 기본값 사용)
+        
+        Returns:
+            "HIGH", "MED", 또는 "LOW"
+        """
+        if thresholds is None:
+            thresholds = PRIORITY_THRESHOLDS.copy()
+        
+        # threshold 기반 변환
+        return self._convert_score_to_priority(score, thresholds)
+>>>>>>> 691993c3e9e07de840a473c2b7432f71e361dd4e

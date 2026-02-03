@@ -121,13 +121,15 @@ public class MeetingServiceImpl implements MeetingService {
     }
 
     @Override
-    public Result<List<MeetingEntity>> GetMeetingList(long projectId, MeetingStatus status, long cursor, Pageable pageable){
+    public Result<List<MeetingEntity>> GetMeetingList(long projectId, MeetingStatus status, Long cursor, Pageable pageable){
         try {
             var project = projectRepository.findById(projectId);
             if(project.isEmpty())
                 return Result.fail(new NotFoundError("projectId", projectId));
 
-            Slice<MeetingEntity> slice = meetingRepository.findAllByCursor(projectId, status, cursor, pageable);
+            Long lastId = (cursor != null) ? cursor : 0L;
+
+            Slice<MeetingEntity> slice = meetingRepository.findAllByCursor(projectId, status, lastId, pageable);
             return Result.ok(slice.stream().toList());
         } catch (Exception e) {
             return Result.fail(new ServerError("MeetingList", projectId));

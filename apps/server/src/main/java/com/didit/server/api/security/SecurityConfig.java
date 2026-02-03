@@ -22,17 +22,23 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(request -> {
                     var config = new org.springframework.web.cors.CorsConfiguration();
-                    config.setAllowedOrigins(java.util.List.of("http://localhost:5173", "https://did-it.xyz"));
-                    config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    config.setAllowedOrigins(java.util.List.of("https://did-it.xyz"));
+                    config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(java.util.List.of("*"));
                     config.setAllowCredentials(true);
                     return config;
                 }))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/", "/api/v1/auth/login", "/api/v1/auth/logout","/login/**", "/oauth2/**", "/error").permitAll()
+                .authorizeHttpRequests(auth -> auth.requestMatchers(
+                                "/", "/openapi.yaml",
+                                "/swagger-ui.html", "/swagger-ui/**",
+                                "/v3/api-docs/swagger-config",
+                                "/api/v1/auth/login", "/api/v1/auth/logout",
+                                "/login/**", "/oauth2/**", "/error"
+                                ).permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
-                        .defaultSuccessUrl("http://localhost:5173/projects", true))
+                        .defaultSuccessUrl("https://did-it.xyz/mypage", true))
                 .logout(logout -> logout
                         .logoutUrl("/api/v1/auth/logout")
                         .addLogoutHandler((request, response, authentication) -> {
@@ -40,7 +46,7 @@ public class SecurityConfig {
                             session.invalidate();
                         })
                         .logoutSuccessHandler((request, response, authentication) ->
-                                response.sendRedirect("https://did-it.xyz")) //리다이렉트 될 페이지 추후 수정 필요
+                                response.sendRedirect("https://did-it.xyz")) //랜딩페이지로
                         .deleteCookies("JSESSIONID")
                         .logoutSuccessUrl("/")
                 );

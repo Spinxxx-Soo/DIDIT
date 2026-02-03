@@ -2,13 +2,13 @@ import { create } from 'zustand';
 import { authApi } from '@/api/auth.js';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
-const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true'; 
+const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 const useAuthStore = create((set, get) => ({
-  user: null,          
+  user: null,
   isAuthenticated: false,
   // 앱 시작 시엔 "확인 중"이어야 하므로 true로 설정해놓음 일단
-  isLoading: true, 
+  isLoading: true,
   error: null,
 
   // ------------------------------------------------------------------
@@ -22,32 +22,24 @@ const useAuthStore = create((set, get) => ({
         name: "하지연",
         avatarUrl: null,
       };
-      
-      try {
-        localStorage.setItem('accessToken', 'mock_token_12345');
-      } catch (e) {
-        console.warn('localStorage 사용 불가');
-      }
-
       set({ user: mockUser, isAuthenticated: true });
       alert("GitHub 로그인 성공! (Mock Mode)");
     } else {
+      // 백엔드로 이동 -> 백엔드에서 GitHub 로그인 -> 쿠키(JSESSIONID) 설정 -> 프론트로 리다이렉트
       window.location.href = authApi.LOGIN_URL;
     }
   },
 
   // ------------------------------------------------------------------
-  // [2] 로그인 콜백 처리
+  // [2] 로그인 콜백 처리 (더 이상 토큰을 받지 않음)
   // ------------------------------------------------------------------
-  completeLogin: async (token) => {
+  completeLogin: async () => {
     set({ isLoading: true, error: null });
-    
     try {
-      localStorage.setItem('accessToken', token);
-      await get().fetchCurrentUser(); 
+      // 쿠키가 세팅되었을 것이므로 바로 내 정보 조회 시도
+      await get().fetchCurrentUser();
     } catch (error) {
       set({ error: error.message, isAuthenticated: false });
-      localStorage.removeItem('accessToken');
     } finally {
       set({ isLoading: false });
     }
@@ -57,73 +49,72 @@ const useAuthStore = create((set, get) => ({
   // [3] 내 정보 조회
   // ------------------------------------------------------------------
   fetchCurrentUser: async () => {
-      // Mock 모드
-      if (IS_MOCK) {
-        set({ 
-          user: {
-            userId: 1,
-            githubLogin: "jiyeon_dev",
-            name: "하지연",
-            avatarUrl: null
-          },
-          isAuthenticated: true,
-          isLoading: false
-        });
-        return;
-      }
+    // Mock 모드
+    if (IS_MOCK) {
+      set({
+        user: {
+          userId: 1,
+          githubLogin: "jiyeon_dev",
+          name: "하지연",
+          avatarUrl: null
+        },
+        isAuthenticated: true,
+        isLoading: false
+      });
+      return;
+    }
 
-      set({ isLoading: true });
-      
-      try {
-        // authApi
-        const response = await authApi.getMe();
-        set({ user: response.data, isAuthenticated: true, error: null });
-      } catch (error) {
-        console.error('내 정보 조회 실패:', error);
-        set({ user: null, isAuthenticated: false, error: '로그인 세션 만료' });
-        localStorage.removeItem('accessToken');
-      } finally {
-        // 성공하든 실패하든 로딩 종료
-        set({ isLoading: false });
-      }
-    },
+    set({ isLoading: true });
+
+    try {
+      const response = await authApi.getMe();
+      // API 변경으로 id -> userId 매핑 (구조 분해 할당 및 리네이밍)
+      const { id, ...rest } = response.data;
+      const userData = { ...rest, id, userId: id };
+      set({ user: userData, isAuthenticated: true });
+    } catch (error) {
+      // 여기서 401 에러 등이 발생하면 세션이 없는 것
+      set({ user: null, isAuthenticated: false });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
   // ------------------------------------------------------------------
   // [4] 로그아웃
   // ------------------------------------------------------------------
   logout: async () => {
-
+    console.log("1. 로그아웃 프로세스 시작");
     set({ isLoading: true });
 
-    if (!IS_MOCK) {
-      try {
-        await authApi.logout();
-      } catch (e) {
-        console.warn('로그아웃 실패:', e);
-      }
-    }
-
     try {
-      localStorage.removeItem('accessToken');
-    } catch (e) {}
+      if (!IS_MOCK) {
+        console.log("2. 서버에 로그아웃 요청 중...");
+        // 이 부분에서 에러가 나면 아래 set({})이 실행 안 될 수 있음
+        await authApi.logout();
+      }
+    } catch (e) {
+      console.error('로그아웃 API 에러:', e);
+    } finally {
+      console.log("3. 클라이언트 상태 초기화 (여기서 GNB가 바뀌어야 함)");
+      // 🔴 중요: 에러가 나든 말든 일단 로컬 상태는 로그아웃으로 바꿈
+      set({
+        user: null,
+        isAuthenticated: false,
+        error: null,
+        isLoading: false
+      });
 
-    set({ user: null, isAuthenticated: false, error: null });
-    window.location.href = '/';
+      // window.location.href = '/'; 
+    }
   },
 
   // ------------------------------------------------------------------
   // [5] 새로고침 시 상태 복구
   // ------------------------------------------------------------------
   checkLoginStatus: async () => {
-    const token = localStorage.getItem('accessToken');
-
-    // 토근 없을 시 실패
-    if (!token) {
-      set({ user: null, isAuthenticated: false, isLoading: false });
-      return;
-    }
-
-    // 토큰 있으면 검증 시작
+    // 로컬 스토리지 토큰 확인 로직 제거
+    // 바로 백엔드에 찔러서 세션 유효한지 확인
     await get().fetchCurrentUser();
   },
 
