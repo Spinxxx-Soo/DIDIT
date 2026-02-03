@@ -130,6 +130,7 @@ const useOpenVidu = () => {
 
     session.on('sessionDisconnected', (event) => {
       console.log('세션 연결 끊김:', event.reason);
+      // 이미 스토어에서 세션이 사라진 경우(정상 종료 과정) redundant 호출 방지
       const currentSession = useMeetingStore.getState().openviduSession;
       if (currentSession) {
         cleanup();
@@ -226,16 +227,16 @@ const useOpenVidu = () => {
     }
 
     if (!session || !OV) {
-      setError('세션이 연결되지 않았습니다.');
+      useMeetingStore.getState().setError('세션이 연결되지 않았습니다.');
       return { success: false };
     }
 
-    setScreenShareLoading(true);
+    useMeetingStore.getState().setScreenShareLoading(true);
 
     try {
       if (currentPublisher) {
         await session.unpublish(currentPublisher);
-        setPublisher(null);
+        useMeetingStore.getState().setPublisher(null);
       }
 
       const currentMicState = useMeetingStore.getState().isMicOn;
@@ -280,16 +281,16 @@ const useOpenVidu = () => {
       return { success: true };
     } catch (error) {
       console.error('화면 공유 시작 실패:', error);
+      // 실패 시 오디오 전용 퍼블리셔 복구 시도
       await restoreAudioOnlyPublisher();
-
       if (error.name === 'NotAllowedError' || error.message?.includes('Permission denied')) {
-        setError('화면 공유 권한이 거부되었습니다.');
+        useMeetingStore.getState().setError('화면 공유 권한이 거부되었습니다.');
       } else {
-        setError('화면 공유를 시작할 수 없습니다.');
+        useMeetingStore.getState().setError('화면 공유를 시작할 수 없습니다.');
       }
       return { success: false, error };
     } finally {
-      setScreenShareLoading(false);
+      useMeetingStore.getState().setScreenShareLoading(false);
     }
   }, []);
 
@@ -345,6 +346,7 @@ const useOpenVidu = () => {
       setPublisher
     } = useMeetingStore.getState();
 
+    // 이미 publisher가 있으면(복구 불필요) 스킵
     if (publisher || !session || !OV) return;
 
     try {
@@ -389,15 +391,20 @@ const useOpenVidu = () => {
       setScreenPublisher,
     } = useMeetingStore.getState();
 
+    // 1. 상태를 먼저 초기화하여 재귀적 이벤트 트리거 시 skip 가능하게 함
     setScreenPublisher(null);
     setPublisher(null);
-
-    if (session) {
-      session.disconnect();
-      setOpenViduSession(null);
-    }
-
+    setOpenViduSession(null);
     setOpenViduInstance(null);
+
+    // 2. 그 후 실제 연결 종료
+    if (session) {
+      try {
+        session.disconnect();
+      } catch (e) {
+        console.warn('세션 종료 중 오류(이미 종료됨):', e);
+      }
+    }
   }, []);
 
   // 컴포넌트 언마운트 시 정리

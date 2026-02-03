@@ -56,11 +56,15 @@ const useMeetingStore = create((set, get) => ({
 
   leaveMeeting: async () => {
     // 1. 현재 스토어의 상태값
-    const { openviduSession, publisher, screenPublisher, currentChannelId} = get();
+    const { openviduSession, publisher, screenPublisher, currentChannelId } = get();
     // 2. 실제 OpenVidu 서버, 미디어 장치 종료
     if (openviduSession) {
       try {
-        openviduSession.disconnect();
+        // 중복 호출 방지를 위해 로컬 변수에 백업 후 즉시 세션 상태 초기화
+        const sessionToDisconnect = openviduSession;
+        set({ openviduSession: null });
+
+        sessionToDisconnect.disconnect();
         console.log("OpenVidu 세션 연결 종료 성공");
       } catch (e) {
         console.error("세션 종료 중 오류 발생:", e);
@@ -69,8 +73,8 @@ const useMeetingStore = create((set, get) => ({
 
     // 2. 미디어 트랙 종료
     [publisher, screenPublisher].forEach(p => {
-        if (p) p.stream.getMediaStream().getTracks().forEach(track => track.stop());
-      });
+      if (p) p.stream.getMediaStream().getTracks().forEach(track => track.stop());
+    });
 
     // 3. [Backend] 백엔드에 나갔음을 알림
     if (currentChannelId) {
