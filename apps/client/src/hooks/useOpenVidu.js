@@ -19,6 +19,7 @@ const useOpenVidu = () => {
     setOpenViduInstance,
     setPublisher,
     setScreenPublisher,
+    setScreenShareLoading,
   } = useMeetingStore();
 
   // ------------------------------------------------------------------
@@ -198,65 +199,110 @@ const useOpenVidu = () => {
   }, []);
 
   // ------------------------------------------------------------------
-  // 화면 공유 시작
+  // 화면 공유 시작 (기존 오디오 Publisher를 화면+오디오 Publisher로 교체)
   // ------------------------------------------------------------------
   const startScreenShare = useCallback(async () => {
-    const { openviduSession: session, openviduInstance: OV } = useMeetingStore.getState();
+    const {
+      openviduSession: session,
+      openviduInstance: OV,
+      isScreenSharing,
+      isScreenShareLoading,
+      publisher: currentPublisher,
+      screenPublisher,
+    } = useMeetingStore.getState();
+
+    // 1. 방어막: 이미 진행 중이거나 활성화된 경우 차단
+    if (isScreenShareLoading || isScreenSharing || screenPublisher) {
+      console.warn('이미 화면 공유가 활성화되어 있거나 처리 중입니다.');
+      return { success: false };
+    }
 
     if (!session || !OV) {
       setError('세션이 연결되지 않았습니다.');
       return { success: false };
     }
 
+    setScreenShareLoading(true);
+
     try {
+      // 2. 기존 오디오 전용 Publisher 중단 (있을 경우)
+      if (currentPublisher) {
+        await session.unpublish(currentPublisher);
+        setPublisher(null);
+      }
+
+      // 3. 새로운 통합 Publisher 생성 (Screen + Audio)
+      const currentMicState = useMeetingStore.getState().isMicOn;
       const newScreenPublisher = await OV.initPublisherAsync(undefined, {
         videoSource: 'screen',
-        publishAudio: false,
+        audioSource: undefined, // 기본 마이크 사용
+        publishAudio: currentMicState,
         publishVideo: true,
         mirror: false,
       });
 
-      // 화면 공유 중지 감지 (사용자가 브라우저에서 중지 버튼 클릭)
+      // 4. 이벤트 리스너 설정 (화면 공유 중지 감지 등)
+      newScreenPublisher.once('accessAllowed', () => {
+        console.log('화면 공유 권한 허용됨');
+      });
+
       newScreenPublisher.once('accessDenied', () => {
+        console.warn('화면 공유 권한 거부됨');
+        // 권한 거부 시 오디오 전용으로 복구 시도
         stopScreenShare();
       });
 
-      // 이벤트 리스너 저장 (정리용)
       const handleEnded = () => stopScreenShare();
       newScreenPublisher._endedHandler = handleEnded;
+      const tracks = newScreenPublisher.stream?.getMediaStream()?.getVideoTracks();
+      if (tracks && tracks[0]) {
+        tracks[0].addEventListener('ended', handleEnded);
+      }
 
-      newScreenPublisher.stream
-        .getMediaStream()
-        .getVideoTracks()[0]
-        .addEventListener('ended', handleEnded);
-
-      // 스토어에 저장
-      setScreenPublisher(newScreenPublisher);
-
+      // 5. 세션에 게시
       await session.publish(newScreenPublisher);
+
+      // 스토어 업데이트 (통합 퍼블리셔이므로 둘 다 설정)
+      setScreenPublisher(newScreenPublisher);
+      setPublisher(newScreenPublisher);
       setScreenSharing(true);
+
       return { success: true };
     } catch (error) {
       console.error('화면 공유 시작 실패:', error);
 
-      if (error.name === 'NotAllowedError') {
+      // 실패 시 오디오 전용 퍼블리셔 복구 시도
+      await restoreAudioOnlyPublisher();
+
+      if (error.name === 'NotAllowedError' || error.message?.includes('Permission denied')) {
         setError('화면 공유 권한이 거부되었습니다.');
       } else {
         setError('화면 공유를 시작할 수 없습니다.');
       }
 
       return { success: false, error };
+    } finally {
+      setScreenShareLoading(false);
     }
-  }, [setScreenSharing, setError, setScreenPublisher]);
+  }, [setScreenSharing, setError, setScreenPublisher, setPublisher, setScreenShareLoading]);
 
   // ------------------------------------------------------------------
-  // 화면 공유 중지
+  // 화면 공유 중지 (화면+오디오 Publisher를 오디오 전용 Publisher로 교체)
   // ------------------------------------------------------------------
   const stopScreenShare = useCallback(async () => {
-    const { openviduSession: session, screenPublisher: currentScreenPublisher } = useMeetingStore.getState();
+    const {
+      openviduSession: session,
+      isScreenShareLoading,
+      screenPublisher: currentScreenPublisher,
+    } = useMeetingStore.getState();
 
-    if (currentScreenPublisher && session) {
-      try {
+    if (isScreenShareLoading) return;
+
+    setScreenShareLoading(true);
+
+    try {
+      // 1. 기존 화면+오디오 Publisher 중단
+      if (currentScreenPublisher && session) {
         // 이벤트 리스너 정리
         const track = currentScreenPublisher.stream?.getMediaStream()?.getVideoTracks()[0];
         if (track && currentScreenPublisher._endedHandler) {
@@ -265,12 +311,44 @@ const useOpenVidu = () => {
 
         await session.unpublish(currentScreenPublisher);
         setScreenPublisher(null);
+        setPublisher(null);
         setScreenSharing(false);
-      } catch (error) {
-        console.error('화면 공유 중지 실패:', error);
       }
+
+      // 2. 오디오 전용 Publisher로 복구
+      await restoreAudioOnlyPublisher();
+
+    } catch (error) {
+      console.error('화면 공유 중지 실패:', error);
+    } finally {
+      setScreenShareLoading(false);
     }
-  }, [setScreenSharing, setScreenPublisher]);
+  }, [setScreenSharing, setScreenPublisher, setPublisher, setScreenShareLoading]);
+
+  // ------------------------------------------------------------------
+  // 오디오 전용 Publisher 복구 (내부 헬퍼)
+  // ------------------------------------------------------------------
+  const restoreAudioOnlyPublisher = async () => {
+    const { openviduSession: session, openviduInstance: OV, publisher } = useMeetingStore.getState();
+
+    // 이미 publisher가 있으면(복구 불필요) 스킵
+    if (publisher || !session || !OV) return;
+
+    try {
+      const currentMicState = useMeetingStore.getState().isMicOn;
+      const newPublisher = await OV.initPublisherAsync(undefined, {
+        audioSource: undefined,
+        videoSource: false,
+        publishAudio: currentMicState,
+        publishVideo: false,
+      });
+
+      await session.publish(newPublisher);
+      setPublisher(newPublisher);
+    } catch (error) {
+      console.error('오디오 퍼블리셔 복구 실패:', error);
+    }
+  };
 
   // ------------------------------------------------------------------
   // 화면 공유 토글
