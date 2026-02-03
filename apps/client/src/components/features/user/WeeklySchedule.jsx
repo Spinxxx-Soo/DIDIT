@@ -32,8 +32,10 @@ const WeeklySchedule = () => {
 
     try {
       // [수정 1] API 명세(date-time)에 맞춰 ISO String으로 변환
-      const startStr = startDate.toISOString();
-      const endStr = endOfWeek(currentDate).toISOString();
+      // [수정] 조회 시에도 toISOString() 대신 로컬 시간 형식을 사용하여
+      // 서버가 정확한 범위 내의 데이터를 조회할 수 있도록 함.
+      const startStr = format(startDate, "yyyy-MM-dd'T'HH:mm:ss");
+      const endStr = format(endOfWeek(currentDate), "yyyy-MM-dd'T'HH:mm:ss");
 
       const response = await meetingApi.getMeetingsByDate(projectId, startStr, endStr);
 
@@ -65,13 +67,24 @@ const WeeklySchedule = () => {
   };
 
   const handleOpenModal = (dateStr = '') => {
-    const today = format(new Date(), 'yyyy-MM-dd');
+    // 기본값: 현재 시간 기준 다음 정각 시간
+    const now = new Date();
+    const nextHour = new Date(now);
+    nextHour.setHours(now.getHours() + 1, 0, 0, 0); // 다음 시간 정각 (분, 초 0)
+
+    // 종료 시간은 1시간 뒤
+    const nextHourEnd = new Date(nextHour);
+    nextHourEnd.setHours(nextHour.getHours() + 1);
+
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const targetDateStr = dateStr || todayStr;
+
     setNewSchedule({
       title: '',
-      startDate: dateStr || today,
-      endDate: dateStr || today,
-      startTime: '09:00',
-      endTime: '10:00',
+      startDate: targetDateStr,
+      endDate: targetDateStr,
+      startTime: format(nextHour, 'HH:mm'),
+      endTime: format(nextHourEnd, 'HH:mm'),
       type: 'planning',
     });
     setIsModalOpen(true);
@@ -95,14 +108,21 @@ const WeeklySchedule = () => {
     const startDateTime = new Date(`${newSchedule.startDate}T${newSchedule.startTime}`);
     const endDateTime = new Date(`${newSchedule.endDate}T${newSchedule.endTime}`);
 
-    if (startDateTime > endDateTime) {
-      toast.warning('종료 날짜는 시작 날짜보다 빠를 수 없습니다.');
+    // 현재 시간과 비교 (과거 시간 예약 방지)
+    if (startDateTime <= new Date()) {
+      toast.warning('시작 시간은 현재 시간보다 이후여야 합니다.');
+      return;
+    }
+
+    if (startDateTime >= endDateTime) {
+      toast.warning('종료 시간은 시작 시간보다 이후여야 합니다.');
       return;
     }
 
     try {
-      const formattedStart = startDateTime.toISOString();
-      const formattedEnd = endDateTime.toISOString();
+      // 로컬 시간 그대로 전송 (yyyy-MM-ddTHH:mm:ss)
+      const formattedStart = format(startDateTime, "yyyy-MM-dd'T'HH:mm:ss");
+      const formattedEnd = format(endDateTime, "yyyy-MM-dd'T'HH:mm:ss");
 
       await meetingApi.bookMeeting(projectId, {
         title: newSchedule.title,
@@ -115,7 +135,7 @@ const WeeklySchedule = () => {
       fetchSchedules();
     } catch (error) {
       console.error('Failed to save schedule:', error);
-      toast.error('일정 추가에 실패했습니다.');
+      toast.error('일정 추가에 실패했습니다. (시간을 확인해주세요)');
     }
   };
 
@@ -265,21 +285,7 @@ const WeeklySchedule = () => {
             value={newSchedule.title}
             onChange={(e) => setNewSchedule({ ...newSchedule, title: e.target.value })}
           />
-          <div className="flex flex-col gap-2.5">
-            <label className="text-[14px] font-medium text-[var(--text-primary)]">유형</label>
-            <select
-              className="
-                w-full h-12 px-5 text-[14px] bg-[var(--bg-input)] border border-[var(--border-default)] rounded-[var(--radius-xl)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-green-primary)] focus:ring-4 focus:ring-[var(--color-green-primary)]/10 transition-all duration-200
-              "
-              value={newSchedule.type}
-              onChange={(e) => setNewSchedule({ ...newSchedule, type: e.target.value })}
-            >
-              <option value="planning">기획</option>
-              <option value="data">자료조사</option>
-              <option value="meeting">회의</option>
-              <option value="dev">개발</option>
-            </select>
-          </div>
+
         </div>
       </Modal>
     </div>
