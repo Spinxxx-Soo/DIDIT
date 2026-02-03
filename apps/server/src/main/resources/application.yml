@@ -40,6 +40,8 @@ spring:
             scope:
               - read:user
               - user:email
+              - repo
+              - read:org
   data:
     redis:
       host: ${REDIS_HOST:localhost}

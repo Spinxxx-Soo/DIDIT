@@ -11,6 +11,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -25,6 +26,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         OAuth2User oAuth2User = super.loadUser(userRequest);
         Map<String, Object> attributes = oAuth2User.getAttributes();
 
+        // 1-1. accessToken, scope 추출하기
+        String accessToken = userRequest.getAccessToken().getTokenValue();
+        Set<String> getScopes = userRequest.getAccessToken().getScopes();
+        String scope = String.join(",", getScopes);
+
         log.info("깃허브 데이터: {}", attributes);
 
         // 2. 필요한 정보 추출하기
@@ -35,6 +41,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         UserEntity newUser = userService.joinOrUpdate(githubId, login, name, avatarUrl).getOrThrow();
 
-        return new CustomOAuth2User(oAuth2User, newUser.getId());
+        var authResult = userService.saveUserGithubAuthInfo(newUser, accessToken, scope);
+        if (authResult.isFailure()) {
+            throw new OAuth2AuthenticationException("깃허브 인증 정보를 저장할 수 없습니다.");
+        }
+
+        return new CustomOAuth2User(oAuth2User, newUser.getId(), accessToken);
     }
 }
