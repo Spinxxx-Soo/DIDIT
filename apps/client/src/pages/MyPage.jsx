@@ -65,10 +65,10 @@ export function MyPage() {
   };
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-6">
       {/* 인사말 섹션 */}
-      <section className="py-8 animate-fade-up" style={{ animationDelay: '0ms' }}>
-        <div className="flex items-center gap-10">
+      <section className="py-5 animate-fade-up" style={{ animationDelay: '0ms' }}>
+        <div className="flex items-center gap-8">
           {/* Avatar with glow effect */}
           <div className="relative group">
             <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-green-primary)] to-[var(--color-green-light)] rounded-full opacity-0 group-hover:opacity-20 blur-xl transition-all duration-500" />
@@ -76,7 +76,7 @@ export function MyPage() {
               src={user?.avatarUrl}
               name={user?.name || '사용자'}
               size="2xl"
-              className="ring-4 ring-[var(--border-subtle)] transition-all duration-500 group-hover:ring-[var(--color-green-primary)]/40 group-hover:scale-105 relative z-10"
+              className="rounded-fullring-4 ring-[var(--border-subtle)] transition-all duration-500 group-hover:ring-[var(--color-green-primary)]/40 group-hover:scale-105 relative z-10"
             />
             <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-gradient-to-br from-[var(--color-green-primary)] to-[var(--color-green-hover)] rounded-full flex items-center justify-center text-white shadow-[var(--shadow-glow)] z-20">
               <span className="text-sm font-bold">✓</span>
@@ -85,10 +85,10 @@ export function MyPage() {
 
           {/* Greeting Text - Hero Typography */}
           <div className="flex-1">
-            <p className="text-sm font-medium text-[var(--color-green-primary)] tracking-wide uppercase mb-2">
+            <p className="text-sm font-medium text-[var(--color-green-primary)] tracking-wide uppercase mb-3">
               Welcome back
             </p>
-            <h1 className="text-display text-[var(--text-bright)] mb-3">
+            <h1 className="text-5xl font-bold text-[var(--text-bright)] mb-3">
               {user?.name || '사용자'}님
             </h1>
             <p className="text-xl text-[var(--text-secondary)] font-light">
@@ -109,7 +109,7 @@ export function MyPage() {
       </section>
 
       {/* 최근 접속한 프로젝트 */}
-      <section className="space-y-6 animate-fade-up" style={{ animationDelay: '100ms' }}>
+      <section className="space-y-4 animate-fade-up" style={{ animationDelay: '100ms' }}>
         <div className="flex items-center justify-between">
           <h2 className="text-title text-[var(--text-bright)]">
             최근 프로젝트
@@ -140,7 +140,7 @@ export function MyPage() {
             </div>
           </Card>
         ) : Array.isArray(projects) && projects.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {projects.slice(0, 4).map((project, index) => (
               <div
                 key={project.id}
@@ -153,11 +153,11 @@ export function MyPage() {
                   onClick={() => handleProjectClick(project.id)}
                   className="group"
                 >
-                  <div className="flex items-start gap-5">
+                  <div className="flex items-start gap-4">
                     {/* 프로젝트 아이콘 */}
                     <div
                       className="
-                        w-14 h-14 
+                        w-12 h-12 
                         rounded-[var(--radius-xl)] 
                         flex items-center justify-center 
                         text-white 
@@ -185,7 +185,7 @@ export function MyPage() {
 
                     {/* 프로젝트 정보 */}
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="group-hover:text-[var(--color-green-primary)] transition-colors flex items-center gap-2">
+                      <CardTitle className="group-hover:text-[var(--color-green-primary)] transition-colors flex items-center gap-2 mb-0">
                         {project.name}
                         <ArrowRight
                           size={16}
@@ -200,10 +200,10 @@ export function MyPage() {
                           "
                         />
                       </CardTitle>
-                      <CardDescription className="truncate">
+                      <CardDescription className="truncate !mt-0 !leading-tight">
                         {project.repoFullName?.replace(/^https?:\/\/github\.com\//, '') || '연결된 저장소 없음'}
                       </CardDescription>
-                      <div className="flex items-center gap-4 mt-3 text-[13px] text-[var(--text-tertiary)]">
+                      <div className="flex items-center gap-3 mt-3 text-[13px] text-[var(--text-tertiary)]">
                         <span className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-green-primary)]" />
                           멤버 {project.memberCount}명
@@ -240,6 +240,7 @@ export function MyPage() {
           isClickable
           onClick={() => setIsCreateModalOpen(true)}
           className="
+            !p-3
             border-dashed 
             border-2
             hover:border-[var(--color-green-primary)] 
@@ -248,7 +249,7 @@ export function MyPage() {
             duration-300
           "
         >
-          <div className="flex items-center justify-center gap-4 py-4">
+          <div className="flex items-center justify-center gap-4 py-2">
             <div
               className="
                 w-12 h-12 
@@ -264,10 +265,10 @@ export function MyPage() {
               <Plus size={22} className="text-[var(--text-secondary)]" />
             </div>
             <div className="text-left">
-              <span className="block text-[16px] font-semibold text-[var(--text-primary)]">
+              <span className="block text-[16px] font-semibold text-[var(--text-primary)] !leading-tight">
                 새 프로젝트 만들기
               </span>
-              <span className="text-sm text-[var(--text-tertiary)]">
+              <span className="text-sm text-[var(--text-tertiary)] !leading-tight">
                 팀원을 초대하고 협업을 시작하세요
               </span>
             </div>
