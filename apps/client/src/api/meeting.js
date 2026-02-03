@@ -6,8 +6,8 @@ export const meetingApi = {
   bookMeeting: (projectId, data) => {
     return api.post(`/api/v1/projects/${projectId}/book-channel`, {
       title: data.title,
-      start: `${data.start}T00:00:00`,
-      end: `${data.end}T23:59:59`
+      start: data.start,
+      end: data.end
     });
   },
 
@@ -15,8 +15,8 @@ export const meetingApi = {
   getMeetingsByDate: (projectId, start, end) => {
     return api.get(`/api/v1/projects/${projectId}/channels/date`, {
       params: {
-        start: `${start}T00:00:00`,
-        end: `${end}T23:59:59`
+        start: start,
+        end: end
       }
     });
   },
