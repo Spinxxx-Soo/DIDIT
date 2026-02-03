@@ -28,5 +28,5 @@ public interface UserService {
 
     Result<UserEntity> findUserById(Long userId);
 
-    Result<Void> saveUserGithubAuthInfo(UserEntity user, String token, String scope);
+    Result<Void> saveUserGithubAuthInfo(Long userId, String token, String scope);
 }
