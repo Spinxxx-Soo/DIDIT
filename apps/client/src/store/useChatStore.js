@@ -148,22 +148,17 @@ const useChatStore = create((set, get) => ({
 
             const response = await chatApi.getChats(channelId, { size: 50, sort: 'createdAt,asc' });
 
-            console.log('[fetchRecentChats] 🔍 Full response:', response);
             console.log('[fetchRecentChats] 🔍 response.data:', response.data);
-            console.log('[fetchRecentChats] 🔍 Is array?:', Array.isArray(response.data));
-
-            // ⭐ 응답 구조 확인 후 수정
-            // 만약 response.data.content 형태라면 아래와 같이 수정 필요
             const dataToMap = Array.isArray(response.data) ? response.data : (response.data.content || []);
 
             const fetchedMessages = dataToMap.map(msg => ({
-                id: msg.sentAtEpochMs || msg.id,
-                content: msg.content,
-                sender: msg.senderId,
-                time: new Date(msg.sentAtEpochMs || msg.createdAt).toLocaleTimeString([], {
+                id: msg.id,
+                content: msg.message,
+                sender: msg.userId,
+                time: new Date(msg.createdAt).toLocaleTimeString([], {
                     hour: '2-digit', minute: '2-digit'
                 }),
-                isMine: msg.senderId === user?.userId,
+                isMine: msg.userId === user?.userId,
             }));
 
             set({ messages: fetchedMessages, isLoading: false });
@@ -211,7 +206,7 @@ const useChatStore = create((set, get) => ({
 
             // ⭐ 백엔드 응답 구조 확인
             const data = response.data;
-            const realId = data.sentAtEpochMs || data.id;
+            const realId = data.id;
 
             set(state => {
                 // SSE로 이미 들어왔는지 확인
@@ -227,9 +222,9 @@ const useChatStore = create((set, get) => ({
                         m.id === tempId
                             ? {
                                 id: realId,
-                                content: data.content || content,
-                                sender: data.senderId || user?.userId,
-                                time: new Date(data.sentAtEpochMs).toLocaleTimeString([], {
+                                content: data.message || content,
+                                sender: data.userId || user?.userId,
+                                time: new Date(data.createdAt).toLocaleTimeString([], {
                                     hour: '2-digit', minute: '2-digit'
                                 }),
                                 isMine: true,
