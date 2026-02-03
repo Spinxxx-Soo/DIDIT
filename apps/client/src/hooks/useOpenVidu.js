@@ -16,8 +16,6 @@ const useOpenVidu = () => {
     leaveMeeting,
     setError,
     // OpenVidu 세션 관련 setter (전역 공유)
-    setOpenViduSession,
-    setOpenViduInstance,
     setPublisher,
     setScreenPublisher,
     setScreenShareLoading,
@@ -129,8 +127,13 @@ const useOpenVidu = () => {
     // 세션 연결 끊김
     session.on('sessionDisconnected', (event) => {
       console.log('세션 연결 끊김:', event.reason);
-      cleanup();
-      leaveMeeting();
+
+      // 이미 스토어에서 세션이 사라진 경우(정상 종료 과정) redundant 호출 방지
+      const currentSession = useMeetingStore.getState().openviduSession;
+      if (currentSession) {
+        cleanup();
+        leaveMeeting();
+      }
     });
 
     // 예외 발생
@@ -249,7 +252,6 @@ const useOpenVidu = () => {
       newScreenPublisher.once('accessAllowed', () => {
         console.log('화면 공유 권한 허용됨');
       });
-
       newScreenPublisher.once('accessDenied', () => {
         console.warn('화면 공유 권한 거부됨');
         // 권한 거부 시 오디오 전용으로 복구 시도
@@ -274,16 +276,15 @@ const useOpenVidu = () => {
       return { success: true };
     } catch (error) {
       console.error('화면 공유 시작 실패:', error);
+      await restoreAudioOnlyPublisher();
 
       // 실패 시 오디오 전용 퍼블리셔 복구 시도
       await restoreAudioOnlyPublisher();
-
       if (error.name === 'NotAllowedError' || error.message?.includes('Permission denied')) {
         setError('화면 공유 권한이 거부되었습니다.');
       } else {
         setError('화면 공유를 시작할 수 없습니다.');
       }
-
       return { success: false, error };
     } finally {
       setScreenShareLoading(false);
@@ -321,7 +322,6 @@ const useOpenVidu = () => {
 
       // 2. 오디오 전용 Publisher로 복구
       await restoreAudioOnlyPublisher();
-
     } catch (error) {
       console.error('화면 공유 중지 실패:', error);
     } finally {
@@ -334,7 +334,6 @@ const useOpenVidu = () => {
   // ------------------------------------------------------------------
   const restoreAudioOnlyPublisher = async () => {
     const { openviduSession: session, openviduInstance: OV, publisher } = useMeetingStore.getState();
-
     // 이미 publisher가 있으면(복구 불필요) 스킵
     if (publisher || !session || !OV) return;
 
@@ -379,15 +378,20 @@ const useOpenVidu = () => {
       setScreenPublisher,
     } = useMeetingStore.getState();
 
+    // 1. 상태를 먼저 초기화하여 재귀적 이벤트 트리거 시 skip 가능하게 함
     setScreenPublisher(null);
     setPublisher(null);
-
-    if (session) {
-      session.disconnect();
-      setOpenViduSession(null);
-    }
-
+    setOpenViduSession(null);
     setOpenViduInstance(null);
+
+    // 2. 그 후 실제 연결 종료
+    if (session) {
+      try {
+        session.disconnect();
+      } catch (e) {
+        console.warn('세션 종료 중 오류(이미 종료됨):', e);
+      }
+    }
   }, []);
 
   // 컴포넌트 언마운트 시 정리
