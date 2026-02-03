@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     REDIS_RESULT_TOPIC_SINGLE: str = "issue:priority:result_topic"  # 단일 이슈 분석 결과 토픽
     REDIS_RESULT_TOPIC_BATCH: str = "issue:priority:result_topic_sort"  # 배치 이슈 정렬 결과 토픽
     
+    # Whisper API 프록시 설정
+    WHISPER_PROXY_URL: str = "https://gms.ssafy.io/gmsapi/api.openai.com"  # Whisper 프록시 서버 URL (SDK가 자동으로 /v1 추가)
+    GMS_KEY: str = ""  # GMS API 키 (환경변수에서 로드)
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
