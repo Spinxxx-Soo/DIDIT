@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { chatApi } from '@/api/features';
-import useAuthStore from '@/store/useAuthStore'; // Auth store for user ID check
+
+const EVENT_SOURCE_URL = "http://localhost:8080/sse/subscribe";
+const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 const useChatStore = create((set, get) => ({
     messages: [],
