@@ -2,14 +2,17 @@
  * Apple-Style Global Navigation Bar
  * Glassmorphism, clean design, subtle interactions
  */
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '@/assets/didit_logo.png';
 import { MessageCircle, ClipboardList } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import useProjectStore from '@/store/useProjectStore';
+import useMeetingStore from '@/store/useMeetingStore';
+import useOpenVidu from '@/hooks/useOpenVidu';
 import { Button } from '@/components/common/Button';
 import { GithubRepoSection } from './GithubRepoSection';
+import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
 
 /**
  * Global Navigation Bar 컴포넌트 - Apple Style
@@ -38,6 +41,11 @@ const GNB = ({
     updateProjectRepo,
   } = useProjectStore();
 
+  // 회의 상태
+  const { isInMeeting } = useMeetingStore();
+  const { leaveSession } = useOpenVidu();
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+
   // projectId 변경 시 프로젝트 정보 fetch
   useEffect(() => {
     if (projectId) {
@@ -52,20 +60,36 @@ const GNB = ({
     navigate('/');
   };
 
+  // 로고 클릭 핸들러
+  const handleLogoClick = (e) => {
+    if (isWorkspace && isInMeeting) {
+      e.preventDefault();
+      setIsLeaveModalOpen(true);
+    }
+  };
+
+  // 회의 종료 후 마이페이지 이동
+  const handleConfirmLeave = async () => {
+    await leaveSession();
+    setIsLeaveModalOpen(false);
+    navigate('/mypage');
+  };
+
   return (
+    <>
     <header
       className="
-        h-16 
+        h-16
         pl-[18px]
-        pr-6 
-        flex 
-        items-center 
-        justify-between 
+        pr-6
+        flex
+        items-center
+        justify-between
         flex-shrink-0
         bg-[var(--bg-glass)]
         backdrop-blur-xl
         backdrop-saturate-[180%]
-        border-b 
+        border-b
         border-[var(--border-default)]
         sticky
         top-0
@@ -76,6 +100,7 @@ const GNB = ({
       <div className="flex items-center gap-5">
         <Link
           to={isWorkspace ? "/mypage" : "/"}
+          onClick={handleLogoClick}
           className="flex items-center gap-2 transition-opacity hover:opacity-80"
         >
           <img
@@ -159,6 +184,18 @@ const GNB = ({
         )}
       </nav>
     </header>
+
+    {/* 회의 종료 확인 모달 */}
+    <ConfirmModal
+      isOpen={isLeaveModalOpen}
+      onClose={() => setIsLeaveModalOpen(false)}
+      onConfirm={handleConfirmLeave}
+      title="회의 종료"
+      message="현재 회의에서 나가시겠습니까?"
+      confirmText="나가기"
+      confirmVariant="danger"
+    />
+  </>
   );
 };
 
