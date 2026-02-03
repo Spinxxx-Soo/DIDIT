@@ -12,7 +12,7 @@ const useChatStore = create((set, get) => ({
     error: null,
 
     // 1. SSE 연결
-    connect: (channelId) => {
+    connect: (channelId, user) => {
         const { eventSource, isConnected } = get();
         if (eventSource || isConnected) return;
 
@@ -42,7 +42,6 @@ const useChatStore = create((set, get) => ({
             try {
                 const data = JSON.parse(event.data);
                 // 백엔드 응답 필드: message, userId, createdAt, id
-                const user = useAuthStore.getState().user;
 
                 const newMessage = {
                     id: data.id,
@@ -92,7 +91,7 @@ const useChatStore = create((set, get) => ({
 
         setTimeout(() => {
             const { isConnected } = get();
-            if (!isConnected) get().connect(channelId);
+            if (!isConnected) get().connect(channelId, user);
         }, 3000);
     },
 
@@ -109,9 +108,8 @@ const useChatStore = create((set, get) => ({
     },
 
     // 3. 이전 메시지 불러오기
-    fetchRecentChats: async (channelId) => {
+    fetchRecentChats: async (channelId, user) => {
         set({ isLoading: true });
-        const user = useAuthStore.getState().user;
         const isMock = import.meta.env.VITE_USE_MOCK === 'true';
 
         try {
@@ -138,7 +136,7 @@ const useChatStore = create((set, get) => ({
     },
 
     // 4. 메시지 전송
-    sendMessage: async (channelId, content) => {
+    sendMessage: async (channelId, content, user) => {
         const isMock = import.meta.env.VITE_USE_MOCK === 'true';
 
         if (isMock) {
@@ -155,7 +153,7 @@ const useChatStore = create((set, get) => ({
 
         // 1. 임시 메시지 생성 (Optimistic UI)
         const tempId = Date.now() + Math.random(); // 유니크성을 위해 난수 추가
-        const user = useAuthStore.getState().user;
+
         const tempMsg = {
             id: tempId,
             content: content,

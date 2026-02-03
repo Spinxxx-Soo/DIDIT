@@ -86,8 +86,8 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
   useEffect(() => {
     if (isChat && channelId) {
       console.log(`[RightSidebar] Connecting to chat room: ${channelId}`);
-      fetchRecentChats(channelId); // 이전 대화 내용 불러오기
-      connect(channelId); // SSE 연결
+      fetchRecentChats(channelId, user); // 이전 대화 내용 불러오기
+      connect(channelId, user); // SSE 연결
     }
 
     return () => {
@@ -96,7 +96,7 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
         disconnect();
       }
     };
-  }, [isChat, channelId, connect, disconnect, fetchRecentChats]);
+  }, [isChat, channelId, connect, disconnect, fetchRecentChats, user]);
 
   // 스크롤 자동 이동
   useEffect(() => {
@@ -136,7 +136,7 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
     if (!chatMessage.trim() || !channelId) return;
 
     try {
-      await sendMessage(channelId, chatMessage);
+      await sendMessage(channelId, chatMessage, user);
       setChatMessage('');
     } catch (error) {
       console.error("Failed to send message:", error);
