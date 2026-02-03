@@ -161,7 +161,7 @@ const IssueDetailPanel = () => {
             title="목록으로 돌아가기"
           />
           <h2 className="font-bold text-base truncate">
-            {isCreateMode ? '새 이슈 생성' : `이슈 #${selectedIssueId}`}
+            {isCreateMode ? '새 이슈 생성' : `이슈 #${formData.issueNo || selectedIssueId}`}
           </h2>
         </div>
         <IconButton

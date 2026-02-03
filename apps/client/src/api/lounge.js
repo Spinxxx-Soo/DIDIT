@@ -22,30 +22,18 @@ export const loungeApi = {
     },
 
     /**
-     * 이슈 상태별 분포 조회 (Mock)
+     * 전체 이슈 목록 조회
+     * @param {number} projectId
+     * @returns {Promise<IssueResponse[]>}
      */
-    getIssueStatus: (projectId) => {
-        return Promise.resolve({
-            data: [
-                { label: '완료', value: 12, color: '#10B981' },
-                { label: '진행중', value: 5, color: '#3B82F6' },
-                { label: '대기중', value: 8, color: '#E5E7EB' },
-            ]
-        });
-    },
+    getIssues: (projectId) => api.get(`/api/v1/projects/${projectId}/issues`),
 
     /**
-     * 이슈 우선순위별 분포 조회 (Mock)
+     * 활성(OPEN) 이슈 목록 조회
+     * @param {number} projectId
+     * @returns {Promise<IssueResponse[]>}
      */
-    getIssuePriority: (projectId) => {
-        return Promise.resolve({
-            data: [
-                { label: 'High', value: 3, color: '#EF4444', bgColor: 'bg-red-100' },
-                { label: 'Medium', value: 8, color: '#F59E0B', bgColor: 'bg-amber-100' },
-                { label: 'Low', value: 14, color: '#10B981', bgColor: 'bg-emerald-100' },
-            ]
-        });
-    },
+    getActiveIssues: (projectId) => api.get(`/api/v1/projects/${projectId}/issues/active`),
 
     /**
      * 최근 회의록 조회 (최대 4개) (Mock)

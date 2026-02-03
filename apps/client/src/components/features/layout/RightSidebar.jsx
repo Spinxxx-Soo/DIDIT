@@ -80,11 +80,30 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
     );
   }, [issues]);
 
-  // 이슈 목록 불러오기
+  // 이슈 목록 불러오기 + 실시간 동기화 (polling + visibility)
   useEffect(() => {
-    if (isIssueMode && projectId) {
+    if (!isIssueMode || !projectId) return;
+
+    // 1. 패널 열릴 때 즉시 fetch
+    fetchIssues(projectId);
+
+    // 2. 30초마다 polling (다른 사용자 변경사항 반영)
+    const interval = setInterval(() => {
       fetchIssues(projectId);
-    }
+    }, 30000);
+
+    // 3. 탭 복귀 시 fetch
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchIssues(projectId);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [isIssueMode, projectId, fetchIssues]);
 
   // 채팅 및 SSE 연결 관리
@@ -372,7 +391,7 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
                         </Badge>
                       </div>
                       <span className="text-xs text-[var(--text-tertiary)] font-mono">
-                        #{issue.id}
+                        #{issue.issueNo || issue.id}
                       </span>
                     </div>
 
