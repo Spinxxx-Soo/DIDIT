@@ -179,9 +179,14 @@ const useMeetingStore = create((set, get) => ({
   // 참가자 관리
   // ------------------------------------------------------------------
   addParticipant: (participant) => {
-    set((state) => ({
-      participants: [...state.participants, participant],
-    }));
+    set((state) => {
+      // 이미 목록에 이 사람이 존재하는지 id로 먼저 확인
+      const isExist = state.participants.some((p) => p.id === participant.id);
+      // 이미 있으면 추가하지 말고 그대로
+      if (isExist) return state;
+      // 없으면 추가
+      return { participants: [...state.participants, participant], };
+    });
   },
 
   removeParticipant: (participantId) => {

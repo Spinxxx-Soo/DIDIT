@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { OpenVidu } from 'openvidu-browser';
 import useMeetingStore from '@/store/useMeetingStore';
 import { meetingApi } from '@/api/meeting';
+import useAuthStore from '@/store/useAuthStore';
 
 const useOpenVidu = () => {
   // 스토어에서 상태 가져오기
@@ -44,7 +45,8 @@ const useOpenVidu = () => {
       setupSessionEventListeners(session);
 
       // 세션 연결
-      await session.connect(token);
+      const { user } = useAuthStore.getState();
+      await session.connect(token, { clientData: user?.name || '가나디' });
 
       // 현재 마이크 상태 가져오기 (회의 참가 전 미리 설정된 상태 반영)
       const currentMicState = useMeetingStore.getState().isMicOn;
@@ -84,20 +86,22 @@ const useOpenVidu = () => {
     // 새 스트림 생성 (다른 참가자가 들어옴)
     session.on('streamCreated', (event) => {
       const subscriber = session.subscribe(event.stream, undefined);
-
-      const participant = {
-        id: event.stream.connection.connectionId,
-        name: JSON.parse(event.stream.connection.data || '{}').clientData || '익명',
-        stream: subscriber,
-        isScreenShare: event.stream.typeOfVideo === 'SCREEN',
-      };
+      const data = JSON.parse(event.stream.connection.data || '{}');
+      const participantName = data.clientData || '가나디';
 
       // 화면 공유 스트림인 경우
-      if (participant.isScreenShare) {
-        setScreenShareStream(subscriber, participant.name);
+      if (event.stream.typeOfVideo === 'SCREEN') {
+        setScreenShareStream(subscriber, participantName);
+        return; // ★ 중요: 여기서 끝내야 합니다. addParticipant까지 내려가면 안 돼요!
       }
 
-      addParticipant(participant);
+      // 2. 일반 참가자일 때만 리스트에 추가
+      addParticipant({
+        id: event.stream.connection.connectionId,
+        name: participantName,
+        stream: subscriber,
+        isScreenShare: false,
+      });
     });
 
     // 스트림 삭제 (다른 참가자가 나감)
