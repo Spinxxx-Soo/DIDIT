@@ -29,14 +29,12 @@ const useChatStore = create((set, get) => ({
 
         console.log(`[SSE] Connecting to channel ${channelId}...`);
 
-        // 환경변수를 못잡아서 일단은 이렇게
         const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.did-it.xyz';
         console.log(`[SSE] Connecting using Base URL: ${baseUrl}`);
         const es = new EventSource(`${baseUrl}/api/v1/channels/${channelId}/stream`, {
             withCredentials: true
         });
 
-        // ⭐ 중요: state에 저장!
         set({ eventSource: es });
 
         es.onopen = () => {
@@ -45,36 +43,27 @@ const useChatStore = create((set, get) => ({
         };
 
         es.onmessage = (event) => {
-            console.log('[SSE] ✉️ Message received:', event.data);
+            // console.log('[SSE] ✉️ Message received:', event.data);
             try {
+                if (!event.data) return;
                 const data = JSON.parse(event.data);
-                console.log('[SSE] 📦 Parsed data:', data);
+                // console.log('[SSE] 📦 Parsed data:', data);
 
-                // ⭐ 백엔드 응답 구조에 맞게 수정
+                // Spec: channelId, senderId, content, sentAtEpochMs
                 const newMessage = {
-                    id: data.sentAtEpochMs, // ID가 없으니 timestamp 사용
-                    content: data.content,   // ← message가 아니라 content
-                    sender: data.senderId,   // ← userId가 아니라 senderId
+                    id: data.sentAtEpochMs, // Fallback ID
+                    content: data.content,
+                    sender: data.senderId,
                     time: new Date(data.sentAtEpochMs).toLocaleTimeString([], {
                         hour: '2-digit', minute: '2-digit'
                     }),
                     isMine: data.senderId === user?.userId,
                 };
 
-                console.log('[SSE] 🎯 New message object:', newMessage);
-                console.log('[SSE] 👤 isMine check:', {
-                    senderId: data.senderId,
-                    userId: user?.userId,
-                    isMine: data.senderId === user?.userId
-                });
-
                 set((state) => {
+                    // 중복 방지 (ID 기준)
                     const exists = state.messages.find(m => m.id === newMessage.id);
-                    console.log('[SSE] 🔍 Duplicate check:', exists ? 'DUPLICATE' : 'NEW');
-
                     if (exists) return state;
-
-                    console.log('[SSE] ➕ Adding message to state');
                     return { messages: [...state.messages, newMessage] };
                 });
             } catch (err) {
@@ -89,7 +78,8 @@ const useChatStore = create((set, get) => ({
                 const updatedData = JSON.parse(event.data);
                 set(state => ({
                     messages: state.messages.map(m =>
-                        m.id === updatedData.sentAtEpochMs
+                        // 주의: SSE로 받은 메시지는 ID가 없을 수 있어 수정 안될 수 있음 (DB ID vs Timestamp ID 문제)
+                        m.id === updatedData.chatId
                             ? { ...m, content: updatedData.content }
                             : m
                     )
@@ -103,7 +93,8 @@ const useChatStore = create((set, get) => ({
             try {
                 const deletedData = JSON.parse(event.data);
                 set(state => ({
-                    messages: state.messages.filter(m => m.id !== deletedData.sentAtEpochMs)
+                    // 주의: 위와 동일한 ID 불일치 문제 존재 가능
+                    messages: state.messages.filter(m => m.id !== deletedData.chatId)
                 }));
             } catch (e) { console.error(e); }
         });
@@ -114,13 +105,7 @@ const useChatStore = create((set, get) => ({
             set({ isConnected: false, eventSource: null });
         };
 
-        setTimeout(() => {
-            const { isConnected } = get();
-            if (!isConnected) {
-                console.log('[SSE] Reconnecting...');
-                get().connect(channelId, user);
-            }
-        }, 3000);
+        // Keep-alive check or Auto-reconnect logic could go here
     },
 
     // 2. 연결 종료
@@ -147,18 +132,18 @@ const useChatStore = create((set, get) => ({
             }
 
             const response = await chatApi.getChats(channelId, { size: 50, sort: 'createdAt,asc' });
-
-            console.log('[fetchRecentChats] 🔍 response.data:', response.data);
             const dataToMap = Array.isArray(response.data) ? response.data : (response.data.content || []);
 
+            // console.log('[fetchRecentChats] Raw Data:', dataToMap);
+
             const fetchedMessages = dataToMap.map(msg => ({
-                id: msg.id,
-                content: msg.message,
-                sender: msg.userId,
+                id: msg.id, // DB ID
+                content: msg.content || msg.message, // Fallback for safety
+                sender: msg.senderId || msg.userId, // Fallback for safety
                 time: new Date(msg.createdAt).toLocaleTimeString([], {
                     hour: '2-digit', minute: '2-digit'
                 }),
-                isMine: msg.userId === user?.userId,
+                isMine: (msg.senderId || msg.userId) === user?.userId,
             }));
 
             set({ messages: fetchedMessages, isLoading: false });
@@ -172,20 +157,10 @@ const useChatStore = create((set, get) => ({
     sendMessage: async (channelId, content, user) => {
         const isMock = import.meta.env.VITE_USE_MOCK === 'true';
 
-        if (isMock) {
-            const myMsg = {
-                id: Date.now(),
-                content: content,
-                sender: '나',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                isMine: true
-            };
-            set(state => ({ messages: [...state.messages, myMsg] }));
-            return;
-        }
-
         // 1. 임시 메시지 생성 (Optimistic UI)
-        const tempId = Date.now() + Math.random(); // 유니크성을 위해 난수 추가
+        // Note: SSE 메시지는 타임스탬프를 ID로 쓰므로, 여기서도 타임스탬프를 씁니다.
+        // 다만 정확히 일치하지 않을 수 있어 중복 가능성은 존재합니다.
+        const tempId = Date.now();
 
         const tempMsg = {
             id: tempId,
@@ -193,50 +168,42 @@ const useChatStore = create((set, get) => ({
             sender: user?.userId,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             isMine: true,
-            isTemp: true, // 임시 상태 표시
+            isTemp: true,
         };
 
-        // 2. 스토어에 즉시 추가
+        if (isMock) {
+            set(state => ({ messages: [...state.messages, { ...tempMsg, isTemp: false }] }));
+            return;
+        }
+
+        // 스토어에 즉시 추가
         set(state => ({ messages: [...state.messages, tempMsg] }));
 
         try {
-            const response = await chatApi.createChat(channelId, { content });
-            console.log('[sendMessage] 📦 Full response:', response);
-            console.log('[sendMessage] 📦 response.data:', response.data);
+            // Spec: 200 OK (No Body)
+            await chatApi.createChat(channelId, { content });
 
-            // ⭐ 백엔드 응답 구조 확인
-            const data = response.data;
-            const realId = data.id;
+            // 성공 시 별도 처리 없음. SSE가 'message' 이벤트를 보내주길 기다림.
+            // SSE가 오면 ID 매칭을 할 수 없으므로(SSE엔 DB ID 없음), 
+            // 쿨하게 SSE 메시지를 추가하고 이 임시 메시지는 제거하는 전략을 쓸 수도 있으나,
+            // 현재 구조에선 SSE가 오면 중복으로 뜰 가능성이 큼.
 
-            set(state => {
-                // SSE로 이미 들어왔는지 확인
-                const exists = state.messages.find(m => m.id === realId);
-                if (exists) {
-                    // 임시 메시지만 제거
-                    return { messages: state.messages.filter(m => m.id !== tempId) };
-                }
+            /* 
+               [개선 전략]
+               임시 메시지를 남겨두고, SSE가 들어오면 `content`와 `sender`가 같고 `time`이 비슷한 메시지를 찾아 교체?
+               -> 너무 복잡함. 
+               -> 일단 성공했으면 isTemp를 false로 바꿔주는 것만 처리.
+            */
 
-                // 임시 메시지를 실제 데이터로 교체
-                return {
-                    messages: state.messages.map(m =>
-                        m.id === tempId
-                            ? {
-                                id: realId,
-                                content: data.message || content,
-                                sender: data.userId || user?.userId,
-                                time: new Date(data.createdAt).toLocaleTimeString([], {
-                                    hour: '2-digit', minute: '2-digit'
-                                }),
-                                isMine: true,
-                                isTemp: false
-                            }
-                            : m
-                    )
-                };
-            });
+            set(state => ({
+                messages: state.messages.map(m =>
+                    m.id === tempId ? { ...m, isTemp: false } : m
+                )
+            }));
 
         } catch (error) {
             console.error("Message send failed:", error);
+            // 실패 시 제거
             set(state => ({ messages: state.messages.filter(m => m.id !== tempId) }));
             throw error;
         }
