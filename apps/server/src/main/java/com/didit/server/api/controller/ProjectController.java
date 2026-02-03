@@ -300,4 +300,16 @@ public class ProjectController {
         var entity = (ProjectEntity) findResult.getOrThrow();
         return ResponseEntity.ok(ProjectResponse.fromEntity(entity));
     }
+
+    @DeleteMapping("/{projectId}")
+    public ResponseEntity<?> DeleteProject(@PathVariable long projectId,
+                                           @AuthenticationPrincipal CustomOAuth2User user){
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{projectId}/leave")
+    public ResponseEntity<?> leaveProject(@PathVariable long projectId,
+                                          @AuthenticationPrincipal CustomOAuth2User user) {
+        return ResponseEntity.ok().build();
+    }
 }

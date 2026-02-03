@@ -1,36 +1,186 @@
 package com.didit.server.service.service.impl;
 
+import com.didit.server.api.request.AiQueueRequest;
+import com.didit.server.api.request.AiSortRequest;
+import com.didit.server.api.response.AiResponse;
+import com.didit.server.api.response.IssueResponse;
+import com.didit.server.data.entity.IssueAssigneeEntity;
 import com.didit.server.data.entity.IssueEntity;
+import com.didit.server.data.entity.ProjectUserEntity;
+import com.didit.server.data.entity.UserEntity;
+import com.didit.server.data.entity.enums.IssuePriority;
 import com.didit.server.data.entity.enums.IssueStatus;
-import com.didit.server.data.repository.IssueRepository;
-import com.didit.server.data.repository.ProjectRepository;
+import com.didit.server.data.external.github.GithubService;
+import com.didit.server.data.repository.*;
 import com.didit.server.service.service.IssueService;
 import com.didit.server.share.result.Result;
+import com.didit.server.share.result.impl.ForbiddenError;
 import com.didit.server.share.result.impl.NotFoundError;
 import com.didit.server.share.result.impl.ServerError;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.kohsuke.github.*;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class IssueServiceImpl implements IssueService {
 
     private final ProjectRepository projectRepository;
+    private final ProjectUserRepository projectUserRepository;
     private final IssueRepository issueRepository;
+    private final UserGithubAuthRepository userGithubAuthRepository;
+    private final UserRepository userRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
+    private final GithubService githubService;
 
     @Override
-    public Result<List<IssueEntity>> GetActiveIssues(long projectId) {
+    public Result<List<IssueEntity>> GetActiveIssues(long userId, long projectId) {
         try {
             var project = projectRepository.findById(projectId);
             if(project.isEmpty()){
                 return Result.fail(new NotFoundError("projectId", projectId));
             }
             var list = issueRepository.findTop5ByProject_IdAndStatusOrderByUpdatedAtDesc(projectId, IssueStatus.OPEN);
+            List<AiSortRequest.AiIssueInfo> issueInfos = list.stream().map(issue -> new AiSortRequest.AiIssueInfo(
+                            issue.getId(),
+                            issue.getTitle(),
+                            issue.getBody())).toList();
+            AiSortRequest request = new AiSortRequest(userId, projectId, issueInfos);
+            String jsonPayload = objectMapper.writeValueAsString(request);
+            redisTemplate.opsForList().leftPush("queue:issue:priority:sort", jsonPayload);
             return Result.ok(list);
         }catch (Exception e) {
             return Result.fail(new ServerError("IssueList", projectId));
+        }
+    }
+
+    @Override
+    public Result<List<IssueEntity>> GetAllIssues(long userId, long projectId){
+        try {
+            boolean isMember = projectUserRepository.existsByProject_IdAndUser_Id(projectId, userId);
+            if (!isMember) {
+                return Result.fail(new ForbiddenError("해당 프로젝트의 멤버만 이슈를 조회할 수 있습니다."));
+            }
+            var user = userRepository.findById(userId);
+            if (user.isEmpty()) {
+                return Result.fail(new NotFoundError("userId", userId));
+            }
+            var issueList = issueRepository.findAllByProject_Id(projectId);
+            return Result.ok(issueList);
+        } catch (Exception e) {
+            return Result.fail(new ServerError("IssueAllList", projectId));
+        }
+    }
+
+    @Override
+    public Result<AiResponse> AnalyzeIssue(long projectId, long userId,
+                                           String title, IssueStatus status,
+                                           String body, List<Long> assigneeIds){
+        try {
+            IssueEntity issue = IssueEntity.builder()
+                    .project(projectRepository.getReferenceById(projectId))
+                    .title(title)
+                    .body(body)
+                    .status(status)
+                    .priority(IssuePriority.MEDIUM)
+                    .author(userRepository.getReferenceById(userId))
+                    .build();
+
+            if (assigneeIds != null && !assigneeIds.isEmpty()) {
+                for (Long id : assigneeIds) {
+                    UserEntity user = userRepository.getReferenceById(id);
+                    IssueAssigneeEntity assignee = IssueAssigneeEntity.builder()
+                            .issue(issue)
+                            .user(user)
+                            .build();
+                    issue.getAssignees().add(assignee);
+                }
+            }
+            issueRepository.save(issue);
+
+            AiQueueRequest queueData = new AiQueueRequest(userId, issue.getId(), title, body);
+
+            String jsonPayload = objectMapper.writeValueAsString(queueData);
+            redisTemplate.opsForList().leftPush("queue:issue:priority:single", jsonPayload);
+
+            return Result.ok(AiResponse.builder()
+                    .issueId(issue.getId())
+                    .title(title)
+                    .body(body)
+                    .status(issue.getStatus())
+                    .priority(issue.getPriority())
+                    .assigneeIds(assigneeIds)
+                    .build());
+        } catch (Exception e) {
+            return Result.fail(new ServerError("Internal", e.getMessage()));
+        }
+    }
+
+    @Override
+    @Transactional
+    public Result<Long> CreateIssue(long projectId, long userId,
+                                    String orgName, String repoName,
+                                    String title, String body,
+                                    List<Long> assigneeIds, long issueId,
+                                    IssuePriority issuePriority){
+        try {
+            var issueEntity = issueRepository.findById(issueId);
+            if(issueEntity.isEmpty()){
+                return Result.fail(new NotFoundError("issueId", issueId));
+            }
+            var entity = issueEntity.get();
+            if (entity.getAuthor().getId() != userId) {
+                return Result.fail(new ForbiddenError("본인이 작성 중인 이슈만 등록할 수 있습니다."));
+            }
+            var findAuth = userGithubAuthRepository.findById(userId).orElse(null);
+            if (findAuth == null){
+                return Result.fail(new ForbiddenError(""));
+            }
+            var accessToken = findAuth.getAccessToken();
+            String githubAuth = findAuth.getUser().getGithubLogin();
+
+            var githubResult = githubService.createIssue(accessToken,githubAuth,orgName,repoName,title,body,assigneeIds);
+            if (githubResult.isFailure()) {
+                return Result.fail(githubResult.getSingleErrorOrThrow());
+            }
+            GHIssue remoteIssue = githubResult.getValue().get();
+            long githubId = remoteIssue.getId();
+            int issueNo = remoteIssue.getNumber();
+
+            entity.setTitle(title);
+            entity.setBody(body);
+            entity.setPriority(issuePriority);
+            entity.setGithubIssueId(githubId);
+            entity.setIssueNo(issueNo);
+
+            entity.getAssignees().clear();
+            if (assigneeIds != null) {
+                for (Long id : assigneeIds) {
+                    userRepository.findById(id).ifPresent(user -> {
+                        entity.getAssignees().add(IssueAssigneeEntity.builder()
+                                .issue(entity)
+                                .user(user)
+                                .build());
+                    });
+                }
+            }
+
+            issueRepository.save(entity);
+
+            return Result.ok(entity.getId());
+        } catch (Exception e) {
+            return Result.fail(new ServerError("Internal", e.getMessage()));
         }
     }
 }
