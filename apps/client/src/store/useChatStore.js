@@ -7,16 +7,31 @@ const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 const useChatStore = create((set, get) => ({
     messages: [],
     isConnected: false,
+    connectedChannelId: null, // 추가: 현재 연결된 채널 ID 추적
     eventSource: null,
     isLoading: false,
     error: null,
 
     // 1. SSE 연결
     connect: (channelId, user) => {
-        const { eventSource, isConnected } = get();
-        if (eventSource || isConnected) {
-            console.log('[connect] Already connected, skipping');
+        const { eventSource, isConnected, connectedChannelId } = get();
+
+        // A) 같은 채널에 이미 연결되어 있다면 패스
+        if (isConnected && connectedChannelId === channelId && eventSource) {
+            console.log('[connect] Already connected to same channel, skipping');
             return;
+        }
+
+        // B) 다른 채널로 이동하거나, 연결이 끊긴 상태라면
+        if (eventSource) {
+            console.log('[connect] Closing existing connection...');
+            eventSource.close();
+            set({ eventSource: null, isConnected: false });
+        }
+
+        // 채널이 변경된 경우에만 메시지 초기화 (UX 개선)
+        if (connectedChannelId !== channelId) {
+            set({ messages: [], connectedChannelId: channelId });
         }
 
         const isMock = import.meta.env.VITE_USE_MOCK === 'true';
@@ -43,27 +58,48 @@ const useChatStore = create((set, get) => ({
         };
 
         es.onmessage = (event) => {
-            // console.log('[SSE] ✉️ Message received:', event.data);
             try {
                 if (!event.data) return;
                 const data = JSON.parse(event.data);
-                // console.log('[SSE] 📦 Parsed data:', data);
 
                 // Spec: channelId, senderId, content, sentAtEpochMs
+                const epoch = data.sentAtEpochMs ?? data.sentAt ?? data.createdAtEpochMs ?? Date.now();
+                const messageId = data.id ?? data.chatId ?? data.sentAtEpochMs ?? `sse-${epoch}-${data.senderId ?? 'unknown'}`;
+
                 const newMessage = {
-                    id: data.sentAtEpochMs, // Fallback ID
-                    content: data.content,
-                    sender: data.senderId,
-                    time: new Date(data.sentAtEpochMs).toLocaleTimeString([], {
-                        hour: '2-digit', minute: '2-digit'
+                    id: messageId,                 // 가능하면 DB id(chatId/id) 우선, 없으면 안정 fallback
+                    content: data.content ?? '',    // content 없으면 빈 문자열로 방어
+                    sender: data.senderId ?? null,  // senderId 없을 때도 안전
+                    sentAtEpochMs: epoch,           // 나중에 temp 교체/정렬에도 쓰기 좋음
+                    time: new Date(epoch).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
                     }),
-                    isMine: data.senderId === user?.userId,
+                    isMine: (data.senderId ?? null) === (user?.userId ?? null),
+                    isTemp: false,
                 };
 
+
                 set((state) => {
-                    // 중복 방지 (ID 기준)
-                    const exists = state.messages.find(m => m.id === newMessage.id);
-                    if (exists) return state;
+                    // 1. 이미 동일한 ID(서버 ID)가 있는지 확인
+                    const isAlreadyExists = state.messages.some(m => m.id === newMessage.id);
+                    if (isAlreadyExists) return state;
+
+                    // 2. 내가 보낸 메시지라면, 현재 목록에 'isTemp' 상태인 내 메시지가 있는지 확인
+                    if (newMessage.isMine) {
+                        const tempMsgIndex = state.messages.findLastIndex(
+                            m => m.isTemp && m.sender === newMessage.sender && m.content === newMessage.content
+                        );
+
+                        if (tempMsgIndex !== -1) {
+                            // 임시 메시지를 서버에서 온 진짜 메시지로 교체
+                            const newMessages = [...state.messages];
+                            newMessages[tempMsgIndex] = newMessage;
+                            return { messages: newMessages };
+                        }
+                    }
+
+                    // 3. 남이 보낸 거거나 교체할 대상이 없다면 새로 추가
                     return { messages: [...state.messages, newMessage] };
                 });
             } catch (err) {
@@ -103,6 +139,19 @@ const useChatStore = create((set, get) => ({
             console.error("[SSE] Connection Error:", err);
             es.close();
             set({ isConnected: false, eventSource: null });
+
+            // Auto-reconnect Logic
+            const { connectedChannelId } = get();
+            if (connectedChannelId === channelId) {
+                console.log("[SSE] Attempting to reconnect in 3s...");
+                setTimeout(() => {
+                    const { connectedChannelId: currentChannelId } = get();
+                    // 사용자가 여전히 같은 채널에 있는지 확인 후 재연결
+                    if (currentChannelId === channelId) {
+                        get().connect(channelId, user);
+                    }
+                }, 3000);
+            }
         };
 
         // Keep-alive check or Auto-reconnect logic could go here
@@ -114,9 +163,11 @@ const useChatStore = create((set, get) => ({
         if (eventSource) {
             console.log("[SSE] Disconnecting...");
             eventSource.close();
-            set({ eventSource: null, isConnected: false, messages: [] });
-        } else {
-            set({ messages: [] });
+            // 메시지는 비우지 않음 (UX: 재연결 시 보여주기 위함)
+            // 다만 connectedChannelId는 남겨두거나 비울 수 있는데,
+            // 완전히 '나가기' 개념이라면 비우는게 맞지만, 단순 탭 닫기면 남길 수도 있음.
+            // 여기서는 연결 상태만 끊는 것으로 처리.
+            set({ eventSource: null, isConnected: false });
         }
     },
 
@@ -158,9 +209,8 @@ const useChatStore = create((set, get) => ({
         const isMock = import.meta.env.VITE_USE_MOCK === 'true';
 
         // 1. 임시 메시지 생성 (Optimistic UI)
-        // Note: SSE 메시지는 타임스탬프를 ID로 쓰므로, 여기서도 타임스탬프를 씁니다.
-        // 다만 정확히 일치하지 않을 수 있어 중복 가능성은 존재합니다.
-        const tempId = Date.now();
+        // 임시 ID는 문자열로 구분하여 충돌 방지
+        const tempId = `temp-${Date.now()}`;
 
         const tempMsg = {
             id: tempId,
@@ -183,23 +233,9 @@ const useChatStore = create((set, get) => ({
             // Spec: 200 OK (No Body)
             await chatApi.createChat(channelId, { content });
 
-            // 성공 시 별도 처리 없음. SSE가 'message' 이벤트를 보내주길 기다림.
-            // SSE가 오면 ID 매칭을 할 수 없으므로(SSE엔 DB ID 없음), 
-            // 쿨하게 SSE 메시지를 추가하고 이 임시 메시지는 제거하는 전략을 쓸 수도 있으나,
-            // 현재 구조에선 SSE가 오면 중복으로 뜰 가능성이 큼.
-
-            /* 
-               [개선 전략]
-               임시 메시지를 남겨두고, SSE가 들어오면 `content`와 `sender`가 같고 `time`이 비슷한 메시지를 찾아 교체?
-               -> 너무 복잡함. 
-               -> 일단 성공했으면 isTemp를 false로 바꿔주는 것만 처리.
-            */
-
-            set(state => ({
-                messages: state.messages.map(m =>
-                    m.id === tempId ? { ...m, isTemp: false } : m
-                )
-            }));
+            // 성공 시, SSE가 오면 자동으로 교체되므로 여기서는 별도 처리가 필요 없음.
+            // 다만, 혹시 SSE가 너무 늦거나 안 올 경우를 대비해 isTemp를 false로 바꿔주는 방어 로직만 유지할 수도 있으나,
+            // 현재 로직상 SSE가 와야 ID가 서버 시간으로 동기화되므로 그냥 둡니다.
 
         } catch (error) {
             console.error("Message send failed:", error);
