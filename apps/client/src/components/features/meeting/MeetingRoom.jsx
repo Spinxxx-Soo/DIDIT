@@ -5,6 +5,8 @@ import ScreenShare from './ScreenShare';
 import useMeetingStore from '@/store/useMeetingStore';
 import useOpenVidu from '@/hooks/useOpenVidu';
 import { meetingApi } from '@/api/meeting';
+import { projectApi } from '@/api/project';
+import ChatChannelView from '../chat/ChatChannelView';
 
 const MeetingRoom = () => {
   const { projectId, channelId } = useParams(); // URL에서 projectId, channelId 추출
@@ -14,6 +16,7 @@ const MeetingRoom = () => {
   const {
     isInMeeting,
     currentChannelName,
+    currentChannelMode,
     joinMeeting,
     setCurrentChannel,
     setLoading,
@@ -25,8 +28,35 @@ const MeetingRoom = () => {
 
   const { joinSession, leaveSession } = useOpenVidu();
 
+  // 1. [NEW] 채널 모드 정보가 없을 경우 (새로고침 등) 조회
+  useEffect(() => {
+    let ignore = false;
+    if (channelId && !currentChannelMode) {
+      const fetchChannelInfo = async () => {
+        setLoading(true);
+        try {
+          const response = await projectApi.getChannel(channelId);
+          if (!ignore && response.data) {
+            const { id, title, sessionId, mode } = response.data;
+            setCurrentChannel(id, title, sessionId, mode);
+          }
+        } catch (err) {
+          console.error("Failed to fetch channel info:", err);
+          setError("채널 정보를 불러올 수 없습니다.");
+        } finally {
+          if (!ignore) setLoading(false);
+        }
+      };
+      fetchChannelInfo();
+    }
+    return () => { ignore = true; };
+  }, [channelId, currentChannelMode, setCurrentChannel, setLoading, setError]);
+
   // 회의 참가 (토큰 발급 및 세션 연결)
   const handleJoinMeeting = useCallback(async () => {
+    // [NEW] 모드가 없거나 CHAT 모드이면 WebRTC 연결 스킵
+    if (!currentChannelMode || currentChannelMode === 'CHAT') return;
+
     if (hasJoined.current || isInMeeting || !channelId) return;
     hasJoined.current = true;
 
@@ -103,23 +133,22 @@ const MeetingRoom = () => {
     } finally {
       setLoading(false);
     }
-  }, [projectId, channelId, currentChannelName, isInMeeting, joinMeeting, joinSession, setLoading, setError, setParticipants]);
+  }, [projectId, channelId, currentChannelName, isInMeeting, joinMeeting, joinSession, setLoading, setError, setParticipants, currentChannelMode]);
 
   // URL에서 channelId가 바뀌면 hasJoined 리셋 (채널 변경 대응)
   useEffect(() => {
     if (channelId) {
       hasJoined.current = false; // 채널 변경 시 리셋하여 새 회의 참가 가능하게
-      // setCurrentChannel 호출 제거: ChannelSidebar에서 이미 mode를 포함하여 설정함.
-      // 여기서 호출하면 mode가 undefined로 덮어씌워져 버튼이 사라지는 문제 발생.
     }
   }, [channelId]);
 
   // 페이지 진입 시 자동으로 회의 참가
   useEffect(() => {
-    if (!isInMeeting && !isLoading && channelId) {
+    // [Updated] currentChannelMode가 로드된 후에만 시도
+    if (currentChannelMode && !isInMeeting && !isLoading && channelId) {
       handleJoinMeeting();
     }
-  }, [channelId, isInMeeting, isLoading, handleJoinMeeting]);
+  }, [channelId, isInMeeting, isLoading, handleJoinMeeting, currentChannelMode]);
 
   // 페이지 떠날 때 정리
   useEffect(() => {
@@ -157,7 +186,9 @@ const MeetingRoom = () => {
       <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: 'var(--bg-app)' }}>
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-[var(--color-green-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <div className="text-[var(--text-secondary)]">회의에 참가하는 중...</div>
+          <div className="text-[var(--text-secondary)]">
+            {currentChannelMode === 'CHAT' ? '채널 로딩 중...' : '회의에 참가하는 중...'}
+          </div>
         </div>
       </div>
     );
@@ -172,7 +203,8 @@ const MeetingRoom = () => {
           <button
             onClick={() => {
               hasJoined.current = false;
-              handleJoinMeeting();
+              // 재시도 시 다시 fetch 될 수 있도록
+              window.location.reload();
             }}
             className="px-4 py-2 rounded-md text-sm font-medium text-white"
             style={{ backgroundColor: 'var(--color-green-primary)' }}
@@ -182,6 +214,11 @@ const MeetingRoom = () => {
         </div>
       </div>
     );
+  }
+
+  // [NEW] 채팅 모드일 경우 ChatChannelView 렌더링
+  if (currentChannelMode === 'CHAT') {
+    return <ChatChannelView />;
   }
 
   return (
