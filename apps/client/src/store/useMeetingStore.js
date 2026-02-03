@@ -31,6 +31,12 @@ const useMeetingStore = create((set, get) => ({
   isLoading: false,
   error: null,
 
+  // OpenVidu 세션 관련 (전역 공유)
+  openviduSession: null,
+  openviduInstance: null,
+  publisher: null,
+  screenPublisher: null,
+
   // ------------------------------------------------------------------
   // 회의 참가/퇴장
   // ------------------------------------------------------------------
@@ -64,6 +70,11 @@ const useMeetingStore = create((set, get) => ({
       participants: [],
       screenShareStream: null,
       screenShareUser: null,
+      // OpenVidu 세션 정리
+      openviduSession: null,
+      openviduInstance: null,
+      publisher: null,
+      screenPublisher: null,
     });
   },
 
@@ -171,6 +182,25 @@ const useMeetingStore = create((set, get) => ({
 
   clearError: () => {
     set({ error: null });
+  },
+
+  // ------------------------------------------------------------------
+  // OpenVidu 세션 관리 (전역 공유용)
+  // ------------------------------------------------------------------
+  setOpenViduSession: (session) => {
+    set({ openviduSession: session });
+  },
+
+  setOpenViduInstance: (instance) => {
+    set({ openviduInstance: instance });
+  },
+
+  setPublisher: (publisher) => {
+    set({ publisher });
+  },
+
+  setScreenPublisher: (screenPublisher) => {
+    set({ screenPublisher });
   },
 }));
 

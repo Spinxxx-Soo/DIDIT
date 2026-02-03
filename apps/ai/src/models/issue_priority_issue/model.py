@@ -2,43 +2,41 @@
 """이슈 단일 우선순위 라벨링 모델 클래스"""
 import torch
 from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import re
 from typing import Optional, Dict
+from models.issue_priority_issue.config import (
+    MODEL_ID,
+    ADAPTER_PATH,
+    BNB_CONFIG,
+    USE_LORA
+)
 from models.common.logger import get_logger
+from models.common.text_utils import build_issue_text
 
 logger = get_logger(__name__)
-
 
 class IssuePriorityIssueModel:
     """이슈 단일 우선순위 라벨링 모델 클래스"""
     
-    def __init__(self, base_model_id: str = "unsloth/llama-3-8b-bnb-4bit", 
-                 adapter_path: str = "./final_lora_weights"):
-        """모델 초기화
-        
-        Args:
-            base_model_id: 기본 모델 ID
-            adapter_path: LoRA 어댑터 경로
-        """
+    def __init__(self):
+
         logger.info("이슈 단일 우선순위 모델 로드 중...")
         
         try:
-            self.tokenizer = AutoTokenizer.from_pretrained(base_model_id)
-            bnb_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_quant_type="nf4",
-                bnb_4bit_compute_dtype=torch.float16,
-            )
-            
+            self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
             self.base_model = AutoModelForCausalLM.from_pretrained(
-                base_model_id,
-                quantization_config=bnb_config,
+                MODEL_ID,
+                quantization_config=BNB_CONFIG,
                 device_map="auto",
                 trust_remote_code=True
             )
             
-            self.model = PeftModel.from_pretrained(self.base_model, adapter_path)
+            # Test 용 로라 다운 - 추후 수정 필요 
+            if USE_LORA:
+                self.model = PeftModel.from_pretrained(self.base_model, ADAPTER_PATH)
+            else:
+                self.model = self.base_model
             self.model.eval()
             
             logger.info("이슈 단일 우선순위 모델 로드 완료")
@@ -57,9 +55,8 @@ class IssuePriorityIssueModel:
             {"priority": "high|medium|low"} 형태의 딕셔너리
         """
         try:
-            # 본문 예외 처리
-            safe_body = body.strip() if body and body.strip() else "(본문 내용 없음)"
-            input_text = f"제목: {title}\n본문: {safe_body}"
+            # 제목과 본문 결합 (공통 유틸리티 사용)
+            input_text = build_issue_text(title, body)
             
             # 프롬프트 구성
             prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
@@ -77,7 +74,7 @@ class IssuePriorityIssueModel:
 
 ### 중요도 점수:<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
 
-            # 추론 수행
+            # 추론 수행(gpu)
             inputs = self.tokenizer(prompt, return_tensors="pt").to("cuda")
             with torch.no_grad():
                 outputs = self.model.generate(

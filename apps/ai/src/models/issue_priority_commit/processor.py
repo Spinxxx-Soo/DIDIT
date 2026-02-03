@@ -2,7 +2,7 @@
 from typing import Optional, Dict
 
 from models.common.logger import get_logger
-from models.issue_priority_commit.constants import (
+from models.issue_priority_commit.config import (
     PriorityLevel,
     PRIORITY_THRESHOLDS
 )
@@ -14,6 +14,8 @@ class PriorityProcessor:
     """우선순위 후처리 프로세서
     
     모델의 예측 점수를 HIGH/MED/LOW 우선순위로 변환합니다.
+    (현재 서비스에서는 사용 X)
+    
     threshold 기반 변환만 수행합니다.
     """
     

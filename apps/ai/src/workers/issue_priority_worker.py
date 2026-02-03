@@ -34,7 +34,7 @@ class IssuePriorityWorker:
         self.running = False
     
     def _process_label_queue(self) -> bool:
-        """라벨링 큐에서 작업을 처리합니다.
+        """queue:issue:priority:single 큐에서 작업을 처리합니다.
         
         Returns:
             작업이 처리되었으면 True, 없으면 False
@@ -54,7 +54,7 @@ class IssuePriorityWorker:
             return False
     
     def _process_reorder_queue(self) -> bool:
-        """재정렬 큐에서 작업을 처리합니다.
+        """queue:issue:priority:sort 큐에서 작업을 처리합니다.
         
         Returns:
             작업이 처리되었으면 True, 없으면 False
@@ -63,8 +63,8 @@ class IssuePriorityWorker:
             result = self.reorder_service.process_from_redis()
             if result:
                 logger.info(
-                    "재정렬 작업 완료: task_id=%s, count=%d",
-                    result.get("task_id")
+                    "재정렬 작업 완료: count=%d",
+                    len(result.get("result", []))
                 )
                 return True
             return False
@@ -90,11 +90,11 @@ class IssuePriorityWorker:
         
         try:
             while self.running:
-                # 라벨링 큐 처리
+                # queue:issue:priority:single 큐 처리
                 if self._process_label_queue():
                     label_processed += 1
                 
-                # 재정렬 큐 처리
+                # queue:issue:priority:sort 큐 처리
                 if self._process_reorder_queue():
                     reorder_processed += 1
                 
