@@ -4,6 +4,18 @@ import useMeetingStore from '@/store/useMeetingStore';
 import { meetingApi } from '@/api/meeting';
 import useAuthStore from '@/store/useAuthStore';
 
+// OpenVidu connection.data 파싱 헬퍼 (형식: clientData%/%serverData)
+const parseConnectionData = (data) => {
+  if (!data) return {};
+  try {
+    const clientDataStr = data.split('%/%')[0];
+    return JSON.parse(clientDataStr);
+  } catch (e) {
+    console.warn('connection.data 파싱 실패:', data);
+    return {};
+  }
+};
+
 const useOpenVidu = () => {
   // ------------------------------------------------------------------
   // 정리 (최상위로 이동 - 호이스팅 방지)
@@ -228,8 +240,8 @@ const useOpenVidu = () => {
     session.on('streamCreated', (event) => {
       const subscriber = session.subscribe(event.stream, undefined);
       const connectionId = event.stream.connection.connectionId;
-      const data = JSON.parse(event.stream.connection.data || '{}');
-      const participantName = data.clientData || '가나디';
+      const data = parseConnectionData(event.stream.connection.data);
+      const participantName = data.clientData || '참가자';
 
       if (event.stream.typeOfVideo === 'SCREEN') {
         const { setScreenShareStream, setScreenSharing } = useMeetingStore.getState();
@@ -256,8 +268,8 @@ const useOpenVidu = () => {
 
     session.on('connectionCreated', (event) => {
       console.log('새 연결 생성:', event.connection.connectionId);
-      const data = JSON.parse(event.connection.data || '{}');
-      const participantName = data.clientData || '가나디';
+      const data = parseConnectionData(event.connection.data);
+      const participantName = data.clientData || '참가자';
 
       // 본인 연결은 제외 (이미 로컬에서 관리)
       if (event.connection.connectionId !== session.connection.connectionId) {
@@ -324,7 +336,7 @@ const useOpenVidu = () => {
       setupSessionEventListeners(session);
 
       const { user } = useAuthStore.getState();
-      await session.connect(token, { clientData: user?.name || '가나디' });
+      await session.connect(token, { clientData: user?.name || '참여자' });
 
       const currentMicState = useMeetingStore.getState().isMicOn;
       console.log(`[Mic Check] Initial Join - publishAudio: ${currentMicState}`);
