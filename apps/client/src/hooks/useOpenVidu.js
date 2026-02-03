@@ -5,55 +5,45 @@ import { meetingApi } from '@/api/meeting';
 import useAuthStore from '@/store/useAuthStore';
 
 const useOpenVidu = () => {
-  // 스토어에서 상태 가져오기
-  const {
-    setScreenSharing,
-    setScreenShareStream,
-    clearScreenShare,
-    addParticipant,
-    removeParticipant,
-    updateParticipant,
-    leaveMeeting,
-    setError,
-    // OpenVidu 세션 관련 setter (전역 공유)
-    setPublisher,
-    setScreenPublisher,
-    setScreenShareLoading,
-  } = useMeetingStore();
+  // ------------------------------------------------------------------
+  // 스토어 액션 및 상태 가져오기 (필요할 때 getState() 사용)
+  // ------------------------------------------------------------------
+  const store = useMeetingStore();
 
   // ------------------------------------------------------------------
   // 세션 참가
   // ------------------------------------------------------------------
   const joinSession = useCallback(async (token) => {
+    const {
+      setOpenViduInstance,
+      setOpenViduSession,
+      setPublisher,
+      setError
+    } = useMeetingStore.getState();
+
     try {
       const OV = new OpenVidu();
 
-      // 로그 레벨 설정 (개발 중에는 DEBUG, 프로덕션에서는 WARN)
       OV.setAdvancedConfiguration({
         logLevel: import.meta.env.DEV ? 'DEBUG' : 'WARN',
       });
 
       const session = OV.initSession();
 
-      // 스토어에 저장 (전역 공유)
       setOpenViduInstance(OV);
       setOpenViduSession(session);
 
-      // 이벤트 리스너 등록
       setupSessionEventListeners(session);
 
-      // 세션 연결
       const { user } = useAuthStore.getState();
       await session.connect(token, { clientData: user?.name || '가나디' });
 
-      // 현재 마이크 상태 가져오기 (회의 참가 전 미리 설정된 상태 반영)
       const currentMicState = useMeetingStore.getState().isMicOn;
 
-      // 오디오 퍼블리셔 생성 (마이크만, 비디오 없음)
       const newPublisher = await OV.initPublisherAsync(undefined, {
-        audioSource: undefined, // 기본 마이크
-        videoSource: false, // 비디오 없음
-        publishAudio: currentMicState, // 미리 설정된 마이크 상태 적용
+        audioSource: undefined,
+        videoSource: false,
+        publishAudio: currentMicState,
         publishVideo: false,
         resolution: '640x480',
         frameRate: 30,
@@ -61,10 +51,7 @@ const useOpenVidu = () => {
         mirror: false,
       });
 
-      // 스토어에 저장
       setPublisher(newPublisher);
-
-      // 퍼블리셔를 세션에 게시
       await session.publish(newPublisher);
 
       return { success: true };
@@ -73,7 +60,7 @@ const useOpenVidu = () => {
       setError('회의 참가에 실패했습니다.');
       return { success: false, error };
     }
-  }, [setError, setOpenViduInstance, setOpenViduSession, setPublisher]);
+  }, []);
 
   // ------------------------------------------------------------------
   // 이벤트 리스너 설정
@@ -81,19 +68,25 @@ const useOpenVidu = () => {
   const setupSessionEventListeners = useCallback((session) => {
     if (!session) return;
 
-    // 새 스트림 생성 (다른 참가자가 들어옴)
+    const {
+      setScreenShareStream,
+      addParticipant,
+      clearScreenShare,
+      removeParticipant,
+      leaveMeeting,
+      updateParticipant
+    } = useMeetingStore.getState();
+
     session.on('streamCreated', (event) => {
       const subscriber = session.subscribe(event.stream, undefined);
       const data = JSON.parse(event.stream.connection.data || '{}');
       const participantName = data.clientData || '가나디';
 
-      // 화면 공유 스트림인 경우
       if (event.stream.typeOfVideo === 'SCREEN') {
         setScreenShareStream(subscriber, participantName);
-        return; // ★ 중요: 여기서 끝내야 합니다. addParticipant까지 내려가면 안 돼요!
+        return;
       }
 
-      // 2. 일반 참가자일 때만 리스트에 추가
       addParticipant({
         id: event.stream.connection.connectionId,
         name: participantName,
@@ -102,29 +95,22 @@ const useOpenVidu = () => {
       });
     });
 
-    // 스트림 삭제 (다른 참가자가 나감)
     session.on('streamDestroyed', (event) => {
       const connectionId = event.stream.connection.connectionId;
-
-      // 화면 공유 스트림이 종료된 경우
       if (event.stream.typeOfVideo === 'SCREEN') {
         clearScreenShare();
       }
-
       removeParticipant(connectionId);
     });
 
-    // 연결 생성
     session.on('connectionCreated', (event) => {
       console.log('새 연결:', event.connection.connectionId);
     });
 
-    // 연결 종료
     session.on('connectionDestroyed', (event) => {
       console.log('연결 종료:', event.connection.connectionId);
     });
 
-    // 세션 연결 끊김
     session.on('sessionDisconnected', (event) => {
       console.log('세션 연결 끊김:', event.reason);
 
@@ -136,30 +122,26 @@ const useOpenVidu = () => {
       }
     });
 
-    // 예외 발생
     session.on('exception', (exception) => {
       console.warn('OpenVidu 예외:', exception);
     });
 
-    // 음성 감지 - 말하기 시작
     session.on('publisherStartSpeaking', (event) => {
       updateParticipant(event.connection.connectionId, { isSpeaking: true });
     });
 
-    // 음성 감지 - 말하기 종료
     session.on('publisherStopSpeaking', (event) => {
       updateParticipant(event.connection.connectionId, { isSpeaking: false });
     });
-  }, [addParticipant, removeParticipant, updateParticipant, setScreenShareStream, clearScreenShare, leaveMeeting]);
+  }, []);
 
   // ------------------------------------------------------------------
   // 세션 나가기
   // ------------------------------------------------------------------
   const leaveSession = useCallback(async () => {
-    const { currentChannelId } = useMeetingStore.getState();
+    const { currentChannelId, leaveMeeting } = useMeetingStore.getState();
 
     try {
-      // API 호출로 서버에 나가기 알림
       if (currentChannelId) {
         await meetingApi.leaveWebRTC(currentChannelId);
       }
@@ -169,7 +151,7 @@ const useOpenVidu = () => {
 
     cleanup();
     leaveMeeting();
-  }, [leaveMeeting]);
+  }, []);
 
   // ------------------------------------------------------------------
   // 마이크 토글
@@ -225,17 +207,17 @@ const useOpenVidu = () => {
     }
 
     if (!session || !OV) {
-      setError('세션이 연결되지 않았습니다.');
+      useMeetingStore.getState().setError('세션이 연결되지 않았습니다.');
       return { success: false };
     }
 
-    setScreenShareLoading(true);
+    useMeetingStore.getState().setScreenShareLoading(true);
 
     try {
       // 2. 기존 오디오 전용 Publisher 중단 (있을 경우)
       if (currentPublisher) {
         await session.unpublish(currentPublisher);
-        setPublisher(null);
+        useMeetingStore.getState().setPublisher(null);
       }
 
       // 3. 새로운 통합 Publisher 생성 (Screen + Audio)
@@ -269,27 +251,25 @@ const useOpenVidu = () => {
       await session.publish(newScreenPublisher);
 
       // 스토어 업데이트 (통합 퍼블리셔이므로 둘 다 설정)
-      setScreenPublisher(newScreenPublisher);
-      setPublisher(newScreenPublisher);
-      setScreenSharing(true);
+      useMeetingStore.getState().setScreenPublisher(newScreenPublisher);
+      useMeetingStore.getState().setPublisher(newScreenPublisher);
+      useMeetingStore.getState().setScreenSharing(true);
 
       return { success: true };
     } catch (error) {
       console.error('화면 공유 시작 실패:', error);
-      await restoreAudioOnlyPublisher();
-
       // 실패 시 오디오 전용 퍼블리셔 복구 시도
       await restoreAudioOnlyPublisher();
       if (error.name === 'NotAllowedError' || error.message?.includes('Permission denied')) {
-        setError('화면 공유 권한이 거부되었습니다.');
+        useMeetingStore.getState().setError('화면 공유 권한이 거부되었습니다.');
       } else {
-        setError('화면 공유를 시작할 수 없습니다.');
+        useMeetingStore.getState().setError('화면 공유를 시작할 수 없습니다.');
       }
       return { success: false, error };
     } finally {
-      setScreenShareLoading(false);
+      useMeetingStore.getState().setScreenShareLoading(false);
     }
-  }, [setScreenSharing, setError, setScreenPublisher, setPublisher, setScreenShareLoading]);
+  }, []);
 
   // ------------------------------------------------------------------
   // 화면 공유 중지 (화면+오디오 Publisher를 오디오 전용 Publisher로 교체)
@@ -299,6 +279,10 @@ const useOpenVidu = () => {
       openviduSession: session,
       isScreenShareLoading,
       screenPublisher: currentScreenPublisher,
+      setScreenShareLoading,
+      setScreenPublisher,
+      setPublisher,
+      setScreenSharing,
     } = useMeetingStore.getState();
 
     if (isScreenShareLoading) return;
@@ -306,9 +290,7 @@ const useOpenVidu = () => {
     setScreenShareLoading(true);
 
     try {
-      // 1. 기존 화면+오디오 Publisher 중단
       if (currentScreenPublisher && session) {
-        // 이벤트 리스너 정리
         const track = currentScreenPublisher.stream?.getMediaStream()?.getVideoTracks()[0];
         if (track && currentScreenPublisher._endedHandler) {
           track.removeEventListener('ended', currentScreenPublisher._endedHandler);
@@ -320,14 +302,13 @@ const useOpenVidu = () => {
         setScreenSharing(false);
       }
 
-      // 2. 오디오 전용 Publisher로 복구
       await restoreAudioOnlyPublisher();
     } catch (error) {
       console.error('화면 공유 중지 실패:', error);
     } finally {
       setScreenShareLoading(false);
     }
-  }, [setScreenSharing, setScreenPublisher, setPublisher, setScreenShareLoading]);
+  }, []);
 
   // ------------------------------------------------------------------
   // 오디오 전용 Publisher 복구 (내부 헬퍼)
