@@ -49,3 +49,7 @@ Thumbs.db
 
 # issue 모델
 *.safetensors
+
+
+# issue 가중치 모델 file
+final_lora_weights/

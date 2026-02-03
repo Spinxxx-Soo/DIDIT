@@ -7,10 +7,13 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 @Getter
 public class CustomOAuth2User extends DefaultOAuth2User {
     private final Long id;
+    private final String accessToken;
 
     public CustomOAuth2User(OAuth2User oAuth2User,
-                            Long id) {
+                            Long id,
+                            String accessToken) {
         super(oAuth2User.getAuthorities(), oAuth2User.getAttributes(), "id");
         this.id = id;
+        this.accessToken = accessToken;
     }
 }

@@ -14,4 +14,6 @@ public interface IssueRepository extends JpaRepository<IssueEntity, Long> {
     List<IssueEntity> findAllByProject_IdOrderByUpdatedAtDesc(Long projectId);
 
     List<IssueEntity> findTop5ByProject_IdAndStatusOrderByUpdatedAtDesc(Long projectId, IssueStatus status);
+
+    List<IssueEntity> findAllByProject_Id(Long projectId);
 }

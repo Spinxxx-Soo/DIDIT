@@ -19,6 +19,7 @@ const useMeetingStore = create((set, get) => ({
   isMicOn: false,
   isSpeakerOn: true,
   isScreenSharing: false,
+  isScreenShareLoading: false, // 화면 공유 상태 전환 중인지 여부
   isRecording: false,
 
   // 참가자 목록
@@ -55,11 +56,15 @@ const useMeetingStore = create((set, get) => ({
 
   leaveMeeting: async () => {
     // 1. 현재 스토어의 상태값
-    const { openviduSession, publisher, screenPublisher, currentChannelId} = get();
+    const { openviduSession, publisher, screenPublisher, currentChannelId } = get();
     // 2. 실제 OpenVidu 서버, 미디어 장치 종료
     if (openviduSession) {
       try {
-        openviduSession.disconnect();
+        // 중복 호출 방지를 위해 로컬 변수에 백업 후 즉시 세션 상태 초기화
+        const sessionToDisconnect = openviduSession;
+        set({ openviduSession: null });
+
+        sessionToDisconnect.disconnect();
         console.log("OpenVidu 세션 연결 종료 성공");
       } catch (e) {
         console.error("세션 종료 중 오류 발생:", e);
@@ -68,8 +73,8 @@ const useMeetingStore = create((set, get) => ({
 
     // 2. 미디어 트랙 종료
     [publisher, screenPublisher].forEach(p => {
-        if (p) p.stream.getMediaStream().getTracks().forEach(track => track.stop());
-      });
+      if (p) p.stream.getMediaStream().getTracks().forEach(track => track.stop());
+    });
 
     // 3. [Backend] 백엔드에 나갔음을 알림
     if (currentChannelId) {
@@ -148,6 +153,10 @@ const useMeetingStore = create((set, get) => ({
     set({ isScreenSharing: isSharing });
   },
 
+  setScreenShareLoading: (isLoading) => {
+    set({ isScreenShareLoading: isLoading });
+  },
+
   setScreenShareStream: (stream, userName) => {
     set({
       screenShareStream: stream,
@@ -174,9 +183,14 @@ const useMeetingStore = create((set, get) => ({
   // 참가자 관리
   // ------------------------------------------------------------------
   addParticipant: (participant) => {
-    set((state) => ({
-      participants: [...state.participants, participant],
-    }));
+    set((state) => {
+      // 이미 목록에 이 사람이 존재하는지 id로 먼저 확인
+      const isExist = state.participants.some((p) => p.id === participant.id);
+      // 이미 있으면 추가하지 말고 그대로
+      if (isExist) return state;
+      // 없으면 추가
+      return { participants: [...state.participants, participant], };
+    });
   },
 
   removeParticipant: (participantId) => {
