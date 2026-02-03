@@ -238,12 +238,20 @@ const useOpenVidu = () => {
     } = useMeetingStore.getState();
 
     session.on('streamCreated', (event) => {
+      console.log('[streamCreated] 새 스트림:', {
+        connectionId: event.stream.connection.connectionId,
+        typeOfVideo: event.stream.typeOfVideo,
+        hasVideo: event.stream.hasVideo,
+        hasAudio: event.stream.hasAudio,
+      });
+
       const subscriber = session.subscribe(event.stream, undefined);
       const connectionId = event.stream.connection.connectionId;
       const data = parseConnectionData(event.stream.connection.data);
       const participantName = data.clientData || '참가자';
 
       if (event.stream.typeOfVideo === 'SCREEN') {
+        console.log('[streamCreated] 화면 공유 스트림 감지됨:', participantName);
         const { setScreenShareStream, setScreenSharing } = useMeetingStore.getState();
         setScreenShareStream(subscriber, participantName);
         setScreenSharing(true);
