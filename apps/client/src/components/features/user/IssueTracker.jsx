@@ -2,52 +2,86 @@
  * Apple-Style Issue Tracker
  * Table layout with pagination
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import useLoungeStore from '@/store/useLoungeStore';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-// 임시 데이터 (나중에 API 연결)
-const MOCK_ISSUES = [
-  { id: 143, priority: 'High', title: '로그인 버그 수정', assignee: '김도연', status: '진행중', date: '2025-01-20' },
-  { id: 142, priority: 'Medium', title: 'UI 컴포넌트 리팩토링', assignee: '이다연', status: '대기중', date: '2025-01-19' },
-  { id: 141, priority: 'Low', title: '문서 업데이트', assignee: '하지연', status: '완료', date: '2025-01-18' },
-  { id: 140, priority: 'High', title: '결제 모듈 연동 실패', assignee: '홍수민', status: '진행중', date: '2025-01-17' },
-  { id: 139, priority: 'Medium', title: '메인 페이지 배너 교체', assignee: '김이', status: '대기중', date: '2025-01-16' },
-  { id: 138, priority: 'Low', title: 'API 응답 최적화', assignee: '손을준', status: '완료', date: '2025-01-15' },
-  { id: 137, priority: 'High', title: '보안 취약점 패치', assignee: '이강인', status: '진행중', date: '2025-01-14' },
-];
-
 const ITEMS_PER_PAGE = 5;
 
+// 날짜 포맷 함수
+const formatDate = (dateString) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', '');
+};
+
 const IssueTracker = () => {
-  const { openIssueDetail } = useLoungeStore();
+  const { projectId } = useParams();
+  const { issues, fetchIssues, isLoading, openIssueDetail } = useLoungeStore();
   const [currentPage, setCurrentPage] = useState(1);
 
-  const totalPages = Math.ceil(MOCK_ISSUES.length / ITEMS_PER_PAGE);
-  const currentIssues = MOCK_ISSUES.slice(
+  // 이슈 목록 불러오기
+  useEffect(() => {
+    if (projectId) {
+      fetchIssues(projectId);
+    }
+  }, [projectId, fetchIssues]);
+
+  const totalPages = Math.ceil(issues.length / ITEMS_PER_PAGE);
+  const currentIssues = issues.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
 
-  // 우선순위 스타일
+  // 우선순위 스타일 (소문자로 정규화됨)
   const getPriorityStyle = (priority) => {
     const styles = {
-      High: 'bg-red-50 text-red-600',
-      Medium: 'bg-amber-50 text-amber-600',
-      Low: 'bg-emerald-50 text-emerald-600',
+      high: 'bg-red-50 text-red-600',
+      medium: 'bg-amber-50 text-amber-600',
+      low: 'bg-emerald-50 text-emerald-600',
     };
     return styles[priority] || 'bg-gray-50 text-gray-600';
   };
 
-  // 상태 스타일
+  // 우선순위 라벨
+  const getPriorityLabel = (priority) => {
+    const labels = { high: 'High', medium: 'Medium', low: 'Low' };
+    return labels[priority] || priority;
+  };
+
+  // 상태 스타일 (소문자로 정규화됨: open/closed)
   const getStatusStyle = (status) => {
     const styles = {
-      '진행중': 'bg-blue-50 text-blue-600',
-      '대기중': 'bg-gray-100 text-gray-600',
-      '완료': 'bg-emerald-50 text-emerald-600',
+      open: 'bg-blue-50 text-blue-600',
+      closed: 'bg-emerald-50 text-emerald-600',
     };
     return styles[status] || 'bg-gray-100 text-gray-600';
   };
+
+  // 상태 라벨
+  const getStatusLabel = (status) => {
+    const labels = { open: 'Open', closed: 'Closed' };
+    return labels[status] || status;
+  };
+
+  // 로딩 상태
+  if (isLoading) {
+    return (
+      <div className="w-full flex justify-center items-center py-8">
+        <span className="text-sm text-[var(--text-tertiary)]">로딩 중...</span>
+      </div>
+    );
+  }
+
+  // 이슈가 없는 경우
+  if (issues.length === 0) {
+    return (
+      <div className="w-full flex justify-center items-center py-8">
+        <span className="text-sm text-[var(--text-tertiary)]">등록된 이슈가 없습니다.</span>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -77,7 +111,7 @@ const IssueTracker = () => {
                 w-fit
                 ${getPriorityStyle(issue.priority)}
               `}>
-                {issue.priority}
+                {getPriorityLabel(issue.priority)}
               </span>
 
               {/* 제목 */}
@@ -87,12 +121,12 @@ const IssueTracker = () => {
 
               {/* 담당자 */}
               <span className="text-sm text-[var(--text-secondary)]">
-                {issue.assignee}
+                {issue.assignees?.[0] || '-'}
               </span>
 
               {/* 날짜 */}
               <span className="text-sm text-[var(--text-tertiary)]">
-                {issue.date}
+                {formatDate(issue.createdAt)}
               </span>
 
               {/* 상태 */}
@@ -104,12 +138,12 @@ const IssueTracker = () => {
                 w-fit
                 ${getStatusStyle(issue.status)}
               `}>
-                {issue.status}
+                {getStatusLabel(issue.status)}
               </span>
 
               {/* ID */}
               <span className="text-sm text-[var(--text-tertiary)] text-right">
-                #{issue.id}
+                #{issue.issueNo || issue.id}
               </span>
             </div>
           ))}
