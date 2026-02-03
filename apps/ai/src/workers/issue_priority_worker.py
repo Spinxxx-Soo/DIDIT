@@ -63,8 +63,10 @@ class IssuePriorityWorker:
             result = self.reorder_service.process_from_redis()
             if result:
                 logger.info(
-                    "재정렬 작업 완료: count=%d",
-                    len(result.get("result", []))
+                    "재정렬 작업 완료: userId=%s, projectId=%s, issues_count=%d",
+                    result.get("userId"),
+                    result.get("projectId"),
+                    len(result.get("issues", []))
                 )
                 return True
             return False
