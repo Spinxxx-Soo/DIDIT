@@ -130,12 +130,6 @@ class IssuePriorityModel:
     
     def _scale_score(self, score_raw: float) -> float:
         """원시 점수를 원래 스케일로 복원합니다.
-        
-        Args:
-            score_raw: 0~1 범위의 원시 점수
-        
-        Returns:
-            원래 스케일의 점수
         """
         train_min = self.thresholds["train_min"]
         train_max = self.thresholds["train_max"]
@@ -155,20 +149,11 @@ class IssuePriorityModel:
             text,
             return_tensors="pt",
             truncation=True,
-<<<<<<< HEAD
-            max_length=256
-        )
-        
-        # GPU 사용 시 입력도 GPU로 이동
-        if torch.cuda.is_available():
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-=======
             max_length=self.max_length
         )
         
         # 입력을 모델과 같은 디바이스로 이동
         inputs = self._move_inputs_to_device(inputs)
->>>>>>> 691993c3e9e07de840a473c2b7432f71e361dd4e
         
         # 예측
         with torch.no_grad():
@@ -176,18 +161,8 @@ class IssuePriorityModel:
             score_raw = outputs.logits.item()  # 0~1 범위
         
         # 원래 스케일로 복원
-<<<<<<< HEAD
-        train_min = self.thresholds["train_min"]
-        train_max = self.thresholds["train_max"]
-        score = score_raw * (train_max - train_min) + train_min
-        
-        return score
-    
-    def get_thresholds(self) -> dict:
-=======
         return self._scale_score(score_raw)
     
     def get_thresholds(self) -> Dict:
->>>>>>> 691993c3e9e07de840a473c2b7432f71e361dd4e
         """Threshold 값 반환"""
         return self.thresholds

@@ -41,41 +41,6 @@ class PriorityProcessor:
         Returns:
             "HIGH", "MED", 또는 "LOW"
         """
-<<<<<<< HEAD
-        if thresholds is None:
-            thresholds = {
-                "q_low": 0.794,
-                "q_high": 0.817
-            }
-        
-        # 후처리 규칙 적용 (옵션)
-        if self.use_rules and self.rules and text:
-            text_lower = text.lower()
-            
-            # LOW 강제 키워드
-            low_keywords = self.rules.get("low_forced_keywords", [])
-            if any(kw in text_lower for kw in low_keywords):
-                return "LOW"
-            
-            # HIGH 부스트 키워드
-            high_keywords = self.rules.get("high_boost_keywords", [])
-            if any(kw in text_lower for kw in high_keywords):
-                return "HIGH"
-            
-            # 최소 MED 보장 키워드
-            min_med_keywords = self.rules.get("min_med_keywords", [])
-            if any(kw in text_lower for kw in min_med_keywords):
-                if score <= thresholds["q_low"]:
-                    return "MED"
-        
-        # 기본 변환 (threshold 기반)
-        if score >= thresholds["q_high"]:
-            return "HIGH"
-        elif score <= thresholds["q_low"]:
-            return "LOW"
-        else:
-            return "MED"
-=======
         if score >= thresholds["q_high"]:
             return PriorityLevel.HIGH
         elif score <= thresholds["q_low"]:
@@ -106,4 +71,3 @@ class PriorityProcessor:
         
         # threshold 기반 변환
         return self._convert_score_to_priority(score, thresholds)
->>>>>>> 691993c3e9e07de840a473c2b7432f71e361dd4e
