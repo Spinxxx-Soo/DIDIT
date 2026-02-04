@@ -63,6 +63,10 @@ const ProjectSidebar = () => {
       setIsLeaveModalOpen(true);
       return;
     }
+    // 회의 중이고 같은 프로젝트를 클릭하면 아무것도 하지 않음
+    if (isInMeeting && String(id) === projectId) {
+      return;
+    }
     navigate(`/workspace/${id}`);
   };
 

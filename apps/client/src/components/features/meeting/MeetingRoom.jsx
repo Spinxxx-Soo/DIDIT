@@ -27,7 +27,7 @@ const MeetingRoom = () => {
     isLoading,
   } = useMeetingStore();
 
-  const { joinSession, leaveSession } = useOpenVidu();
+  const { joinSession } = useOpenVidu();
 
   // 1. [NEW] 채널 모드 정보가 없을 경우 (새로고침 등) 조회
   useEffect(() => {
@@ -153,14 +153,11 @@ const MeetingRoom = () => {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      // 컴포넌트 언마운트 시 (라우트 이동 등)
-      const { isInMeeting: currentlyInMeeting } = useMeetingStore.getState();
-      if (currentlyInMeeting) {
-        leaveSession();
-      }
+      // 언마운트 시 자동 종료 제거 - 회의는 명시적 종료만 허용
+      // (나가기 버튼, 다른 채널/프로젝트 이동 시 모달 확인)
       hasJoined.current = false;
     };
-  }, [leaveSession]);
+  }, []);
 
   // channelId 없음 (잘못된 URL)
   if (!channelId) {

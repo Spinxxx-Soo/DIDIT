@@ -324,7 +324,10 @@ const ChannelSidebar = () => {
                 <div className="mb-4">
                   <div className="text-[11px] text-[var(--text-tertiary)] font-semibold mb-3 tracking-wider uppercase">WORKSPACE</div>
                   <ul className="space-y-1">
-                    <li onClick={() => navigate(`/workspace/${projectId}`)} className={getMenuItemClass(location.pathname === `/workspace/${projectId}`)}>
+                    <li
+                      onClick={() => navigate(`/workspace/${projectId}`)}
+                      className={getMenuItemClass(location.pathname === `/workspace/${projectId}`)}
+                    >
                       <Home size={16} /> <span>홈</span>
                     </li>
                     <li onClick={() => setViewMode('minutes')} className={getMenuItemClass(false)}>
