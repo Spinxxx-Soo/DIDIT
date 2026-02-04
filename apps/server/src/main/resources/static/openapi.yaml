@@ -115,6 +115,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProjectResponse"
 
+    delete:
+      tags: [ Projects ]
+      summary: 프로젝트 삭제 (소유자 전용)
+      description: |
+        프로젝트를 논리 삭제(Soft Delete)합니다. DB의 `deleted_at` 필드가 업데이트됩니다.
+      parameters:
+        - $ref: "#/components/parameters/projectId"
+      responses:
+        "200":
+          description: 프로젝트 삭제 완료
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/BadRequest"
+
+  /projects/{projectId}/leave:
+    delete:
+      tags: [ Projects ]
+      summary: 프로젝트 탈퇴
+      description: |
+        사용자가 프로젝트 참여 멤버 목록에서 스스로 탈퇴합니다. 
+        소유자(Owner)는 탈퇴할 수 없으며, 탈퇴 시 이력이 남습니다 (`status = 'LEFT'`).
+      parameters:
+        - $ref: "#/components/parameters/projectId"
+      responses:
+        "200":
+          description: 탈퇴 처리 완료
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /projects/{projectId}/participants:
     get:
       tags: [Projects]

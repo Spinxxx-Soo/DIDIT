@@ -2,6 +2,7 @@ package com.didit.server.data.repository;
 
 import com.didit.server.data.entity.ProjectUserEntity;
 import com.didit.server.data.entity.UserEntity;
+import com.didit.server.data.entity.enums.ProjectUserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,8 +22,13 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUserEntity, 
         select pu.user
         from ProjectUserEntity pu
         where pu.project.id = :projectId
+        and pu.status = 'ACTIVE'
         """)
     List<UserEntity> findUsersByProjectId(@Param("projectId") long projectId);
 
     boolean existsByProject_IdAndUser_Id(long projectId, long userId);
+
+    boolean existsByProject_IdAndUser_IdAndStatus(long projectId, long userId, ProjectUserStatus status);
+
+    Optional<ProjectUserEntity> findByProject_IdAndUser_IdAndStatus(long projectId, long userId, ProjectUserStatus status);
 }

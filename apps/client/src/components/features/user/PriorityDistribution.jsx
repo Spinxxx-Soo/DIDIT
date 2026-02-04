@@ -5,18 +5,24 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { loungeApi } from '@/api/lounge';
+import useProjectStore from '@/store/useProjectStore';
 
 const PriorityDistribution = () => {
     const { projectId } = useParams();
+    const { currentProject } = useProjectStore();
     const [priorityData, setPriorityData] = useState([
         { label: 'High', value: 0, color: '#EF4444' },
         { label: 'Medium', value: 0, color: '#F59E0B' },
         { label: 'Low', value: 0, color: '#10B981' },
     ]);
 
+    // GitHub 저장소 연동 여부 확인
+    const isGithubConnected = !!currentProject?.repoFullName;
+
     useEffect(() => {
         const fetchAndAggregate = async () => {
-            if (!projectId) return;
+            // GitHub 미연동 시 API 호출하지 않음
+            if (!projectId || !isGithubConnected) return;
             try {
                 const response = await loungeApi.getIssues(projectId);
                 const issues = response.data || [];
@@ -36,7 +42,7 @@ const PriorityDistribution = () => {
             }
         };
         fetchAndAggregate();
-    }, [projectId]);
+    }, [projectId, isGithubConnected]);
 
     const maxValue = Math.max(...priorityData.map(d => d.value)) || 1;
 

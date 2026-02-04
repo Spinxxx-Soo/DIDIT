@@ -5,20 +5,26 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import useLoungeStore from '@/store/useLoungeStore';
+import useProjectStore from '@/store/useProjectStore';
 import { ExternalLink } from 'lucide-react';
 import { loungeApi } from '@/api/lounge';
 
 const IssueStatusChart = () => {
     const { projectId } = useParams();
     const { openIssueMode } = useLoungeStore();
+    const { currentProject } = useProjectStore();
     const [statusData, setStatusData] = useState([
         { label: '진행 중', value: 0, color: '#3B82F6' },
         { label: '완료', value: 0, color: '#10B981' },
     ]);
 
+    // GitHub 저장소 연동 여부 확인
+    const isGithubConnected = !!currentProject?.repoFullName;
+
     useEffect(() => {
         const fetchAndAggregate = async () => {
-            if (!projectId) return;
+            // GitHub 미연동 시 API 호출하지 않음
+            if (!projectId || !isGithubConnected) return;
             try {
                 const response = await loungeApi.getIssues(projectId);
                 const issues = response.data || [];
@@ -36,7 +42,7 @@ const IssueStatusChart = () => {
             }
         };
         fetchAndAggregate();
-    }, [projectId]);
+    }, [projectId, isGithubConnected]);
 
     const total = statusData.reduce((acc, item) => acc + item.value, 0);
 
@@ -89,18 +95,20 @@ const IssueStatusChart = () => {
                     <h3 className="text-lg font-semibold text-[var(--text-bright)]">이슈 상태 개요</h3>
                     <p className="text-sm text-[var(--text-tertiary)]">전체 업무 현황</p>
                 </div>
-                <button
-                    onClick={openIssueMode}
-                    className="
-            flex items-center gap-1.5
-            text-sm text-[var(--color-green-primary)]
-            hover:underline
-            transition-all
-          "
-                >
-                    전체 보기
-                    <ExternalLink size={14} />
-                </button>
+                {isGithubConnected && (
+                    <button
+                        onClick={openIssueMode}
+                        className="
+                            flex items-center gap-1.5
+                            text-sm text-[var(--color-green-primary)]
+                            hover:underline
+                            transition-all
+                        "
+                    >
+                        전체 보기
+                        <ExternalLink size={14} />
+                    </button>
+                )}
             </div>
 
             <div className="flex-1 flex items-center justify-center">

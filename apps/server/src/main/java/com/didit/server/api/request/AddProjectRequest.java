@@ -9,7 +9,6 @@ public record AddProjectRequest(
         @NotNull
         @Size(max=64)
         String projectName,
-        @NotNull
         @URL
         String githubUrl
 ) {
