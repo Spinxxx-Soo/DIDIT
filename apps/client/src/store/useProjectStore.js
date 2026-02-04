@@ -265,7 +265,10 @@ const useProjectStore = create((set, get) => ({
   // ------------------------------------------------------------------
   // [5] GitHub 저장소 검증
   // ------------------------------------------------------------------
-  validateGithubRepo: async (repo) => {
+  validateGithubRepo: async (projectId, repo) => {
+    // repo를 orgName/repoName으로 파싱
+    const [orgName, repoName] = repo.split('/');
+
     if (IS_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 400));
 
@@ -273,7 +276,7 @@ const useProjectStore = create((set, get) => ({
       const validRepos = ['ssafy/algo-study', 'ssafy/common-project', 'organization/repo'];
 
       if (validRepos.some(r => repo.toLowerCase().includes(r.split('/')[0]))) {
-        return { success: true };
+        return { success: true, data: { repoId: Date.now() } };
       }
 
       if (repo.startsWith('private/')) {
@@ -284,10 +287,9 @@ const useProjectStore = create((set, get) => ({
     }
 
     try {
-      const response = await projectApi.validateGithubRepo(repo);
+      const response = await projectApi.validateGithubRepo(projectId, orgName, repoName);
 
-      // 백엔드 응답 구조에 따라 수정 필요할 수 있음
-      // 현재 가정: 성공 시 200 OK, 에러 시 400/404 등
+      // 백엔드 응답에서 repoId 포함
       return { success: true, data: response.data };
     } catch (error) {
       console.error('저장소 검증 실패:', error);
@@ -330,7 +332,7 @@ const useProjectStore = create((set, get) => ({
   // ------------------------------------------------------------------
   // [7] 프로젝트 GitHub 저장소 업데이트
   // ------------------------------------------------------------------
-  updateProjectRepo: async (projectId, repoFullName) => {
+  updateProjectRepo: async (projectId, repoId, repoFullName) => {
     set({ isLoading: true, error: null });
 
     if (IS_MOCK) {
@@ -353,7 +355,7 @@ const useProjectStore = create((set, get) => ({
     }
 
     try {
-      await projectApi.updateProjectRepo(projectId, repoFullName);
+      await projectApi.updateProjectRepo(projectId, repoId, repoFullName);
 
       set(state => ({
         allProjects: state.allProjects.map(p =>
