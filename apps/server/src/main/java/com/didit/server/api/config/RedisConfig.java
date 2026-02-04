@@ -25,7 +25,7 @@ public class RedisConfig {
         template.setConnectionFactory(cf);
 
         var keySer = new StringRedisSerializer();
-        var valSer = new GenericJacksonJsonRedisSerializer(mapper);
+        var valSer = new StringRedisSerializer();
 
         template.setKeySerializer(keySer);
         template.setHashKeySerializer(keySer);

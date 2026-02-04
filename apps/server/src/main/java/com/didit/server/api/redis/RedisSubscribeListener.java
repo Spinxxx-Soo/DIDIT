@@ -29,7 +29,7 @@ public class RedisSubscribeListener {
                         clientKey,
                         "ai_analysis_result",
                         String.valueOf(result.issueId()),
-                        result.aiResponse()
+                        result.priority()
                 );
             }
         } catch (Exception e) {
@@ -41,6 +41,6 @@ public class RedisSubscribeListener {
             Long userId,
             Long projectId,
             Long issueId,
-            AiResponse aiResponse
+            String priority
     ){}
 }
