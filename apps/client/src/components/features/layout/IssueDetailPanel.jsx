@@ -42,7 +42,8 @@ const IssueDetailPanel = () => {
     getIssueById,
     addIssue,
     updateIssue,
-    deleteIssue
+    deleteIssue,
+    isLoading
   } = useLoungeStore();
 
   const { currentProject, fetchParticipants } = useProjectStore();
@@ -405,18 +406,12 @@ const IssueDetailPanel = () => {
           {isCreateMode ? (
             <>
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-              >
-                취소
-              </Button>
-              <Button
                 variant="primary"
                 size="sm"
                 onClick={handleSave}
+                disabled={isLoading}
               >
-                등록하기
+                {isLoading ? '저장 중...' : (isCreateMode ? '등록하기' : '저장하기')}
               </Button>
             </>
           ) : (
@@ -430,6 +425,7 @@ const IssueDetailPanel = () => {
                     if (found) setFormData(found);
                     setIsEditing(false);
                   }}
+                  disabled={isLoading}
                 >
                   취소
                 </Button>
@@ -437,8 +433,9 @@ const IssueDetailPanel = () => {
                   variant="primary"
                   size="sm"
                   onClick={handleSave}
+                  disabled={isLoading}
                 >
-                  저장하기
+                  {isLoading ? '저장 중...' : '저장하기'}
                 </Button>
               </>
             ) : (

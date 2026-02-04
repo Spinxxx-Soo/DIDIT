@@ -170,6 +170,8 @@ const useLoungeStore = create((set, get) => ({
   },
 
   addIssue: async (projectId, issueData) => {
+    set({ isLoading: true, error: null });
+
     if (IS_MOCK) {
       await new Promise((r) => setTimeout(r, 500));
       const newIssue = {
@@ -187,22 +189,52 @@ const useLoungeStore = create((set, get) => ({
         issues: [newIssue, ...state.issues],
         activePanel: 'issue',
         selectedIssueId: null,
+        isLoading: false,
       }));
       return newIssue;
     }
 
     try {
-      // TODO: API 완성 후 features.js에서 createIssue 주석 해제 (Deprecated -> loungeApi 사용)
-      const response = await loungeApi.createIssue(projectId, issueData);
-      const normalizedIssue = normalizeIssue(response.data);
+      // 1단계: 분석 API 호출 (임시 저장 및 ID 발급)
+      // DTO 필드명은 'status' (IssueStatus enum)
+      const analyzePayload = {
+        title: issueData.title,
+        body: issueData.body,
+        status: issueData.issueStatus, // 'OPEN' or 'CLOSED' -> DTO expects 'status'
+        assigneeIds: issueData.assigneeIds
+      };
+
+      const analyzeRes = await loungeApi.analyzeIssue(projectId, analyzePayload);
+
+      // Response might be wrapped or just payload. Spring returns value directly.
+      const analyzedIssue = analyzeRes.data;
+
+      if (!analyzedIssue || !analyzedIssue.issueId) {
+        throw new Error('이슈 분석 단계에서 ID를 반환하지 않았습니다.');
+      }
+
+      // 2단계: 실제 이슈 생성 요청 (GitHub 등록)
+      const createPayload = {
+        ...issueData,
+        issueId: analyzedIssue.issueId,
+      };
+
+      const response = await loungeApi.createIssue(projectId, createPayload);
+
+      // 백엔드 Stream/List 응답 처리
+      const resultData = Array.isArray(response.data) ? response.data[0] : response.data;
+
+      const normalizedIssue = normalizeIssue(resultData);
       set((state) => ({
         issues: [normalizedIssue, ...state.issues],
         activePanel: 'issue',
         selectedIssueId: null,
+        isLoading: false,
       }));
       return normalizedIssue;
     } catch (error) {
       console.error('이슈 생성 실패:', error);
+      set({ error: error.message, isLoading: false });
       throw error;
     }
   },
