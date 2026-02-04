@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.*;
 import com.didit.server.data.entity.ChatEntity;
 import com.didit.server.data.entity.MeetingEntity;
 import com.didit.server.data.entity.ProjectEntity;
+import com.didit.server.data.entity.enums.ProjectUserStatus;
 import com.didit.server.data.repository.ChatMessageRepository;
 import com.didit.server.data.repository.MeetingRepository;
 import com.didit.server.data.repository.ProjectRepository;
@@ -65,7 +66,7 @@ class ChatServiceImplTest {
         String content = "안녕하세요!";
 
         given(meetingRepository.findById(channelId)).willReturn(Optional.empty()); // 미팅 아님
-        given(projectUserRepository.existsByProject_IdAndUser_Id(channelId, userId)).willReturn(true);
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
 
         // When
         Result<Void> result = chatService.sendMessage(channelId, userId, content);
@@ -99,7 +100,7 @@ class ChatServiceImplTest {
         long channelId = 1L;
         long userId = 10L;
         given(meetingRepository.findById(channelId)).willReturn(Optional.empty());
-        given(projectUserRepository.existsByProject_IdAndUser_Id(channelId, userId)).willReturn(false);
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(false);
 
         // When
         Result<Void> result = chatService.sendMessage(channelId, userId, "내용");
@@ -122,7 +123,7 @@ class ChatServiceImplTest {
 
         // ID 해석 및 권한 체크 모킹
         given(meetingRepository.findById(channelId)).willReturn(Optional.empty()); // 미팅 아님
-        given(projectUserRepository.existsByProject_IdAndUser_Id(channelId, userId)).willReturn(true); // 멤버임
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(true); // 멤버임
         given(projectRepository.existsById(channelId)).willReturn(true); // 프로젝트 존재함
 
         // 프로젝트 전용 쿼리 호출 모킹
@@ -154,7 +155,7 @@ class ChatServiceImplTest {
         given(meeting.getProject()).willReturn(project);
 
         given(meetingRepository.findById(meetingId)).willReturn(Optional.of(meeting));
-        given(projectUserRepository.existsByProject_IdAndUser_Id(projectId, userId)).willReturn(true);
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
         given(projectRepository.existsById(projectId)).willReturn(true);
         given(chatMessageRepository.getMeetingMessages(meetingId, lastId, pageable))
                 .willReturn(new SliceImpl<>(List.of(mock(ChatEntity.class))));
@@ -174,7 +175,7 @@ class ChatServiceImplTest {
         long channelId = 1L;
         long userId = 999L; // 권한 없는 유저
         given(meetingRepository.findById(channelId)).willReturn(Optional.empty());
-        given(projectUserRepository.existsByProject_IdAndUser_Id(channelId, userId)).willReturn(false);
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(false);
 
         // When
         Result<List<ChatEntity>> result = chatService.getMessage(channelId, userId, null, PageRequest.of(0, 20));
@@ -192,7 +193,7 @@ class ChatServiceImplTest {
         long channelId = 1L;
         long userId = 10L;
         given(meetingRepository.findById(channelId)).willReturn(Optional.empty());
-        given(projectUserRepository.existsByProject_IdAndUser_Id(channelId, userId)).willReturn(true);
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
         given(projectRepository.existsById(channelId)).willReturn(false); // 프로젝트 없음
 
         // When
@@ -210,7 +211,7 @@ class ChatServiceImplTest {
         long channelId = 1L;
         long userId = 10L;
         given(meetingRepository.findById(channelId)).willReturn(Optional.empty());
-        given(projectUserRepository.existsByProject_IdAndUser_Id(channelId, userId)).willReturn(true);
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
         given(projectRepository.existsById(channelId)).willReturn(true);
 
         // 의도적으로 예외 발생시키기

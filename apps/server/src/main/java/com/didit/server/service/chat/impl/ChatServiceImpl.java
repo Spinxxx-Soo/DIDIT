@@ -2,6 +2,7 @@ package com.didit.server.service.chat.impl;
 
 import com.didit.server.data.entity.ChatEntity;
 import com.didit.server.data.entity.enums.MessageType;
+import com.didit.server.data.entity.enums.ProjectUserStatus;
 import com.didit.server.data.repository.ChatMessageRepository;
 import com.didit.server.data.repository.MeetingRepository;
 import com.didit.server.data.repository.ProjectRepository;
@@ -55,7 +56,7 @@ public class ChatServiceImpl implements ChatService {
             meetingId = channelId;
         }
 
-        boolean isMember = projectUserRepository.existsByProject_IdAndUser_Id(projectId, userId);
+        boolean isMember = projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE);
         if (!isMember) {
             return Result.fail(new ForbiddenError("해당 채널의 채팅을 참여할 권한이 없습니다."));
         }
@@ -95,7 +96,7 @@ public class ChatServiceImpl implements ChatService {
                 meetingId = channelId;
             }
 
-            boolean isMember = projectUserRepository.existsByProject_IdAndUser_Id(projectId, userId);
+            boolean isMember = projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE);
             if (!isMember) {
                 return Result.fail(new ForbiddenError("해당 채널의 채팅을 볼 권한이 없습니다."));
             }
@@ -182,6 +183,6 @@ public class ChatServiceImpl implements ChatService {
             projectId = meeting.get().getProject().getId();
         }
 
-        return projectUserRepository.existsByProject_IdAndUser_Id(projectId, userId);
+        return projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE);
     }
 }

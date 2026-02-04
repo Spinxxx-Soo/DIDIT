@@ -10,6 +10,7 @@ import com.didit.server.data.entity.ProjectUserEntity;
 import com.didit.server.data.entity.UserEntity;
 import com.didit.server.data.entity.enums.IssuePriority;
 import com.didit.server.data.entity.enums.IssueStatus;
+import com.didit.server.data.entity.enums.ProjectUserStatus;
 import com.didit.server.data.external.github.GithubService;
 import com.didit.server.data.repository.*;
 import com.didit.server.service.service.IssueService;
@@ -68,7 +69,7 @@ public class IssueServiceImpl implements IssueService {
     @Override
     public Result<List<IssueEntity>> GetAllIssues(long userId, long projectId){
         try {
-            boolean isMember = projectUserRepository.existsByProject_IdAndUser_Id(projectId, userId);
+            boolean isMember = projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE);
             if (!isMember) {
                 return Result.fail(new ForbiddenError("해당 프로젝트의 멤버만 이슈를 조회할 수 있습니다."));
             }

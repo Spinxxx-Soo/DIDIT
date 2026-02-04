@@ -9,6 +9,7 @@ import com.didit.server.service.service.ProjectService;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.impl.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -139,7 +140,18 @@ public class ProjectServiceImpl implements ProjectService {
 
         var projectUser = _ProjectUserRepository.findByProject_IdAndUser_Id(projectId, userId);
         if(projectUser.isPresent()){
-            return Result.fail(new ConflictError("이미 존재하는 유저입니다."));
+            var entity = projectUser.get();
+            if (entity.getStatus() == ProjectUserStatus.ACTIVE) {
+                return Result.fail(new ConflictError("이미 존재하는 유저입니다."));
+            }
+
+            entity.setStatus(ProjectUserStatus.ACTIVE);
+            entity.setRole(ProjectUserRole.MEMBER);
+            entity.setJoinedAt(LocalDateTime.now());
+            entity.setLeftAt(null);
+
+            _ProjectUserRepository.save(entity);
+            return Result.ok();
         }
 
         var projectUserEntity = ProjectUserEntity.builder()
@@ -212,6 +224,54 @@ public class ProjectServiceImpl implements ProjectService {
             return project.map(Result::ok).orElseGet(() -> Result.fail(new NotFoundError("projectId", projectId)));
         } catch (Exception e) {
             return Result.fail(new ServerError("ProjectDetail", projectId));
+        }
+    }
+
+    @Override
+    @Transactional
+    public Result DeleteProject(long projectId, long userId) {
+        try {
+            var project = _ProjectRepository.findById(projectId);
+            if (project.isEmpty()){
+                return Result.fail(new NotFoundError("projectId", projectId));
+            }
+            if (!project.get().getOwner().getId().equals(userId)){
+                return Result.fail(new ForbiddenError("프로젝트를 삭제 할 권한이 없습니다."));
+            }
+            _ProjectRepository.delete(project.get());
+            return Result.ok();
+        } catch (Exception e) {
+            return Result.fail(new ServerError("DeleteProject", projectId));
+        }
+    }
+
+    @Override
+    @Transactional
+    public Result LeaveProject(long projectId, long userId){
+        try {
+            var project = _ProjectRepository.findById(projectId);
+            if (project.isEmpty()){
+                return Result.fail(new NotFoundError("projectId", projectId));
+            }
+            if (project.get().getOwner().getId().equals(userId)) {
+                return Result.fail(new ForbiddenError("프로젝트 소유자는 나갈 수 없습니다. 소유권을 이전하거나 프로젝트를 삭제하세요."));
+            }
+            var projectUser = _ProjectUserRepository.findByProject_IdAndUser_Id(projectId, userId);
+            if (projectUser.isEmpty()) {
+                return Result.fail(new NotFoundError("projectUser", userId));
+            }
+            if (projectUser.get().getStatus() == ProjectUserStatus.LEFT) {
+                return Result.fail(new ConflictError("이미 탈퇴 처리된 유저입니다."));
+            }
+
+            var entity = projectUser.get();
+            entity.setLeftAt(LocalDateTime.now());
+            entity.setStatus(ProjectUserStatus.LEFT);
+            _ProjectUserRepository.save(entity);
+
+            return Result.ok();
+        } catch (Exception e) {
+            return Result.fail(new ServerError("LeaveProject", projectId));
         }
     }
 }

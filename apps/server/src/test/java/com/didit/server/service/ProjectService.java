@@ -11,6 +11,10 @@ import com.didit.server.service.service.impl.ProjectServiceImpl;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.ResultError;
 
+import com.didit.server.share.result.impl.ConflictError;
+import com.didit.server.share.result.impl.ForbiddenError;
+import com.didit.server.share.result.impl.NotFoundError;
+import com.didit.server.share.result.impl.ServerError;
 import com.navercorp.fixturemonkey.FixtureMonkey;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,6 +33,7 @@ import java.util.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -750,6 +755,212 @@ class ProjectServiceImplTest {
         assertThat(result.isFailure()).isTrue();
         assertThat(result.getSingleErrorOrThrow().getStatus().value()).isEqualTo(500);
         assertThat(result.getSingleErrorOrThrow().getMessage()).contains("ProjectRecentList");
+    }
+
+    @Test
+    @DisplayName("프로젝트 삭제 성공 - 소유자 확인 후 논리 삭제 수행")
+    void deleteProject_success() {
+        // Given
+        long projectId = 1L;
+        long userId = 10L;
+        UserEntity owner = UserEntity.builder().id(userId).build();
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(owner)
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+
+        // When
+        Result result = sut.DeleteProject(projectId, userId);
+
+        // Then
+        assertThat(result.isSuccess()).isTrue();
+        // 실제 물리 삭제가 아닌 엔티티를 넘겨 @SQLDelete가 동작하게 하는지 확인
+        verify(projectRepository, times(1)).delete(project);
+    }
+
+    @Test
+    @DisplayName("프로젝트 삭제 실패 - 프로젝트가 존재하지 않는 경우 NotFoundError 반환")
+    void deleteProject_fail_notFound() {
+        // Given
+        long projectId = 1L;
+        long userId = 10L;
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.empty());
+
+        // When
+        Result result = sut.DeleteProject(projectId, userId);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(NotFoundError.class);
+        verify(projectRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("프로젝트 삭제 실패 - 소유자가 아닌 사용자가 시도할 경우 ForbiddenError 반환")
+    void deleteProject_fail_forbidden() {
+        // Given
+        long projectId = 1L;
+        long userId = 10L; // 요청자
+        long otherUserId = 20L; // 실제 소유자
+
+        UserEntity owner = UserEntity.builder().id(otherUserId).build();
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(owner)
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+
+        // When
+        Result result = sut.DeleteProject(projectId, userId);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ForbiddenError.class);
+        verify(projectRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("프로젝트 삭제 실패 - DB 작업 중 예외 발생 시 ServerError 반환")
+    void deleteProject_fail_serverError() {
+        // Given
+        long projectId = 1L;
+        long userId = 10L;
+        UserEntity owner = UserEntity.builder().id(userId).build();
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(owner)
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+        willThrow(new RuntimeException("DB Error")).given(projectRepository).delete(project);
+
+        // When
+        Result result = sut.DeleteProject(projectId, userId);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ServerError.class);
+    }
+
+    @Test
+    @DisplayName("프로젝트 나가기 성공 - 멤버 상태가 LEFT로 변경되고 탈퇴 시간이 기록됨")
+    void leaveProject_success() {
+        // Given
+        long userId = 1L;
+        long projectId = 100L;
+        long ownerId = 2L;
+
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(UserEntity.builder().id(ownerId).build())
+                .build();
+
+        ProjectUserEntity projectUser = ProjectUserEntity.builder()
+                .project(project)
+                .user(UserEntity.builder().id(userId).build())
+                .status(ProjectUserStatus.ACTIVE)
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+        given(projectUserRepository.findByProject_IdAndUser_Id(projectId, userId))
+                .willReturn(Optional.of(projectUser));
+
+        // When
+        Result result = sut.LeaveProject(projectId, userId);
+
+        // Then
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(projectUser.getStatus()).isEqualTo(ProjectUserStatus.LEFT);
+        assertThat(projectUser.getLeftAt()).isNotNull();
+
+        verify(projectUserRepository, times(1)).save(projectUser);
+    }
+
+    @Test
+    @DisplayName("프로젝트 나가기 실패 - 프로젝트 소유자(Owner)는 탈퇴할 수 없음")
+    void leaveProject_fail_ownerCannotLeave() {
+        // Given
+        long userId = 1L;
+        long projectId = 100L;
+
+        // 요청자(userId)가 프로젝트의 소유자인 상황
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(UserEntity.builder().id(userId).build())
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+
+        // When
+        Result result = sut.LeaveProject(projectId, userId);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ForbiddenError.class);
+
+        // 소유자 체크에서 걸리면 멤버 조회나 저장이 일어나지 않아야 함
+        verify(projectUserRepository, never()).findByProject_IdAndUser_Id(anyLong(), anyLong());
+        verify(projectUserRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("프로젝트 나가기 실패 - 프로젝트 멤버가 아닌 경우 NotFoundError 반환")
+    void leaveProject_fail_notMember() {
+        // Given
+        long userId = 1L;
+        long projectId = 100L;
+        long ownerId = 2L;
+
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(UserEntity.builder().id(ownerId).build())
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+        // 멤버 정보가 없는 상황
+        given(projectUserRepository.findByProject_IdAndUser_Id(projectId, userId))
+                .willReturn(Optional.empty());
+
+        // When
+        Result result = sut.LeaveProject(projectId, userId);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(NotFoundError.class);
+    }
+
+    @Test
+    @DisplayName("프로젝트 나가기 실패 - 이미 탈퇴 처리된 유저인 경우 ConflictError 반환")
+    void leaveProject_fail_alreadyLeft() {
+        // Given
+        long userId = 1L;
+        long projectId = 100L;
+        long ownerId = 2L;
+
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(UserEntity.builder().id(ownerId).build())
+                .build();
+
+        // 이미 상태가 LEFT인 멤버
+        ProjectUserEntity projectUser = ProjectUserEntity.builder()
+                .status(ProjectUserStatus.LEFT)
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+        given(projectUserRepository.findByProject_IdAndUser_Id(projectId, userId))
+                .willReturn(Optional.of(projectUser));
+
+        // When
+        Result result = sut.LeaveProject(projectId, userId);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ConflictError.class);
     }
 
     // =========================================================
