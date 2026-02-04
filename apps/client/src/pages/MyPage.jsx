@@ -96,15 +96,15 @@ export function MyPage() {
             </p>
           </div>
 
-          {/* Profile Edit Button */}
-          <Button
+          {/* Profile Edit Button - API 미구현으로 임시 주석처리 */}
+          {/* <Button
             variant="secondary"
             leftIcon={<Settings size={16} />}
             onClick={() => setIsEditProfileModalOpen(true)}
             className="rounded-full px-6 py-3 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-300"
           >
             프로필 편집
-          </Button>
+          </Button> */}
         </div>
       </section>
 
@@ -287,13 +287,13 @@ export function MyPage() {
         isLoading={isLoading}
       />
 
-      {/* 프로필 이미지 수정 모달 */}
-      <EditProfileModal
+      {/* 프로필 이미지 수정 모달 - API 미구현으로 임시 주석처리 */}
+      {/* <EditProfileModal
         isOpen={isEditProfileModalOpen}
         onClose={() => setIsEditProfileModalOpen(false)}
         onSubmit={handleUpdateProfile}
         currentUser={user}
-      />
+      /> */}
     </div>
   );
 }
