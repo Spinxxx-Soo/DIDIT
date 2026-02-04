@@ -27,7 +27,7 @@ const ScreenShare = () => {
     <div className="w-full h-full min-h-[500px] flex items-center justify-center">
       {screenShareStream ? (
         <div
-          className="relative w-full h-full flex items-center justify-center rounded-xl overflow-hidden"
+          className="relative inline-flex items-center justify-center p-2 rounded-xl"
           style={{ backgroundColor: '#1a1a1a' }}
         >
           {/* 공유자 이름 */}
@@ -40,7 +40,7 @@ const ScreenShare = () => {
             ref={videoRef}
             autoPlay
             playsInline
-            className="w-full h-full object-contain"
+            className="max-w-full max-h-[calc(100vh-200px)] object-contain rounded-lg"
           />
         </div>
       ) : (
