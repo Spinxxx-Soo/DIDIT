@@ -3,6 +3,7 @@ import { OpenVidu } from 'openvidu-browser';
 import useMeetingStore from '@/store/useMeetingStore';
 import { meetingApi } from '@/api/meeting';
 import useAuthStore from '@/store/useAuthStore';
+import { toast } from '@/store/useToastStore';
 
 // OpenVidu connection.data 파싱 헬퍼 (형식: clientData%/%serverData)
 const parseConnectionData = (data) => {
@@ -131,20 +132,34 @@ const useOpenVidu = () => {
       isScreenShareLoading,
       publisher: currentPublisher,
       screenPublisher,
+      screenShareUser,
       setScreenShareLoading,
       setPublisher,
       setScreenPublisher,
       setScreenSharing,
-      setError,
     } = useMeetingStore.getState();
 
-    if (isScreenShareLoading || isScreenSharing || screenPublisher) {
-      console.warn('이미 화면 공유가 활성화되어 있거나 처리 중입니다.');
+    // 이미 로딩 중인 경우
+    if (isScreenShareLoading) {
+      console.warn('화면 공유 처리 중입니다.');
+      return { success: false };
+    }
+
+    // 내가 이미 공유 중인 경우
+    if (screenPublisher) {
+      console.warn('이미 화면 공유 중입니다.');
+      return { success: false };
+    }
+
+    // 다른 사람이 공유 중인 경우
+    if (isScreenSharing && !screenPublisher) {
+      const sharerName = screenShareUser || '다른 참가자';
+      toast.warning(`현재 ${sharerName}님이 화면을 공유하고 있습니다.`);
       return { success: false };
     }
 
     if (!session || !OV) {
-      useMeetingStore.getState().setError('세션이 연결되지 않았습니다.');
+      toast.error('세션이 연결되지 않았습니다.');
       return { success: false };
     }
 
@@ -200,9 +215,9 @@ const useOpenVidu = () => {
       console.error('화면 공유 시작 실패:', error);
       await restoreAudioOnlyPublisher();
       if (error.name === 'NotAllowedError' || error.message?.includes('Permission denied')) {
-        useMeetingStore.getState().setError('화면 공유 권한이 거부되었습니다.');
+        toast.error('화면 공유 권한이 거부되었습니다.');
       } else {
-        useMeetingStore.getState().setError('화면 공유를 시작할 수 없습니다.');
+        toast.error('화면 공유를 시작할 수 없습니다.');
       }
       return { success: false, error };
     } finally {
