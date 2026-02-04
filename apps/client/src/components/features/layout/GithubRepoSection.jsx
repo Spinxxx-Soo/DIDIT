@@ -53,6 +53,12 @@ export function GithubRepoSection({
       return;
     }
 
+    // projectId 유효성 검증
+    if (!projectId) {
+      setRepoError('프로젝트 정보를 불러올 수 없습니다');
+      return;
+    }
+
     // 형식 체크 (organization/repository)
     const repoPattern = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/;
     if (!repoPattern.test(repoInput.trim())) {

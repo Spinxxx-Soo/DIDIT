@@ -261,6 +261,12 @@ const useProjectStore = create((set, get) => ({
   // [5] GitHub 저장소 검증
   // ------------------------------------------------------------------
   validateGithubRepo: async (projectId, repo) => {
+    // projectId 유효성 검증
+    if (!projectId) {
+      console.error('validateGithubRepo: projectId가 없습니다');
+      return { success: false, error: '프로젝트 정보를 불러올 수 없습니다' };
+    }
+
     // repo를 orgName/repoName으로 파싱
     const [orgName, repoName] = repo.split('/');
 
