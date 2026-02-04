@@ -350,4 +350,17 @@ public class ProjectController {
         }
         return ResponseEntity.ok().build();
     }
+
+    @PatchMapping("/{projectId}/owner")
+    public ResponseEntity<?> transferOwnership(@PathVariable long projectId,
+                                               @AuthenticationPrincipal CustomOAuth2User user,
+                                               @RequestBody TransferOwnerRequest req){
+        long userId = user.getId();
+        var result = _ProjectService.transferOwnership(projectId, userId, req.newOwnerId());
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        return ResponseEntity.ok(null);
+    }
 }
