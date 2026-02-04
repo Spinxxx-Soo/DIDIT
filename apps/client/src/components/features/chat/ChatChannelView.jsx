@@ -139,7 +139,7 @@ const ChatChannelView = () => {
     };
 
     return (
-        <div className="flex flex-col h-full w-full absolute inset-0 bg-[#F8F9FA] overflow-hidden">
+        <div className="flex flex-col h-full w-full bg-[#F8F9FA] overflow-hidden relative">
             {/* Header Removed as requested */}
 
             {/* Message List */}
