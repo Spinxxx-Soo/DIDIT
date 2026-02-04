@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 import java.awt.print.Book;
@@ -361,6 +362,32 @@ public class ProjectController {
             var err = result.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
-        return ResponseEntity.ok(null);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{projectId}/name")
+    public ResponseEntity<?> updateProjectName(@PathVariable long projectId,
+                                               @AuthenticationPrincipal CustomOAuth2User user,
+                                               @RequestBody @Valid UpdateProjectNameRequest req){
+        long userId = user.getId();
+        var result = _ProjectService.updateProjectName(projectId, userId, req.name());
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{projectId}/participants/{userId}")
+    public ResponseEntity<?> removeParticipant(@PathVariable long projectId,
+                                               @PathVariable long userId,
+                                               @AuthenticationPrincipal CustomOAuth2User user){
+        long ownerId = user.getId();
+        var result = _ProjectService.removeParticipant(projectId, userId, ownerId);
+        if (result.isFailure()){
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        return ResponseEntity.ok().build();
     }
 }
