@@ -8,7 +8,8 @@ import RecentMinutes from '@/components/features/user/RecentMinutes';
 import StatCards from '@/components/features/user/StatCards';
 import IssueStatusChart from '@/components/features/user/IssueStatusChart';
 import PriorityDistribution from '@/components/features/user/PriorityDistribution';
-import { Calendar, FileText, BarChart3, LayoutGrid, ChevronRight } from 'lucide-react';
+import useProjectStore from '@/store/useProjectStore';
+import { Calendar, FileText, BarChart3, LayoutGrid, ChevronRight, Github } from 'lucide-react';
 
 const SectionHeader = ({ icon, title, subtitle }) => (
   <div className="flex items-center gap-4 mb-6">
@@ -59,6 +60,9 @@ const NAV_ITEMS = [
 ];
 
 const Lounge = () => {
+  const { currentProject } = useProjectStore();
+  const isGithubConnected = !!currentProject?.repoFullName;
+
   const sectionRefs = {
     stats: useRef(null),
     issues: useRef(null),
@@ -141,6 +145,22 @@ const Lounge = () => {
               title="이슈 현황"
               subtitle="상태 및 우선순위 분포"
             />
+            {/* GitHub 미연동 안내 배너 */}
+            {!isGithubConnected && (
+              <div className="flex items-center gap-3 mb-6 p-4 bg-[var(--bg-input)] rounded-[var(--radius-xl)] border border-[var(--border-default)]">
+                <div className="w-10 h-10 rounded-full bg-[var(--bg-panel)] flex items-center justify-center">
+                  <Github size={20} className="text-[var(--text-tertiary)]" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">
+                    GitHub 저장소 연동이 필요합니다
+                  </p>
+                  <p className="text-xs text-[var(--text-tertiary)]">
+                    상단에서 저장소를 연결하면 이슈를 관리할 수 있습니다
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <IssueStatusChart />
               <PriorityDistribution />
