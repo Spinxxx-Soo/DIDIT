@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, X, AlertCircle, CheckCircle2, Clock, Trash2, Sparkles, Github } from 'lucide-react';
 import { IconButton } from '@/components/common/Button/IconButton';
 import { Button } from '@/components/common/Button';
@@ -70,6 +70,30 @@ const IssueDetailPanel = () => {
   // AI 분석 상태 관리
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzedData, setAnalyzedData] = useState(null); // { issueId, priority, status }
+  const eventSourceRef = useRef(null);
+
+  // SSE 연결 정리 함수
+  const cleanupSSE = () => {
+    if (eventSourceRef.current) {
+      console.log('[SSE] AI 분석 SSE 연결 종료');
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+  };
+
+  // 컴포넌트 언마운트 또는 모드 변경 시 SSE 정리
+  useEffect(() => {
+    return () => {
+      cleanupSSE();
+    };
+  }, []);
+
+  // 생성 모드가 아닐 때 SSE 정리
+  useEffect(() => {
+    if (!isCreateMode) {
+      cleanupSSE();
+    }
+  }, [isCreateMode]);
 
   useEffect(() => {
     if (isCreateMode) {
@@ -100,6 +124,59 @@ const IssueDetailPanel = () => {
     }
   }, [selectedIssueId, isCreateMode, getIssueById]);
 
+  // SSE 연결 함수
+  const connectSSE = (projectId, issueId) => {
+    // 기존 연결 정리
+    cleanupSSE();
+
+    const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.did-it.xyz';
+    const es = new EventSource(`${baseUrl}/api/v1/projects/${projectId}/stream`, {
+      withCredentials: true
+    });
+
+    eventSourceRef.current = es;
+
+    es.onopen = () => {
+      console.log('[SSE] AI 분석 SSE 연결 성공');
+    };
+
+    // AI 분석 결과 이벤트 리스너
+    es.addEventListener('ai_analysis_result', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('[SSE] AI 분석 결과 수신:', data);
+
+        // 현재 분석 중인 이슈의 결과인지 확인
+        if (data.issueId === issueId || data.issueId === String(issueId)) {
+          const priority = data.priority?.toLowerCase() || 'medium';
+
+          setAnalyzedData(prev => ({
+            ...prev,
+            priority: data.priority,
+            score: data.score
+          }));
+
+          setFormData(prev => ({ ...prev, priority }));
+          setIsAnalyzing(false);
+
+          alert(`🤖 AI 분석 완료! 우선순위가 '${data.priority}'(으)로 추천되었습니다.`);
+
+          // 분석 완료 후 SSE 연결 종료
+          cleanupSSE();
+        }
+      } catch (err) {
+        console.error('[SSE] AI 분석 결과 파싱 오류:', err);
+      }
+    });
+
+    es.onerror = (err) => {
+      console.error('[SSE] AI 분석 SSE 연결 오류:', err);
+      cleanupSSE();
+    };
+
+    return es;
+  };
+
   // AI 분석 핸들러
   const handleAnalyze = async () => {
     if (!formData.title.trim() || !formData.body.trim()) {
@@ -118,6 +195,7 @@ const IssueDetailPanel = () => {
         .map(name => participants.find(p => p.name === name || p.nickname === name)?.id)
         .filter(id => id);
 
+      // API 호출하여 분석 요청 (issueId 획득)
       const result = await analyzeIssueContent(currentProject.id, {
         title: formData.title,
         body: formData.body,
@@ -125,15 +203,17 @@ const IssueDetailPanel = () => {
         assigneeIds
       });
 
-      // 결과 반영
-      setAnalyzedData(result);
-      if (result.priority) {
-        setFormData(prev => ({ ...prev, priority: result.priority.toLowerCase() }));
-        alert(`🤖 AI 분석 완료! 우선순위가 '${result.priority}'(으)로 추천되었습니다.`);
+      // issueId를 저장하고 SSE 연결
+      if (result.issueId) {
+        setAnalyzedData(result);
+        // SSE 연결하여 실제 AI 분석 결과 대기
+        connectSSE(currentProject.id, result.issueId);
+      } else {
+        throw new Error('issueId가 반환되지 않았습니다.');
       }
     } catch (error) {
+      console.error('AI 분석 요청 실패:', error);
       alert('AI 분석에 실패했습니다.');
-    } finally {
       setIsAnalyzing(false);
     }
   };
