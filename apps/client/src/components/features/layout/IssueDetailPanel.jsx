@@ -45,7 +45,14 @@ const IssueDetailPanel = () => {
     deleteIssue
   } = useLoungeStore();
 
-  const { currentProject } = useProjectStore();
+  const { currentProject, fetchParticipants } = useProjectStore();
+  const [participants, setParticipants] = useState([]);
+
+  useEffect(() => {
+    if (currentProject?.id) {
+      fetchParticipants(currentProject.id).then(setParticipants);
+    }
+  }, [currentProject?.id, fetchParticipants]);
 
   const isCreateMode = selectedIssueId === null;
   const [isEditing, setIsEditing] = useState(false);
@@ -85,7 +92,7 @@ const IssueDetailPanel = () => {
     }
   }, [selectedIssueId, isCreateMode, getIssueById]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.title.trim()) {
       alert('제목을 입력해주세요.');
       return;
@@ -96,17 +103,37 @@ const IssueDetailPanel = () => {
         alert('프로젝트 정보를 찾을 수 없습니다.');
         return;
       }
-      // 새 이슈 추가
-      addIssue(currentProject.id, {
-        title: formData.title,
-        body: formData.body,
-        status: formData.status,
-        priority: formData.priority,
-        assignees: formData.assignees,
-      });
-      alert(`✅ 새 이슈가 등록되었습니다!`);
+
+      // 저장소 정보 파싱
+      const repoFullName = currentProject.repoFullName || '';
+      const [orgName, repoName] = repoFullName.split('/');
+
+      if (!orgName || !repoName) {
+        alert('저장소 정보(Organization/Repository)가 유효하지 않습니다.');
+        return;
+      }
+
+      // 담당자 이름 -> ID 매핑
+      const assigneeIds = formData.assignees
+        .map(name => participants.find(p => p.name === name || p.nickname === name)?.id)
+        .filter(id => id);
+
+      try {
+        await addIssue(currentProject.id, {
+          title: formData.title,
+          body: formData.body,
+          orgName,
+          repoName,
+          issueId: 0, // 새 이슈는 ID 0
+          issueStatus: formData.status.toUpperCase(), // OPEN/CLOSED
+          issuePriority: formData.priority.toUpperCase(), // HIGH/MEDIUM/LOW
+          assigneeIds,
+        });
+        alert(`✅ 새 이슈가 등록되었습니다!`);
+      } catch (e) {
+        alert('이슈 생성에 실패했습니다.');
+      }
     } else {
-      // 기존 이슈 수정
       updateIssue(selectedIssueId, {
         title: formData.title,
         body: formData.body,
