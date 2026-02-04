@@ -8,12 +8,14 @@ import { Input } from '@/components/common/Input/Input';
 import { toast } from '@/store/useToastStore';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { meetingApi } from '@/api/meeting';
+import { ScheduleDetailModal } from './ScheduleDetailModal';
 
 const WeeklySchedule = () => {
   const { projectId } = useParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [schedules, setSchedules] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [newSchedule, setNewSchedule] = useState({
     title: '',
     startDate: '',
@@ -61,9 +63,9 @@ const WeeklySchedule = () => {
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
 
-  const getScheduleForDay = (date) => {
+  const getSchedulesForDay = (date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return schedules.find(s => s.startDate <= dateStr && dateStr <= s.endDate);
+    return schedules.filter(s => s.startDate <= dateStr && dateStr <= s.endDate);
   };
 
   const handleOpenModal = (dateStr = '') => {
@@ -185,7 +187,7 @@ const WeeklySchedule = () => {
       {/* 달력 그리드 */}
       <div className="grid grid-cols-7 gap-2">
         {weekDays.map((day, index) => {
-          const schedule = getScheduleForDay(day);
+          const daySchedules = getSchedulesForDay(day);
           const isToday = isSameDay(day, new Date());
           const isSunday = day.getDay() === 0;
           const isSaturday = day.getDay() === 6;
@@ -194,7 +196,7 @@ const WeeklySchedule = () => {
           return (
             <div
               key={day.toString()}
-              onClick={() => !schedule && handleOpenModal(dayStr)}
+              onClick={() => handleOpenModal(dayStr)}
               className={`
                 relative p-3 rounded-[var(--radius-xl)] border min-h-[100px] cursor-pointer transition-all duration-200 group animate-fade-up
                 ${isToday
@@ -204,6 +206,7 @@ const WeeklySchedule = () => {
               `}
               style={{ animationDelay: `${index * 30}ms` }}
             >
+
               <div className={`
                 text-sm font-medium mb-2
                 ${isSunday ? 'text-red-500' : isSaturday ? 'text-blue-500' : 'text-[var(--text-secondary)]'}
@@ -219,17 +222,27 @@ const WeeklySchedule = () => {
                   {format(day, 'd')}
                 </span>
               </div>
+              // [변경됨] 하나의 날짜에 여러 일정이 있을 수 있으므로 배열(daySchedules)을 순회하며 모두 표시합니다.
+              // 기존에는 하나만 표시되었으나, 이제는 리스트 형태로 렌더링됩니다.
+              <div className="flex flex-col gap-1">
+                {daySchedules.map((schedule) => (
+                  <div
+                    key={schedule.id}
+                    onClick={(e) => {
+                      e.stopPropagation(); // 부모의 날짜 클릭 이벤트(생성 모달)가 발생하지 않도록 중단
+                      setSelectedSchedule(schedule); // [추가됨] 클릭 시 상세 정보를 보기 위해 선택된 일정을 상태에 저장
+                    }}
+                    className={`
+                        text-xs px-2 py-1.5 rounded-[var(--radius-md)] font-medium truncate border cursor-pointer hover:opacity-80
+                        ${getTypeStyle(schedule.type)}
+                      `}
+                  >
+                    {schedule.title}
+                  </div>
+                ))}
+              </div>
 
-              {schedule && (
-                <div className={`
-                  text-xs px-2 py-1.5 rounded-[var(--radius-md)] font-medium truncate border
-                  ${getTypeStyle(schedule.type)}
-                `}>
-                  {schedule.title}
-                </div>
-              )}
-
-              {!schedule && (
+              {daySchedules.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   <Plus size={16} className="text-[var(--text-tertiary)]" />
                 </div>
@@ -288,6 +301,13 @@ const WeeklySchedule = () => {
 
         </div>
       </Modal>
+
+      {/* 일정 상세 모달 */}
+      <ScheduleDetailModal
+        isOpen={!!selectedSchedule}
+        onClose={() => setSelectedSchedule(null)}
+        schedule={selectedSchedule}
+      />
     </div>
   );
 };
