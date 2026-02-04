@@ -93,6 +93,8 @@ const IssueDetailPanel = () => {
   }, [selectedIssueId, isCreateMode, getIssueById]);
 
   const handleSave = async () => {
+    console.log("현재 프로젝트 데이터:", currentProject);
+    console.log("저장소 전체 이름:", currentProject?.repoFullName);
     if (!formData.title.trim()) {
       alert('제목을 입력해주세요.');
       return;
