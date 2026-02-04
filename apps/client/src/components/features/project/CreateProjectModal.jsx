@@ -278,8 +278,8 @@ export function CreateProjectModal({
       }
     >
       <div className="space-y-6">
-        {/* 프로젝트 이미지 업로드 */}
-        <div>
+        {/* 프로젝트 이미지 업로드 - API 미구현으로 임시 주석처리 */}
+        {/* <div>
           <label className="block mb-3 text-[14px] font-medium text-[var(--text-primary)]">
             프로젝트 이미지
             <span className="ml-2 text-[13px] font-normal text-[var(--text-tertiary)]">
@@ -288,7 +288,6 @@ export function CreateProjectModal({
           </label>
 
           <div className="flex items-center gap-5">
-            {/* 이미지 미리보기 */}
             <div
               className="
                 relative
@@ -310,7 +309,6 @@ export function CreateProjectModal({
                     alt="프로젝트 이미지 미리보기"
                     className="w-full h-full object-cover"
                   />
-                  {/* 이미지 제거 버튼 */}
                   <button
                     type="button"
                     onClick={handleImageRemove}
@@ -340,7 +338,6 @@ export function CreateProjectModal({
               )}
             </div>
 
-            {/* 업로드 버튼 */}
             <div className="flex-1">
               <input
                 ref={fileInputRef}
@@ -353,21 +350,21 @@ export function CreateProjectModal({
                 htmlFor="project-image-upload"
                 className="
                     inline-flex items-center gap-2
-                    px-3.5 py-1.5                  {/* 여백을 살짝 줄여 콤팩트하게 */}
+                    px-3.5 py-1.5
                     bg-[var(--bg-input)]
                     border border-[var(--border-default)]
                     rounded-[var(--radius-md)]
-                    text-[13px] font-medium        {/* 폰트 크기를 살짝 줄이고 두께감 부여 */}
+                    text-[13px] font-medium
                     text-[var(--text-primary)]
                     cursor-pointer
-                    hover:bg-[var(--bg-hover)]     {/* 호버 시 배경색 변화 추가 */}
+                    hover:bg-[var(--bg-hover)]
                     hover:border-[var(--color-green-primary)]
                     hover:text-[var(--color-green-primary)]
                     transition-all duration-200
-                    active:scale-[0.98]            {/* 클릭 시 살짝 눌리는 효과 */}
+                    active:scale-[0.98]
                   "
               >
-                <Upload size={14} />             {/* 아이콘 크기도 14로 살짝 축소 */}
+                <Upload size={14} />
                 이미지 업로드
               </label>
               {imageError ? (
@@ -382,7 +379,7 @@ export function CreateProjectModal({
               )}
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* 프로젝트 이름 */}
         <Input
