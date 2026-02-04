@@ -963,6 +963,74 @@ class ProjectServiceImplTest {
         assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ConflictError.class);
     }
 
+    @Test
+    @DisplayName("저장소 정보 업데이트 성공 - 소유자 확인 후 repoId와 fullName을 저장함")
+    void updateProjectRepo_success() {
+        // Given
+        long projectId = 1L;
+        long userId = 10L;
+        long repoId = 12345L;
+        String repoFullName = "owner/repo";
+
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(UserEntity.builder().id(userId).build())
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+
+        // When
+        Result<Void> result = sut.updateProjectRepo(projectId, userId, repoId, repoFullName);
+
+        // Then
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(project.getRepoId()).isEqualTo(repoId);
+        assertThat(project.getRepoFullName()).isEqualTo(repoFullName);
+
+        verify(projectRepository, times(1)).save(project);
+    }
+
+    @Test
+    @DisplayName("저장소 정보 업데이트 실패 - 프로젝트 소유자가 아닌 경우 ForbiddenError 반환")
+    void updateProjectRepo_fail_forbidden() {
+        // Given
+        long projectId = 1L;
+        long userId = 10L;
+        long differentUserId = 99L;
+
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(UserEntity.builder().id(differentUserId).build())
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+
+        // When
+        Result<Void> result = sut.updateProjectRepo(projectId, userId, 12345L, "owner/repo");
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ForbiddenError.class);
+
+        verify(projectRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("저장소 정보 업데이트 실패 - 프로젝트가 존재하지 않는 경우 NotFoundError 반환")
+    void updateProjectRepo_fail_notFound() {
+        // Given
+        long projectId = 999L;
+        given(projectRepository.findById(projectId)).willReturn(Optional.empty());
+
+        // When
+        Result<Void> result = sut.updateProjectRepo(projectId, 1L, 12345L, "owner/repo");
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(NotFoundError.class);
+        verify(projectRepository, never()).save(any());
+    }
+
     // =========================================================
     // assert / fixture helpers
     // =========================================================
