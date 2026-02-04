@@ -47,14 +47,12 @@ class IssuePriorityLabelService:
         # [2] 모델 추론 (우리가 만든 15개 예시 프롬프트 작동)
         prediction = self.predict(title, body)
         priority = prediction["priority"]
-        score = prediction["score"]
 
         # 결과 데이터 구성
         result_data = {
-            "issueId": issue_id,
             "userId": user_id,
-            "priority": priority,
-            "score": score
+            "issueId": issue_id,
+            "priority": priority
         }
 
         # [3] 레디스에 값 넣기 (set_result 사용)
@@ -73,7 +71,7 @@ class IssuePriorityLabelService:
             json.dumps(result_data)
         )
 
-        logger.info(f"✅ 처리 완료: ID {issue_id} -> {priority} ({score}점)")
+        logger.info(f"✅ 처리 완료: ID {issue_id} -> {priority}")
         return result_data
 
     def close(self):
