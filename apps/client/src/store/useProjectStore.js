@@ -283,19 +283,17 @@ const useProjectStore = create((set, get) => ({
       return { success: false, error: '유효한 레퍼지토리가 아닙니다' };
     }
 
-    // [Modified] 백엔드 엔드포인트(api/v1/github/validate) 부재로 인해 검증 로직 임시 비활성화
-    // 무조건 성공 처리
-    return { success: true };
-
-    /*
     try {
       const response = await projectApi.validateGithubRepo(repo);
+
+      // 백엔드 응답 구조에 따라 수정 필요할 수 있음
+      // 현재 가정: 성공 시 200 OK, 에러 시 400/404 등
       return { success: true, data: response.data };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || '저장소 검증에 실패했습니다';
+      console.error('저장소 검증 실패:', error);
+      const errorMessage = error.response?.data?.message || '유효하지 않은 저장소입니다';
       return { success: false, error: errorMessage };
     }
-    */
   },
 
   // ------------------------------------------------------------------
