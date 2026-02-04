@@ -6,7 +6,7 @@ from common.redis_client import RedisClient
 from common.settings import settings
 from models.common.logger import get_logger
 from models.common.text_utils import build_issue_text
-from models.issue_priority_commit import IssuePriorityModel, PriorityLevel, PRIORITY_LABEL_MAP
+from models.issue_priority_commit import IssuePriorityModel, PriorityLevel
 from models.issue_priority_commit.config import REORDER_USE_RULES, REORDER_BOOST_SCORE, REORDER_PENALTY_SCORE
 
 logger = get_logger(__name__)
@@ -121,9 +121,6 @@ class IssuePriorityReorderService:
             # priority가 있으면 포함
             if "priority" in issue:
                 formatted_issue["priority"] = issue["priority"]
-            # score가 있으면 포함 (return_scores가 True인 경우)
-            if return_scores and "score" in issue:
-                formatted_issue["score"] = issue["score"]
             
             formatted_issues.append(formatted_issue)
 
