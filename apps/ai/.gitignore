@@ -47,6 +47,8 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+<<<<<<< HEAD
+=======
 
 # issue 모델
 *.safetensors
@@ -54,3 +56,4 @@ Thumbs.db
 
 # issue 가중치 모델 file
 final_lora_weights/
+>>>>>>> 691993c3e9e07de840a473c2b7432f71e361dd4e

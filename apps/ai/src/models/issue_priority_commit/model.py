@@ -130,12 +130,6 @@ class IssuePriorityModel:
     
     def _scale_score(self, score_raw: float) -> float:
         """원시 점수를 원래 스케일로 복원합니다.
-        
-        Args:
-            score_raw: 0~1 범위의 원시 점수
-        
-        Returns:
-            원래 스케일의 점수
         """
         train_min = self.thresholds["train_min"]
         train_max = self.thresholds["train_max"]

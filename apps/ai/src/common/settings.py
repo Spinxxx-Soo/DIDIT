@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     
     # Redis 결과 토픽 설정 (AI → 백엔드 결과 전송)
     REDIS_RESULT_TOPIC_SINGLE: str = "issue:priority:result_topic"  # 단일 이슈 분석 결과 토픽
-    REDIS_RESULT_TOPIC_BATCH: str = "issue:priority:result_topic_sort"  # 배치 이슈 정렬 결과 토픽
+    REDIS_RESULT_TOPIC_BATCH: str = "issue:priority:sort_result_topic"  # 배치 이슈 정렬 결과 토픽
     REDIS_RESULT_TOPIC_MEETING_SUMMARY: str = "meeting:summary:result"  # 회의 요약 결과 토픽
     
     # Whisper API 프록시 설정
