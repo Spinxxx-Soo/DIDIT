@@ -45,9 +45,12 @@ const WeeklySchedule = () => {
       const mappedSchedules = (response.data || []).map(item => ({
         id: item.id || Math.random(),
         title: item.title,
-        startDate: item.startedAt ? item.startedAt.split('T')[0] : '', // start -> startedAt
-        endDate: item.endedAt ? item.endedAt.split('T')[0] : '',       // end -> endedAt
-        type: item.mode === 'CHAT' ? 'meeting' : 'planning', // 명세에 type 없으므로 임의 매핑 (필요 시 수정)
+        startDate: item.startedAt ? item.startedAt.split('T')[0] : '',
+        endDate: item.endedAt ? item.endedAt.split('T')[0] : '',
+        // [추가됨] 중복 검사를 위해 원본 시간 데이터(ISO String)도 저장
+        rawStartedAt: item.startedAt,
+        rawEndedAt: item.endedAt,
+        type: item.mode === 'CHAT' ? 'meeting' : 'planning',
       }));
 
       setSchedules(mappedSchedules);
@@ -118,6 +121,23 @@ const WeeklySchedule = () => {
 
     if (startDateTime >= endDateTime) {
       toast.warning('종료 시간은 시작 시간보다 이후여야 합니다.');
+      return;
+    }
+
+    // [추가됨] 일정 중복 검사
+    const hasOverlap = schedules.some(existing => {
+      // 본인이 아닌 다른 일정들과 비교 (수정 기능이 추가될 경우를 대비해 id 비교 추가 가능하나 현재는 생성만 있으므로 생략)
+      if (!existing.rawStartedAt || !existing.rawEndedAt) return false;
+
+      const existingStart = new Date(existing.rawStartedAt);
+      const existingEnd = new Date(existing.rawEndedAt);
+
+      // 교차 여부 확인: (일정A 시작 < 일정B 종료) && (일정A 종료 > 일정B 시작)
+      return startDateTime < existingEnd && endDateTime > existingStart;
+    });
+
+    if (hasOverlap) {
+      toast.warning('해당 시간에 이미 다른 일정이 존재합니다.');
       return;
     }
 
@@ -223,7 +243,9 @@ const WeeklySchedule = () => {
                 </span>
               </div>
 
-              <div className="flex flex-col gap-1">
+              {/* [변경됨] 하나의 날짜에 여러 일정이 있을 수 있으므로 배열(daySchedules)을 순회하며 모두 표시합니다. */}
+              {/* [추가됨] max-h-[140px] overflow-y-auto: 일정이 많아지면 스크롤하여 볼 수 있게 함 (약 5개 정도 높이) */}
+              <div className="flex flex-col gap-1 max-h-[140px] overflow-y-auto custom-scrollbar pr-1">
                 {daySchedules.map((schedule) => (
                   <div
                     key={schedule.id}
