@@ -233,19 +233,21 @@ export function CreateProjectModal({
     //   }
     // }
 
-    // GitHub 저장소 필수 체크 (추후 수정 예정 - null 허용 예정)
-    // [Modified] 검증 버튼 비활성화로 인해 githubStatus 체크 제거
-    if (!githubRepo.trim()) {
-      setRepoError(ERROR_MESSAGES.REPO_REQUIRED);
-      return;
+    // 저장소 값이 있는 경우에만 검증 여부 확인
+    if (githubRepo.trim()) {
+      // 값이 있는데 인증되지 않았다면(GITHUB_STATUS.SUCCESS가 아니면) 에러 처리
+      if (githubStatus !== GITHUB_STATUS.SUCCESS) {
+        setRepoError(ERROR_MESSAGES.GITHUB_AUTH_REQUIRED);
+        return;
+      }
     }
 
     // 제출 데이터 구성 (color 제외, 가이드에 따라 ID 기반 결정)
     const submitData = {
       name: projectName.trim(),
       imageFile: imageFile,
-      githubRepo: githubRepo.trim(),
-      // githubRepo: githubStatus === GITHUB_STATUS.SUCCESS ? githubRepo.trim() : null,
+      // 저장소 값이 있는 경우에만 전달하고 없으면 그냥 null로 전달시킴
+      githubRepo: githubRepo.trim() || null,
     };
 
     onSubmit?.(submitData);
@@ -427,7 +429,6 @@ export function CreateProjectModal({
               )}
             </div>
 
-            {/* 
             <Button
               variant="secondary"
               onClick={handleRepoValidate}
@@ -437,7 +438,6 @@ export function CreateProjectModal({
             >
               인증
             </Button>
-            */}
           </div>
 
           {/* 에러 메시지 */}
