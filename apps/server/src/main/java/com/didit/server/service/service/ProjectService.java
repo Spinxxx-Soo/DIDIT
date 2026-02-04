@@ -236,4 +236,24 @@ public interface ProjectService {
      * - <500>: 시스템 내부 오류 발생 시 ServerError 반환
      */
     Result LeaveProject(long projectId, long userId);
+
+    /**
+     * Action: 검증된 GitHub 저장소 정보를 프로젝트 엔티티에 최종 반영함
+     * Input:
+     * - long projectId: 업데이트할 프로젝트 ID
+     * - long userId: 수정을 시도하는 사용자 ID (소유자 권한 확인용)
+     * - long repoId: GitHub에서 제공하는 고유 저장소 번호
+     * - String repoFullName: GitHub 저장소 전체 이름 (예: owner/repo)
+     * Success:
+     * - ok(): 프로젝트 엔티티의 저장소 정보 업데이트 및 DB 반영 완료
+     * Auth/Permission:
+     * - 프로젝트의 소유자(Owner)인 경우에만 수정 가능 (403)
+     * Persistence:
+     * - _ProjectRepository를 통해 해당 프로젝트의 repoId 및 repoFullName 필드를 영구 저장
+     * Failures:
+     * - <403>: 수정을 시도하는 유저가 프로젝트 소유자가 아닌 경우 ForbiddenError
+     * - <404>: 존재하지 않는 프로젝트 ID인 경우 NotFoundError
+     * - <500>: DB 저장 과정에서 제약 조건 위반 또는 시스템 오류 발생 시 ServerError
+     */
+    Result<Void> updateProjectRepo(long projectId, long userId, long repoId, String repoFullName);
 }

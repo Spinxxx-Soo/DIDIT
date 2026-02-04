@@ -1,9 +1,6 @@
 package com.didit.server.api.controller;
 
-import com.didit.server.api.request.AddProjectInviteRequest;
-import com.didit.server.api.request.AddProjectRequest;
-import com.didit.server.api.request.BookMeetingRequest;
-import com.didit.server.api.request.CreateMeetingRequest;
+import com.didit.server.api.request.*;
 import com.didit.server.api.response.MeetingResponse;
 import com.didit.server.api.response.ProjectRecentResponse;
 import com.didit.server.api.response.ProjectResponse;
@@ -11,6 +8,7 @@ import com.didit.server.api.response.UserResponse;
 import com.didit.server.api.security.CustomOAuth2User;
 import com.didit.server.data.entity.ProjectEntity;
 import com.didit.server.data.entity.enums.MeetingStatus;
+import com.didit.server.data.external.github.GithubService;
 import com.didit.server.service.command.AddProjectCommand;
 import com.didit.server.service.command.BookMeetingCommand;
 import com.didit.server.service.service.MeetingService;
@@ -25,6 +23,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.awt.print.Book;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -34,6 +33,7 @@ import java.util.UUID;
 public class ProjectController {
     private final ProjectService _ProjectService;
     private final MeetingService _MeetingService;
+    private final GithubService _GithubService;
 
     //[Feature][Rooms] 방 목록 조회 + 사이드바 연동 (GET /api/v1/rooms)
     @GetMapping()
@@ -320,6 +320,32 @@ public class ProjectController {
         var leaveResult = _ProjectService.LeaveProject(projectId, userId);
         if (leaveResult.isFailure()) {
             var err = leaveResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{projectId}/github/validate")
+    public ResponseEntity<?> validateGithubRepo(@PathVariable long projectId,
+                                                @AuthenticationPrincipal CustomOAuth2User user,
+                                                @RequestBody ValidateGithubRequest req) throws IOException {
+        long userId = user.getId();
+        var result = _GithubService.validateGithubRepo(projectId, userId, req.orgName(), req.repoName());
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        return ResponseEntity.ok(result.getOrThrow());
+    }
+
+    @PatchMapping("/{projectId}")
+    public ResponseEntity<?> updateProjectRepo(@PathVariable long projectId,
+                                               @AuthenticationPrincipal CustomOAuth2User user,
+                                               @RequestBody UpdateRepoRequest req){
+        long userId = user.getId();
+        var result = _ProjectService.updateProjectRepo(projectId, userId, req.repoId(), req.repoFullName());
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
         return ResponseEntity.ok().build();

@@ -27,13 +27,17 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRecentRepository _ProjectRecentRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public Result<List<ProjectEntity>> findProjectsByUserId(long userId) {
         var user = _UserRepository.findById(userId);
         if(user.isEmpty()){
             return Result.fail(new NotFoundError("userId", userId));
         }
         var projectUsers = _ProjectUserRepository.findAllByUser_Id(userId);
-        var projects = projectUsers.stream().map(ProjectUserEntity::getProject).toList();
+        var projects = projectUsers.stream()
+                .filter(pu -> pu.getProject() != null)
+                .filter(pu -> pu.getStatus() != ProjectUserStatus.LEFT)
+                .map(ProjectUserEntity::getProject).toList();
         return Result.ok(projects);
     }
 
@@ -273,5 +277,23 @@ public class ProjectServiceImpl implements ProjectService {
         } catch (Exception e) {
             return Result.fail(new ServerError("LeaveProject", projectId));
         }
+    }
+
+    @Override
+    @Transactional
+    public Result<Void> updateProjectRepo(long projectId, long userId, long repoId, String repoFullName) {
+        var project = _ProjectRepository.findById(projectId).orElse(null);
+        if (project == null) {
+            return Result.fail(new NotFoundError("projectId", projectId));
+        }
+        if (!project.getOwner().getId().equals(userId)) {
+            return Result.fail(new ForbiddenError("프로젝트 이름을 수정 할 권한이 부족합니다."));
+        }
+
+        project.setRepoId(repoId);
+        project.setRepoFullName(repoFullName);
+        _ProjectRepository.save(project);
+
+        return Result.ok();
     }
 }
