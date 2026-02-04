@@ -107,15 +107,22 @@ const IssueDetailPanel = () => {
       }
 
       // 저장소 정보 파싱
-      const repoFullName = currentProject.repoFullName || '';
-      const [orgName, repoName] = repoFullName.split('/');
+      const rawUrl = currentProject.repoFullName || '';
 
-      if (!orgName || !repoName) {
-        alert('저장소 정보(Organization/Repository)가 유효하지 않습니다.');
+      // "https://github.com/" 문자열을 지워서 "pjtDidit/server"만 남깁니다.
+      const cleanPath = rawUrl.replace(/^https?:\/\/github\.com\//, '');
+      const parts = cleanPath.split('/');
+
+      // 2. 유효성 검사 (조직명과 레포명이 둘 다 있어야 함)
+      if (parts.length < 2 || !parts[0] || !parts[1]) {
+        alert('GitHub 저장소 주소가 올바르지 않습니다. (예: https://github.com/유저명/레포명)');
         return;
       }
 
-      // 담당자 이름 -> ID 매핑
+      const orgName = parts[0];
+      const repoName = parts[1];
+
+      // 3. 담당자 매핑 (기존 로직)
       const assigneeIds = formData.assignees
         .map(name => participants.find(p => p.name === name || p.nickname === name)?.id)
         .filter(id => id);
@@ -126,9 +133,9 @@ const IssueDetailPanel = () => {
           body: formData.body,
           orgName,
           repoName,
-          issueId: 0, // 새 이슈는 ID 0
-          issueStatus: formData.status.toUpperCase(), // OPEN/CLOSED
-          issuePriority: formData.priority.toUpperCase(), // HIGH/MEDIUM/LOW
+          issueId: 0,
+          issueStatus: formData.status.toUpperCase(),
+          issuePriority: formData.priority.toUpperCase(),
           assigneeIds,
         });
         alert(`✅ 새 이슈가 등록되었습니다!`);
