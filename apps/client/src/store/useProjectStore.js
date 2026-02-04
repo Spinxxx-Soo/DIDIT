@@ -190,7 +190,7 @@ const useProjectStore = create((set, get) => ({
   // ------------------------------------------------------------------
   // [3] 프로젝트 생성
   // ------------------------------------------------------------------
-  createProject: async ({ name, imageFile, githubRepo }) => {
+  createProject: async ({ name }) => {
     set({ isLoading: true, error: null });
 
     if (IS_MOCK) {
@@ -199,8 +199,8 @@ const useProjectStore = create((set, get) => ({
       const newProject = {
         id: Date.now(),
         name,
-        thumbnailUrl: imageFile ? URL.createObjectURL(imageFile) : null,
-        repoFullName: githubRepo || null,
+        thumbnailUrl: null,
+        repoFullName: null,
         createdAt: new Date().toISOString(),
       };
 
@@ -214,13 +214,8 @@ const useProjectStore = create((set, get) => ({
     }
 
     try {
-      // Backend API expects: { projectName, githubUrl }
-      // Backend API expects a full URL due to @URL validation
-      const githubUrl = githubRepo ? `https://github.com/${githubRepo}` : null;
-
       const data = {
         projectName: name,
-        githubUrl: githubUrl || null,
       };
 
       const response = await projectApi.createProject(data);

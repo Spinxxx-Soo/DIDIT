@@ -224,30 +224,9 @@ export function CreateProjectModal({
       return;
     }
 
-    // 프로젝트 이름 중복 체크
-    // if (onValidateName) {
-    //   const isDuplicate = await onValidateName(projectName.trim());
-    //   if (isDuplicate) {
-    //     setNameError(ERROR_MESSAGES.NAME_DUPLICATE);
-    //     return;
-    //   }
-    // }
-
-    // 저장소 값이 있는 경우에만 검증 여부 확인
-    if (githubRepo.trim()) {
-      // 값이 있는데 인증되지 않았다면(GITHUB_STATUS.SUCCESS가 아니면) 에러 처리
-      if (githubStatus !== GITHUB_STATUS.SUCCESS) {
-        setRepoError(ERROR_MESSAGES.GITHUB_AUTH_REQUIRED);
-        return;
-      }
-    }
-
-    // 제출 데이터 구성 (color 제외, 가이드에 따라 ID 기반 결정)
+    // 제출 데이터 구성
     const submitData = {
       name: projectName.trim(),
-      imageFile: imageFile,
-      // 저장소 값이 있는 경우에만 전달하고 없으면 그냥 null로 전달시킴
-      githubRepo: githubRepo.trim() || null,
     };
 
     onSubmit?.(submitData);
@@ -280,108 +259,38 @@ export function CreateProjectModal({
       }
     >
       <div className="space-y-6">
-        {/* 프로젝트 이미지 업로드 - API 미구현으로 임시 주석처리 */}
-        {/* <div>
-          <label className="block mb-3 text-[14px] font-medium text-[var(--text-primary)]">
-            프로젝트 이미지
-            <span className="ml-2 text-[13px] font-normal text-[var(--text-tertiary)]">
-              (선택)
+        {/* 프로젝트 썸네일 미리보기 */}
+        <div className="flex items-center gap-4">
+          <div
+            className="
+              w-16 h-16
+              rounded-[var(--radius-xl)]
+              overflow-hidden
+              flex-shrink-0
+              border-2
+              border-[var(--border-default)]
+            "
+            style={{ backgroundColor: previewColor }}
+          >
+            <span className="
+              w-full h-full
+              flex items-center justify-center
+              text-white
+              text-[28px]
+              font-bold
+            ">
+              {getProjectInitial(projectName)}
             </span>
-          </label>
-
-          <div className="flex items-center gap-5">
-            <div
-              className="
-                relative
-                w-16 h-16
-                rounded-[var(--radius-xl)]
-                overflow-hidden
-                flex-shrink-0
-                border-2
-                border-[var(--border-default)]
-              "
-              style={{
-                backgroundColor: imagePreview ? 'transparent' : previewColor,
-              }}
-            >
-              {imagePreview ? (
-                <>
-                  <img
-                    src={imagePreview}
-                    alt="프로젝트 이미지 미리보기"
-                    className="w-full h-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleImageRemove}
-                    className="
-                      absolute top-1 right-1
-                      w-6 h-6
-                      bg-black/60
-                      hover:bg-black/80
-                      rounded-full
-                      flex items-center justify-center
-                      transition-colors
-                    "
-                  >
-                    <X size={14} className="text-white" />
-                  </button>
-                </>
-              ) : (
-                <span className="
-                  w-full h-full
-                  flex items-center justify-center
-                  text-white
-                  text-[28px]
-                  font-bold
-                ">
-                  {getProjectInitial(projectName)}
-                </span>
-              )}
-            </div>
-
-            <div className="flex-1">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
-                className="hidden"
-                id="project-image-upload"
-              /><label
-                htmlFor="project-image-upload"
-                className="
-                    inline-flex items-center gap-2
-                    px-3.5 py-1.5
-                    bg-[var(--bg-input)]
-                    border border-[var(--border-default)]
-                    rounded-[var(--radius-md)]
-                    text-[13px] font-medium
-                    text-[var(--text-primary)]
-                    cursor-pointer
-                    hover:bg-[var(--bg-hover)]
-                    hover:border-[var(--color-green-primary)]
-                    hover:text-[var(--color-green-primary)]
-                    transition-all duration-200
-                    active:scale-[0.98]
-                  "
-              >
-                <Upload size={14} />
-                이미지 업로드
-              </label>
-              {imageError ? (
-                <p className="mt-2 text-[13px] text-[var(--color-error)] flex items-center gap-1">
-                  <AlertCircle size={14} />
-                  {imageError}
-                </p>
-              ) : (
-                <p className="mt-2 text-[13px] text-[var(--text-tertiary)]">
-                  업로드하지 않으면 기본 색상과 첫 글자로 표시됩니다
-                </p>
-              )}
-            </div>
           </div>
-        </div> */}
+          <div className="flex-1">
+            <p className="text-[14px] font-medium text-[var(--text-primary)]">
+              프로젝트 썸네일
+            </p>
+            <p className="text-[13px] text-[var(--text-tertiary)]">
+              프로젝트 이름의 첫 글자로 자동 생성됩니다
+            </p>
+          </div>
+        </div>
 
         {/* 프로젝트 이름 */}
         <Input
@@ -395,71 +304,8 @@ export function CreateProjectModal({
           disabled={isLoading}
         />
 
-        {/* GitHub 저장소 연결 */}
-        <div>
-          <label className="block mb-2 text-[14px] font-medium text-[var(--text-primary)]">
-            GitHub 저장소 연결
-            <span className="ml-2 text-[13px] font-normal text-[var(--text-tertiary)]">
-              (선택)
-            </span>
-          </label>
-
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <Input
-                placeholder="organization/repository"
-                value={githubRepo}
-                onChange={handleRepoChange}
-                isError={!!repoError}
-                disabled={isLoading || githubStatus === GITHUB_STATUS.LOADING}
-                className={
-                  githubStatus === GITHUB_STATUS.SUCCESS
-                    ? 'border-[var(--color-green-primary)] pr-10'
-                    : ''
-                }
-              />
-              {/* 성공 아이콘 */}
-              {githubStatus === GITHUB_STATUS.SUCCESS && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Check size={18} className="text-[var(--color-green-primary)]" />
-                </div>
-              )}
-            </div>
-
-            <Button
-              variant="secondary"
-              onClick={handleRepoValidate}
-              disabled={isLoading || githubStatus === GITHUB_STATUS.LOADING || !githubRepo.trim()}
-              isLoading={githubStatus === GITHUB_STATUS.LOADING}
-              leftIcon={<Github size={16} />}
-            >
-              인증
-            </Button>
-          </div>
-
-          {/* 에러 메시지 */}
-          {repoError && (
-            <p className="mt-1.5 text-[13px] text-[var(--color-error)] flex items-center gap-1">
-              <AlertCircle size={14} />
-              {repoError}
-            </p>
-          )}
-
-          {/* 성공 메시지 */}
-          {githubStatus === GITHUB_STATUS.SUCCESS && !repoError && (
-            <p className="mt-1.5 text-[13px] text-[var(--color-green-primary)] flex items-center gap-1">
-              <Check size={14} />
-              저장소가 연결되었습니다
-            </p>
-          )}
-
-          {/* 안내 메시지 */}
-          {githubStatus === GITHUB_STATUS.IDLE && !repoError && (
-            <p className="mt-1.5 text-[13px] text-[var(--text-tertiary)]">
-              나중에 프로젝트 홈에서도 연결할 수 있습니다
-            </p>
-          )}
-        </div>
+        {/* GitHub 저장소 연결 - 생성 시점에 projectId가 없어 validate API 호출 불가로 제거 */}
+        {/* 프로젝트 생성 후 워크스페이스에서 연결 가능 */}
       </div>
     </Modal>
   );
