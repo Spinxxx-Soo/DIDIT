@@ -238,12 +238,20 @@ const useOpenVidu = () => {
     } = useMeetingStore.getState();
 
     session.on('streamCreated', (event) => {
+      console.log('[streamCreated] 새 스트림:', {
+        connectionId: event.stream.connection.connectionId,
+        typeOfVideo: event.stream.typeOfVideo,
+        hasVideo: event.stream.hasVideo,
+        hasAudio: event.stream.hasAudio,
+      });
+
       const subscriber = session.subscribe(event.stream, undefined);
       const connectionId = event.stream.connection.connectionId;
       const data = parseConnectionData(event.stream.connection.data);
       const participantName = data.clientData || '참가자';
 
       if (event.stream.typeOfVideo === 'SCREEN') {
+        console.log('[streamCreated] 화면 공유 스트림 감지됨:', participantName);
         const { setScreenShareStream, setScreenSharing } = useMeetingStore.getState();
         setScreenShareStream(subscriber, participantName);
         setScreenSharing(true);
@@ -271,15 +279,14 @@ const useOpenVidu = () => {
       const data = parseConnectionData(event.connection.data);
       const participantName = data.clientData || '참가자';
 
-      // 본인 연결은 제외 (이미 로컬에서 관리)
-      if (event.connection.connectionId !== session.connection.connectionId) {
-        addParticipant({
-          id: event.connection.connectionId,
-          name: participantName,
-          stream: null,
-          isSpeaking: false,
-        });
-      }
+      // 본인 포함 모든 참가자 추가 (발언 표시를 위해)
+      addParticipant({
+        id: event.connection.connectionId,
+        name: participantName,
+        stream: null,
+        isSpeaking: false,
+        isLocal: event.connection.connectionId === session.connection.connectionId,
+      });
     });
 
     session.on('connectionDestroyed', (event) => {
@@ -302,10 +309,16 @@ const useOpenVidu = () => {
     });
 
     session.on('publisherStartSpeaking', (event) => {
+      console.log('[Speaking] 발언 시작:', {
+        connectionId: event.connection.connectionId,
+        localConnectionId: session.connection?.connectionId,
+        isLocal: event.connection.connectionId === session.connection?.connectionId,
+      });
       updateParticipant(event.connection.connectionId, { isSpeaking: true });
     });
 
     session.on('publisherStopSpeaking', (event) => {
+      console.log('[Speaking] 발언 종료:', event.connection.connectionId);
       updateParticipant(event.connection.connectionId, { isSpeaking: false });
     });
   }, [cleanup]);
@@ -326,6 +339,10 @@ const useOpenVidu = () => {
 
       OV.setAdvancedConfiguration({
         logLevel: import.meta.env.DEV ? 'DEBUG' : 'WARN',
+        publisherSpeakingEventsOptions: {
+          interval: 100,   // 발언 감지 체크 주기 (ms)
+          threshold: -50,  // 발언 감지 임계값 (dB)
+        },
       });
 
       const session = OV.initSession();

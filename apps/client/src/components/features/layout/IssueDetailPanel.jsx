@@ -7,21 +7,22 @@ import { Badge } from '@/components/common/Badge';
 import { Avatar } from '@/components/common/Avatar';
 import { Divider } from '@/components/common/Divider';
 import useLoungeStore from '@/store/useLoungeStore';
+import useProjectStore from '@/store/useProjectStore';
 
 // Priority 설정
 const PRIORITY_CONFIG = {
-  high: { 
-    label: 'High', 
+  high: {
+    label: 'High',
     variant: 'error',
     icon: <AlertCircle size={14} />
   },
-  medium: { 
-    label: 'Medium', 
+  medium: {
+    label: 'Medium',
     variant: 'warning',
     icon: <Clock size={14} />
   },
-  low: { 
-    label: 'Low', 
+  low: {
+    label: 'Low',
     variant: 'info',
     icon: <CheckCircle2 size={14} />
   },
@@ -34,22 +35,31 @@ const STATUS_CONFIG = {
 };
 
 const IssueDetailPanel = () => {
-  const { 
-    selectedIssueId, 
-    closeSidebar, 
+  const {
+    selectedIssueId,
+    closeSidebar,
     setActivePanel,
     getIssueById,
     addIssue,
     updateIssue,
     deleteIssue
   } = useLoungeStore();
-  
+
+  const { currentProject, fetchParticipants } = useProjectStore();
+  const [participants, setParticipants] = useState([]);
+
+  useEffect(() => {
+    if (currentProject?.id) {
+      fetchParticipants(currentProject.id).then(setParticipants);
+    }
+  }, [currentProject?.id, fetchParticipants]);
+
   const isCreateMode = selectedIssueId === null;
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ 
-    title: '', 
-    body: '', 
-    status: 'open', 
+  const [formData, setFormData] = useState({
+    title: '',
+    body: '',
+    status: 'open',
     priority: 'medium',
     assignees: []
   });
@@ -57,23 +67,23 @@ const IssueDetailPanel = () => {
 
   useEffect(() => {
     if (isCreateMode) {
-      setFormData({ 
-        title: '', 
-        body: '', 
-        status: 'open', 
+      setFormData({
+        title: '',
+        body: '',
+        status: 'open',
         priority: 'medium',
         assignees: []
       });
-      setIsEditing(true); 
+      setIsEditing(true);
     } else {
       const found = getIssueById(selectedIssueId);
       if (found) {
         setFormData(found);
       } else {
-        setFormData({ 
-          title: '', 
-          body: '', 
-          status: 'open', 
+        setFormData({
+          title: '',
+          body: '',
+          status: 'open',
           priority: 'medium',
           assignees: []
         });
@@ -82,24 +92,48 @@ const IssueDetailPanel = () => {
     }
   }, [selectedIssueId, isCreateMode, getIssueById]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.title.trim()) {
       alert('제목을 입력해주세요.');
       return;
     }
 
     if (isCreateMode) {
-      // 새 이슈 추가
-      addIssue({
-        title: formData.title,
-        body: formData.body,
-        status: formData.status,
-        priority: formData.priority,
-        assignees: formData.assignees,
-      });
-      alert(`✅ 새 이슈가 등록되었습니다!`);
+      if (!currentProject?.id) {
+        alert('프로젝트 정보를 찾을 수 없습니다.');
+        return;
+      }
+
+      // 저장소 정보 파싱
+      const repoFullName = currentProject.repoFullName || '';
+      const [orgName, repoName] = repoFullName.split('/');
+
+      if (!orgName || !repoName) {
+        alert('저장소 정보(Organization/Repository)가 유효하지 않습니다.');
+        return;
+      }
+
+      // 담당자 이름 -> ID 매핑
+      const assigneeIds = formData.assignees
+        .map(name => participants.find(p => p.name === name || p.nickname === name)?.id)
+        .filter(id => id);
+
+      try {
+        await addIssue(currentProject.id, {
+          title: formData.title,
+          body: formData.body,
+          orgName,
+          repoName,
+          issueId: 0, // 새 이슈는 ID 0
+          issueStatus: formData.status.toUpperCase(), // OPEN/CLOSED
+          issuePriority: formData.priority.toUpperCase(), // HIGH/MEDIUM/LOW
+          assigneeIds,
+        });
+        alert(`✅ 새 이슈가 등록되었습니다!`);
+      } catch (e) {
+        alert('이슈 생성에 실패했습니다.');
+      }
     } else {
-      // 기존 이슈 수정
       updateIssue(selectedIssueId, {
         title: formData.title,
         body: formData.body,
@@ -120,10 +154,10 @@ const IssueDetailPanel = () => {
 
   const handleBack = () => {
     if (isCreateMode && (formData.title || formData.body)) {
-        if(!confirm("작성 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
+      if (!confirm("작성 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
     }
     if (isEditing && !isCreateMode) {
-      if(!confirm("수정 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
+      if (!confirm("수정 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
     }
     setActivePanel('issue');
   };
@@ -181,10 +215,10 @@ const IssueDetailPanel = () => {
             제목 <span className="text-[var(--color-error)]">*</span>
           </label>
           {isEditing ? (
-            <Input 
+            <Input
               placeholder="이슈 제목을 입력하세요"
               value={formData.title}
-              onChange={(e) => setFormData({...formData, title: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               size="md"
               autoFocus={isCreateMode}
             />
@@ -205,9 +239,9 @@ const IssueDetailPanel = () => {
               상태
             </label>
             {isEditing ? (
-              <select 
+              <select
                 value={formData.status}
-                onChange={(e) => setFormData({...formData, status: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 className="w-full h-10 px-3 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--color-green-primary)] focus:ring-3 focus:ring-[var(--color-green-primary)]/20"
               >
                 <option value="open">Open</option>
@@ -226,9 +260,9 @@ const IssueDetailPanel = () => {
               우선순위
             </label>
             {isEditing ? (
-              <select 
+              <select
                 value={formData.priority}
-                onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                 className="w-full h-10 px-3 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--color-green-primary)] focus:ring-3 focus:ring-[var(--color-green-primary)]/20"
               >
                 <option value="high">High</option>
@@ -236,8 +270,8 @@ const IssueDetailPanel = () => {
                 <option value="low">Low</option>
               </select>
             ) : (
-              <Badge 
-                variant={PRIORITY_CONFIG[formData.priority].variant} 
+              <Badge
+                variant={PRIORITY_CONFIG[formData.priority].variant}
                 size="md"
                 leftIcon={PRIORITY_CONFIG[formData.priority].icon}
               >
@@ -254,7 +288,7 @@ const IssueDetailPanel = () => {
           <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
             담당자
           </label>
-          
+
           {isEditing ? (
             <div className="space-y-2">
               <div className="flex gap-2">
@@ -270,19 +304,19 @@ const IssueDetailPanel = () => {
                   }}
                   size="sm"
                 />
-                <Button 
-                  variant="secondary" 
+                <Button
+                  variant="secondary"
                   size="sm"
                   onClick={handleAddAssignee}
                 >
                   추가
                 </Button>
               </div>
-              
+
               {formData.assignees.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   {formData.assignees.map((name, idx) => (
-                    <div 
+                    <div
                       key={idx}
                       className="flex items-center gap-2 pl-3 pr-2 py-1.5 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-full text-sm"
                     >
@@ -304,7 +338,7 @@ const IssueDetailPanel = () => {
               {formData.assignees.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {formData.assignees.map((name, idx) => (
-                    <div 
+                    <div
                       key={idx}
                       className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-input)] rounded-full text-sm"
                     >
@@ -328,11 +362,11 @@ const IssueDetailPanel = () => {
             내용
           </label>
           {isEditing ? (
-            <textarea 
+            <textarea
               rows={10}
               placeholder="이슈 내용을 자세히 적어주세요."
               value={formData.body}
-              onChange={(e) => setFormData({...formData, body: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, body: e.target.value })}
               className="w-full px-4 py-3 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--color-green-primary)] focus:ring-3 focus:ring-[var(--color-green-primary)]/20 resize-none"
             />
           ) : (
@@ -347,7 +381,7 @@ const IssueDetailPanel = () => {
       <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-panel)] flex justify-between gap-2">
         {/* 삭제 버튼 (수정 모드일 때만) */}
         {!isCreateMode && (
-          <Button 
+          <Button
             variant="danger-outline"
             size="sm"
             leftIcon={<Trash2 size={16} />}
@@ -356,19 +390,19 @@ const IssueDetailPanel = () => {
             삭제
           </Button>
         )}
-        
+
         {/* 우측 버튼들 */}
         <div className="flex gap-2 ml-auto">
           {isCreateMode ? (
             <>
-              <Button 
+              <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleBack}
               >
                 취소
               </Button>
-              <Button 
+              <Button
                 variant="primary"
                 size="sm"
                 onClick={handleSave}
@@ -379,7 +413,7 @@ const IssueDetailPanel = () => {
           ) : (
             isEditing ? (
               <>
-                <Button 
+                <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
@@ -390,7 +424,7 @@ const IssueDetailPanel = () => {
                 >
                   취소
                 </Button>
-                <Button 
+                <Button
                   variant="primary"
                   size="sm"
                   onClick={handleSave}
@@ -399,7 +433,7 @@ const IssueDetailPanel = () => {
                 </Button>
               </>
             ) : (
-              <Button 
+              <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => setIsEditing(true)}
