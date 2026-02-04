@@ -45,16 +45,10 @@ export const ManageMembersModal = ({
                 onMemberRemoved(memberToRemove.id);
             }
         } catch (error) {
-            // If 404 or method not allowed, we might want to fake it or show error
-            // User requested NO backend changes, so this will likely fail if real.
-            // However, we can simulate success if we are in Mock mode or just catch it.
             console.error("Remove failed:", error);
-
-            // Fallback for demo if API fails (since backend changes were rejected)
-            // We can just pretend it succeeded for the UI if it's a 404/405/500
             addToast({
                 type: 'error',
-                message: '팀원 코드는 구현했지만, 백엔드 기능이 없어 실제 삭제되지 않았습니다.'
+                message: error.response?.data?.message || '팀원 추방에 실패했습니다.'
             });
         } finally {
             setIsRemoving(false);

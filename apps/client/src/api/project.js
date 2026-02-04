@@ -158,7 +158,7 @@ export const projectApi = {
    * @returns {Promise}
    */
   updateProjectName: (projectId, name) =>
-    api.patch(`/api/v1/projects/${projectId}`, { projectName: name }),
+    api.patch(`/api/v1/projects/${projectId}/name`, { name }),
 
   /**
  * 프로젝트 삭제 (팀장이 혼자일 때)
