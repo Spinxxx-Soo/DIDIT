@@ -40,8 +40,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String avatarUrl = attributes.get("avatar_url").toString();
 
         UserEntity newUser = userService.joinOrUpdate(githubId, login, name, avatarUrl).getOrThrow();
-
-        var authResult = userService.saveUserGithubAuthInfo(newUser, accessToken, scope);
+        log.info("auth save input user.id = {}", newUser.getId());
+        var authResult = userService.saveUserGithubAuthInfo(newUser.getId(), accessToken, scope);
         if (authResult.isFailure()) {
             throw new OAuth2AuthenticationException("깃허브 인증 정보를 저장할 수 없습니다.");
         }

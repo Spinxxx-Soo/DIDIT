@@ -1,18 +1,12 @@
-# services/meeting_summary_service.py
-"""
-2. service - FFmpeg 처리 -> Whisper(STT) -> 모델 요약 -> 결과 반환
-"""
 import os
 import uuid
 import subprocess
+import requests
 from datetime import datetime
 from typing import Optional, Dict, Any
 
-from openai import OpenAI
-
 from models.meeting_summary.model import MeetingSummaryModel
 from models.common.logger import get_logger
-from common.settings import settings
 
 logger = get_logger(__name__)
 
@@ -22,19 +16,13 @@ class MeetingSummaryService:
 
     def __init__(self):
         logger.info("회의 요약 서비스 초기화 중...")
-        # 모델 초기화
-        # 프록시 서버를 통해 Whisper API 사용
-        gms_key = os.getenv("GMS_KEY")
-        if not gms_key:
+        
+        # GMS API 키 설정 (Whisper API 호출용)
+        self.gms_key = os.getenv("GMS_KEY")
+        if not self.gms_key:
             logger.warning("GMS_KEY가 설정되지 않았습니다. Whisper API 호출 시 실패합니다.")
-            self.stt_client = None
-        else:
-            self.stt_client = OpenAI(
-                api_key=gms_key,
-                base_url=settings.WHISPER_PROXY_URL
-            )
-
-        # 요약 모델(예: Gemini)
+        self.whisper_api_url = "https://gms.ssafy.io/gmsapi/api.openai.com/v1/audio/transcriptions"
+        
         self.model = MeetingSummaryModel()
 
         logger.info("회의 요약 서비스 초기화 완료")
@@ -43,6 +31,7 @@ class MeetingSummaryService:
         if not meeting_file:
             return None
 
+        # TODO 백엔드 형식 통일시켜야함
         meeting_id = meeting_file.get("meetingID")
         file_path = meeting_file.get("filePath")
 
@@ -64,13 +53,28 @@ class MeetingSummaryService:
             # 3) Summary
             summary = self.summarize(transcript)
 
-            # title: 연월일만
-            title = datetime.now().strftime("%Y%m%d")
+            is_failed = (summary.get("title") == "데이터 분석 실패")
+            status = "failed" if is_failed else "done"
+
+            #model json 형식 변경?
+            # return {
+            #     "ok": False,
+            #     "error": str(e),
+            #     "title": "데이터 분석 실패",
+            #     "discussion_points": [...],
+            #     "action_items": [...]
+            # }
+            # 변경 후 service 코드 
+            # summary = self.model.generate_summary(transcript)
+            # status = "done" if summary.get("ok", True) else "failed"
+            # summary.pop("ok", None)      # 필요 없으면 제거
+            # summary.pop("error", None)   # 필요 없으면 제거
+
+            # return {"meetingId": meeting_id, "status": status, "summary": summary}
 
             return {
                 "meetingId": meeting_id,
-                "status": "done",
-                "title": title,
+                "status": status,
                 "summary": summary,
             }
 
@@ -146,22 +150,45 @@ class MeetingSummaryService:
         if not audio_file or not os.path.exists(audio_file):
             raise FileNotFoundError(f"오디오 파일이 존재하지 않습니다: {audio_file}")
 
-        if self.stt_client is None:
-            raise RuntimeError("STT client가 초기화되지 않았습니다. (GMS_KEY/WHISPER_PROXY_URL 확인)")
+        if not self.gms_key:
+            raise RuntimeError("GMS_KEY가 설정되지 않았습니다. Whisper API 호출을 수행할 수 없습니다.")
 
         logger.info(f"Whisper API STT 시작: {audio_file}")
 
-        with open(audio_file, "rb") as f:
-            transcript = self.stt_client.audio.transcriptions.create(
-                file=f,
-                model="whisper-1",
-                response_format="text",
-                temperature=0.0
-            )
+        # 공식 문서에 따른 HTTP 직접 호출 (multipart/form-data)
+        headers = {
+            "Authorization": f"Bearer {self.gms_key}"
+        }
 
-        text = (transcript or "").strip()
-        if not text:
-            raise RuntimeError("Whisper STT 결과가 비어 있습니다.")
+        try:
+            with open(audio_file, "rb") as f:
+                files = {
+                    "file": (os.path.basename(audio_file), f, "audio/wav")
+                }
+                data = {
+                    "model": "whisper-1"
+                }
+                
+                response = requests.post(
+                    self.whisper_api_url,
+                    headers=headers,
+                    files=files,
+                    data=data,
+                    timeout=60  # 오디오 파일 처리 시간을 고려하여 타임아웃 설정
+                )
+                response.raise_for_status()
+                
+                # 응답이 텍스트 형식이므로 직접 반환
+                text = response.text.strip()
+                
+                if not text:
+                    raise RuntimeError("Whisper STT 결과가 비어 있습니다.")
 
-        logger.info("Whisper API STT 완료")
-        return text
+                logger.info("Whisper API STT 완료")
+                return text
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Whisper API 호출 실패: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"응답 내용: {e.response.text}")
+            raise RuntimeError(f"Whisper API 호출 실패: {str(e)}")

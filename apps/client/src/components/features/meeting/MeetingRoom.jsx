@@ -2,9 +2,12 @@ import React, { useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MeetingHeader from './MeetingHeader';
 import ScreenShare from './ScreenShare';
+import AudioContainer from './AudioContainer';
 import useMeetingStore from '@/store/useMeetingStore';
 import useOpenVidu from '@/hooks/useOpenVidu';
 import { meetingApi } from '@/api/meeting';
+import { projectApi } from '@/api/project';
+import ChatChannelView from '../chat/ChatChannelView';
 
 const MeetingRoom = () => {
   const { projectId, channelId } = useParams(); // URL에서 projectId, channelId 추출
@@ -14,6 +17,7 @@ const MeetingRoom = () => {
   const {
     isInMeeting,
     currentChannelName,
+    currentChannelMode,
     joinMeeting,
     setCurrentChannel,
     setLoading,
@@ -25,8 +29,35 @@ const MeetingRoom = () => {
 
   const { joinSession, leaveSession } = useOpenVidu();
 
+  // 1. [NEW] 채널 모드 정보가 없을 경우 (새로고침 등) 조회
+  useEffect(() => {
+    let ignore = false;
+    if (channelId && !currentChannelMode) {
+      const fetchChannelInfo = async () => {
+        setLoading(true);
+        try {
+          const response = await projectApi.getChannel(channelId);
+          if (!ignore && response.data) {
+            const { id, title, sessionId, mode } = response.data;
+            setCurrentChannel(id, title, sessionId, mode);
+          }
+        } catch (err) {
+          console.error("Failed to fetch channel info:", err);
+          setError("채널 정보를 불러올 수 없습니다.");
+        } finally {
+          if (!ignore) setLoading(false);
+        }
+      };
+      fetchChannelInfo();
+    }
+    return () => { ignore = true; };
+  }, [channelId, currentChannelMode, setCurrentChannel, setLoading, setError]);
+
   // 회의 참가 (토큰 발급 및 세션 연결)
   const handleJoinMeeting = useCallback(async () => {
+    // [NEW] 모드가 없거나 CHAT 모드이면 WebRTC 연결 스킵
+    if (!currentChannelMode || currentChannelMode === 'CHAT') return;
+
     if (hasJoined.current || isInMeeting || !channelId) return;
     hasJoined.current = true;
 
@@ -58,19 +89,8 @@ const MeetingRoom = () => {
         sessionId = url.searchParams.get('sessionId');
         token = tokenUrl; // OpenVidu는 전체 URL을 토큰으로 사용
 
-        // 2. 현재 참가자 목록 조회
-        try {
-          const usersResponse = await meetingApi.getWebRTCUsers(Number(channelId));
-          const webRTCUsers = usersResponse.data || [];
-          setParticipants(webRTCUsers.map(user => ({
-            id: user.id,
-            name: user.name,
-            avatarUrl: user.avatarUrl,
-            isSpeaking: false,
-          })));
-        } catch (err) {
-          console.warn('참가자 목록 조회 실패:', err);
-        }
+        // 참가자 목록은 OpenVidu connectionCreated 이벤트로 관리
+        // (백엔드 user.id와 OpenVidu connectionId가 달라 중복 발생 방지)
       }
 
       // 3. 스토어에 회의 정보 저장
@@ -103,33 +123,44 @@ const MeetingRoom = () => {
     } finally {
       setLoading(false);
     }
-  }, [projectId, channelId, currentChannelName, isInMeeting, joinMeeting, joinSession, setLoading, setError, setParticipants]);
+  }, [projectId, channelId, currentChannelName, isInMeeting, joinMeeting, joinSession, setLoading, setError, setParticipants, currentChannelMode]);
 
   // URL에서 channelId가 바뀌면 hasJoined 리셋 (채널 변경 대응)
   useEffect(() => {
     if (channelId) {
       hasJoined.current = false; // 채널 변경 시 리셋하여 새 회의 참가 가능하게
-      // setCurrentChannel 호출 제거: ChannelSidebar에서 이미 mode를 포함하여 설정함.
-      // 여기서 호출하면 mode가 undefined로 덮어씌워져 버튼이 사라지는 문제 발생.
     }
   }, [channelId]);
 
   // 페이지 진입 시 자동으로 회의 참가
   useEffect(() => {
-    if (!isInMeeting && !isLoading && channelId) {
+    // [Updated] currentChannelMode가 로드된 후에만 시도
+    if (currentChannelMode && !isInMeeting && !isLoading && channelId) {
       handleJoinMeeting();
     }
-  }, [channelId, isInMeeting, isLoading, handleJoinMeeting]);
+  }, [channelId, isInMeeting, isLoading, handleJoinMeeting, currentChannelMode]);
 
-  // 페이지 떠날 때 정리
+  // 페이지 떠날 때 정리 (새로고침/탭 닫기 포함)
   useEffect(() => {
+    const handleBeforeUnload = () => {
+      const { openviduSession } = useMeetingStore.getState();
+      if (openviduSession) {
+        openviduSession.disconnect();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
-      if (isInMeeting) {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // 컴포넌트 언마운트 시 (라우트 이동 등)
+      const { isInMeeting: currentlyInMeeting } = useMeetingStore.getState();
+      if (currentlyInMeeting) {
         leaveSession();
       }
       hasJoined.current = false;
     };
-  }, []);
+  }, [leaveSession]);
 
   // channelId 없음 (잘못된 URL)
   if (!channelId) {
@@ -157,7 +188,9 @@ const MeetingRoom = () => {
       <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: 'var(--bg-app)' }}>
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-[var(--color-green-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <div className="text-[var(--text-secondary)]">회의에 참가하는 중...</div>
+          <div className="text-[var(--text-secondary)]">
+            {currentChannelMode === 'CHAT' ? '채널 로딩 중...' : '회의에 참가하는 중...'}
+          </div>
         </div>
       </div>
     );
@@ -172,7 +205,8 @@ const MeetingRoom = () => {
           <button
             onClick={() => {
               hasJoined.current = false;
-              handleJoinMeeting();
+              // 재시도 시 다시 fetch 될 수 있도록
+              window.location.reload();
             }}
             className="px-4 py-2 rounded-md text-sm font-medium text-white"
             style={{ backgroundColor: 'var(--color-green-primary)' }}
@@ -184,8 +218,15 @@ const MeetingRoom = () => {
     );
   }
 
+  // [NEW] 채팅 모드일 경우 ChatChannelView 렌더링
+  if (currentChannelMode === 'CHAT') {
+    return <ChatChannelView />;
+  }
+
   return (
     <div className="flex-1 flex flex-col" style={{ backgroundColor: 'var(--bg-app)' }}>
+      {/* 원격 참가자 오디오 재생 (숨김) */}
+      <AudioContainer />
       {/* 헤더 */}
       <MeetingHeader />
 

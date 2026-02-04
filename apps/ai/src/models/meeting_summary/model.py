@@ -1,83 +1,100 @@
-# models/meeting_summary/model.py
-"""
-    1. api  - 백엔드 레디스 에서 파일 받아오기
-    2. service - FFepeg 처리 whisper에서 처리 -> 모델 실행 -> 결과 값 반환
-    3. model - 제미나이가 요약하는 로직
-"""
-from typing import Optional
+# apps/ai/src/models/meeting_summary/models.py
+
+import os
+import json
+import requests
+from typing import Dict, Any
 from models.common.logger import get_logger
 
 logger = get_logger(__name__)
 
-
 class MeetingSummaryModel:
-    """회의 요약 모델 클래스 (제미나이 사용)"""
+    """회의 요약 모델 클래스 (SSAFY GMS Gemini 2.5 Flash 사용)"""
     
     def __init__(self):
-        """모델 초기화"""
-        logger.info("회의 요약 모델 초기화 중...")
+        """API 설정 초기화"""
+        logger.info("회의 요약 모델(Gemini 2.5 Flash) 초기화 중...")
         
-        # TODO: 제미나이 API 클라이언트 초기화
-        # 예시:
-        # import google.generativeai as genai
-        # genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        # self.model = genai.GenerativeModel('gemini-pro')
+        self.gms_key = os.getenv("GMS_KEY")
+        if not self.gms_key:
+            logger.error("GMS_KEY가 .env에 설정되지 않았습니다.")
+            raise ValueError("GMS_KEY missing in .env")
+            
+        # GMS 가이드라인 엔드포인트 (커스텀 도메인 및 쿼리 스트링 키)
+        self.api_url = f"https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.gms_key}"
         
         logger.info("회의 요약 모델 초기화 완료")
     
-    def generate_summary(self, transcript: str) -> str:
+    def generate_summary(self, transcript: str) -> Dict[str, Any]:
         """
-        제미나이 모델을 사용하여 회의록을 요약합니다.
-        
-        Args:
-            transcript: Whisper로 추출한 회의록 텍스트
-            
-        Returns:
-            요약된 텍스트
+        Gemini 2.5 Flash를 사용하여 회의록에서 제목, 논의 사항, Action Items를 추출합니다.
         """
-        # TODO: 제미나이 API 호출 로직 구현
-        logger.info("제미나이 모델로 요약 생성 중...")
-        
-        # 예시:
-        # prompt = f"""
-        # 다음 회의록을 요약해주세요:
-        # 
-        # {transcript}
-        # 
-        # 주요 내용과 결정사항을 중심으로 요약해주세요.
-        # """
-        # 
-        # response = self.model.generate_content(prompt)
-        # summary = response.text
-        
-        # 임시 반환값 (실제 구현 필요)
-        summary = "요약 기능 구현 필요"
-        
-        logger.info("요약 생성 완료")
-        return summary
-    
-    def generate_summary_with_options(
-        self, 
-        transcript: str,
-        max_length: Optional[int] = None,
-        focus_points: Optional[list] = None
-    ) -> dict:
+        logger.info("Gemini 2.5 Flash 모델로 요약 생성 시작...")
+
+        # 요구하신 세 가지 필드(title, discussion_points, action_items)에 최적화된 프롬프트
+        prompt_text = f"""
+        당신은 전문 회의 기록원입니다. 제공된 회의 스크립트를 분석하여 UI 디자인의 각 섹션에 맞게 다음 형식의 JSON으로 출력하세요.
+        반드시 마크다운 코드 블록(```json) 없이 순수 JSON 데이터만 반환하세요.
+
+        [분석 지침]:
+        1. title: 회의의 전체 내용을 관통하는 핵심 주제를 한 문장의 제목으로 작성하세요.
+        2. discussion_points: 회의에서 다루어진 '주요 논의 사항'들을 리스트 형태로 정리하세요. 각 항목은 명확하고 간결해야 합니다.
+        3. action_items: 향후 실행해야 할 '할 일 목록'입니다. 구체적인 작업 내용과 담당자가 있다면 함께 명시하세요. (예: "로그인 페이지 UI 시안 제작 (박지민)")
+
+        [회의 스크립트]:
+        {transcript}
+
+        [응답 JSON 형식]:
+        {{
+            "title": "회의 핵심 제목",
+            "discussion_points": [
+                "논의 사항 1",
+                "논의 사항 2"
+            ],
+            "action_items": [
+                "할 일 1",
+                "할 일 2"
+            ]
+        }}
         """
-        옵션을 포함한 요약 생성
-        
-        Args:
-            transcript: 회의록 텍스트
-            max_length: 최대 요약 길이
-            focus_points: 집중할 포인트 리스트
-            
-        Returns:
-            요약 결과 딕셔너리
-        """
-        # TODO: 옵션을 포함한 요약 로직 구현
-        summary = self.generate_summary(transcript)
-        
-        return {
-            "summary": summary,
-            "length": len(summary),
-            "focus_points": focus_points or []
+
+        payload = {
+            "contents": [
+                {
+                    "parts": [{"text": prompt_text}]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.1,  # 분석의 일관성을 위해 낮게 설정
+                "responseMimeType": "application/json"
+            }
         }
+
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": self.gms_key
+        }
+
+        try:
+            # API 호출 (타임아웃은 넉넉하게 40초)
+            response = requests.post(self.api_url, headers=headers, json=payload, timeout=40)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            # JSON 파싱 및 데이터 반환
+            if 'candidates' in result and result['candidates']:
+                raw_text = result['candidates'][0]['content']['parts'][0]['text']
+                summary_data = json.loads(raw_text)
+                logger.info("Gemini 2.5 Flash 회의록 구조화 데이터 생성 성공")
+                return summary_data
+            else:
+                raise ValueError("API 응답 구조에서 결과를 찾을 수 없습니다.")
+
+        except Exception as e:
+            logger.error(f"요약 데이터 생성 중 오류 발생: {e}")
+            return {
+                "title": "데이터 분석 실패",
+                "discussion_points": [f"오류: {str(e)}"],
+                "action_items": ["다시 시도해주세요."]
+            }

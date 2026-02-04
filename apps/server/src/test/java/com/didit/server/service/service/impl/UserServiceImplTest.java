@@ -36,7 +36,7 @@ class UserServiceImplTest {
         String avatarUrl = "http://avatar.com/newbie";
 
         given(userRepository.findByGithubId(githubId)).willReturn(Optional.empty());
-        given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(userRepository.saveAndFlush(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         // When
         Result<UserEntity> result = userService.joinOrUpdate(githubId, login, name, avatarUrl);
@@ -45,7 +45,7 @@ class UserServiceImplTest {
         assertThat(result.isSuccess()).isTrue();
         assertThat(result.getValue().isPresent()).isTrue();
         assertThat(result.getValue().get().getGithubLogin()).isEqualTo(login);
-        verify(userRepository, times(1)).save(any(UserEntity.class));
+        verify(userRepository, times(1)).saveAndFlush(any(UserEntity.class));
     }
 
     @Test
@@ -65,7 +65,7 @@ class UserServiceImplTest {
                 .build();
 
         given(userRepository.findByGithubId(githubId)).willReturn(Optional.of(existingUser));
-        given(userRepository.save(any(UserEntity.class))).willReturn(existingUser);
+        given(userRepository.saveAndFlush(any(UserEntity.class))).willReturn(existingUser);
 
         // When
         Result<UserEntity> result = userService.joinOrUpdate(githubId, login, newName, newAvatar);
@@ -74,7 +74,7 @@ class UserServiceImplTest {
         assertThat(result.isSuccess()).isTrue();
         assertThat(existingUser.getName()).isEqualTo(newName);
         assertThat(existingUser.getAvatarUrl()).isEqualTo(newAvatar);
-        verify(userRepository, times(1)).save(existingUser);
+        verify(userRepository, times(1)).saveAndFlush(existingUser);
     }
 
     @Test
@@ -109,7 +109,7 @@ class UserServiceImplTest {
                 .build();
 
         given(userRepository.findByGithubId(githubId)).willReturn(Optional.of(existingUser));
-        given(userRepository.save(any(UserEntity.class))).willReturn(existingUser);
+        given(userRepository.saveAndFlush(any(UserEntity.class))).willReturn(existingUser);
 
         // When
         Result<UserEntity> result = userService.joinOrUpdate(githubId, newLogin, "User", "url");
@@ -118,7 +118,7 @@ class UserServiceImplTest {
         assertThat(result.isSuccess()).isTrue();
         // 기존 유저의 githubLogin이 newLogin으로 변경되었는지 검증
         assertThat(existingUser.getGithubLogin()).isEqualTo(newLogin);
-        verify(userRepository).save(existingUser);
+        verify(userRepository).saveAndFlush(existingUser);
     }
 
 

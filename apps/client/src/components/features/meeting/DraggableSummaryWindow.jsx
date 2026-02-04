@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { Rnd } from 'react-rnd';
 import { X, Calendar, List, CheckSquare, Download, Minus, Edit2, Save, RotateCcw } from 'lucide-react';
 import { IconButton } from '@/components/common/Button/IconButton';
@@ -79,12 +80,12 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary }) =>
         }
     };
 
-    return (
-        <div className="fixed inset-0 pointer-events-none z-50">
+    return ReactDOM.createPortal(
+        <div className="fixed inset-0 pointer-events-none z-[9999]">
             <Rnd
                 default={{
-                    x: window.innerWidth - 500,
-                    y: 100,
+                    x: window.innerWidth / 2 - 240, // Center horizontally
+                    y: window.innerHeight / 2 - 300, // Center vertically
                     width: 480,
                     height: 600,
                 }}
@@ -239,7 +240,8 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary }) =>
 
                 {/* Resize Handle Customization */}
             </Rnd>
-        </div >
+        </div >,
+        document.body
     );
 };
 
