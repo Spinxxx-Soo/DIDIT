@@ -5,6 +5,8 @@ import signal
 from typing import Optional
 
 from services.meeting_summary_service import MeetingSummaryService
+from common.redis_client import RedisClient
+from common.settings import settings
 from models.common.logger import get_logger
 
 logger = get_logger(__name__)
@@ -21,6 +23,7 @@ class MeetingSummaryWorker:
         """워커 초기화"""
         logger.info("회의 요약 워커 초기화 중...")
         self.summary_service = MeetingSummaryService()
+        self.redis = RedisClient()
         self.running = False
         logger.info("회의 요약 워커 초기화 완료")
     
@@ -36,15 +39,37 @@ class MeetingSummaryWorker:
             작업이 처리되었으면 True, 없으면 False
         """
         try:
-            result = self.summary_service.process_from_redis()
-            if result:
-                logger.info(
-                    "회의 요약 작업 완료: meetingId=%s, status=%s",
-                    result.get("meetingId"),
-                    result.get("status")
-                )
-                return True
-            return False
+            # 1. Redis에서 작업 가져오기
+            task = self.redis.pop_from_queue(settings.REDIS_QUEUE_MEETING_SUMMARY, timeout=1)
+            
+            if not task:
+                return False
+            
+            # meeting_file 형식: {"meetingID": 123, "filePath": "/mnt/shared/meetings/123.webm"}
+            meeting_file = task.get("meeting_file") or task
+            
+            if not meeting_file:
+                logger.error("잘못된 task (meeting_file 없음): %s", task)
+                return False
+            
+            # 2. Service를 통한 비즈니스 로직 처리
+            result = self.summary_service.process_meeting_summary_model(meeting_file)
+            
+            if not result:
+                logger.error("회의 요약 처리 실패: meeting_file=%s", meeting_file)
+                return False
+            
+            # 3. 결과를 Redis에 저장
+            result_key = f"{settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY}:{result.get('meetingId')}"
+            self.redis.set_result(result_key, result, expire=3600)
+            
+            logger.info(
+                "회의 요약 작업 완료: meetingId=%s, status=%s",
+                result.get("meetingId"),
+                result.get("status")
+            )
+            return True
+            
         except Exception as e:
             logger.error("회의 요약 작업 처리 중 오류 발생: %s", str(e))
             return False
@@ -85,7 +110,8 @@ class MeetingSummaryWorker:
         """워커 종료 및 리소스 정리"""
         logger.info("워커 리소스 정리 중...")
         try:
-            self.summary_service.close()
+            self.redis.close()
+            logger.info("Redis 연결 종료")
         except Exception as e:
             logger.error("리소스 정리 중 오류 발생: %s", str(e))
 
