@@ -168,4 +168,14 @@ public class MeetingMediaServiceImpl implements MeetingMediaService {
         var findResult = meetingUserRepository.findAllByTokenInFetchUser(ids);
         return Result.ok(findResult.stream().map(MeetingUserEntity::getUser).distinct().toList());
     }
+
+    @Override
+    public Result StartRecording(Long meetingId) {
+        return null;
+    }
+
+    @Override
+    public Result StopRecording(Long meetingId) {
+        return null;
+    }
 }

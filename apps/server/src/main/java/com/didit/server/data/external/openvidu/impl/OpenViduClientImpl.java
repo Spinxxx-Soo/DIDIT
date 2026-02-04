@@ -139,12 +139,46 @@ public class OpenViduClientImpl implements OpenViduClient {
     }
 
     @Override
-    public Result startRecording(String sessionId) {
-        return null;
+    public Result startRecording(String sessionId, String recordName) {
+        var session = openVidu.getActiveSession(sessionId);
+        if(session == null){
+            log.error("오픈비두 세션 녹화중 세션을 찾을수가 없음.");
+            return Result.fail(new ServerError("세션을 찾을수가 없음", sessionId));
+        }
+
+        var propertiesBuilder = new RecordingProperties.Builder();
+        propertiesBuilder.hasAudio(true);
+        propertiesBuilder.hasVideo(false);
+        propertiesBuilder.name(recordName);
+        propertiesBuilder.outputMode(Recording.OutputMode.COMPOSED_QUICK_START);
+        var properties = propertiesBuilder.build();
+        try {
+            openVidu.startRecording(sessionId, properties);
+        }catch (Exception ex) {
+            log.error("오픈비두 세션 녹화중 예외 발생.", ex);
+            return Result.fail(new ServerError("exception", ex));
+        }
+
+        return Result.ok();
     }
 
     @Override
-    public Result stopRecording(String sessionId) {
-        return null;
+    public Result stopRecording(String recordingId) {
+        try {
+            var session = openVidu.getRecording(recordingId);
+        } catch (Exception e) {
+            log.error("오픈비두 녹화중 녹화 세션을 찾을수가 없음.", e);
+            return Result.fail(new ServerError("세션을 찾을수가 없음", recordingId));
+        }
+
+        try {
+            openVidu.stopRecording(recordingId);
+        }catch (Exception ex) {
+            log.error("오픈비두 세션 녹화중 예외 발생.", ex);
+            return Result.fail(new ServerError("exception", ex));
+        }
+
+        return Result.ok();
+
     }
 }

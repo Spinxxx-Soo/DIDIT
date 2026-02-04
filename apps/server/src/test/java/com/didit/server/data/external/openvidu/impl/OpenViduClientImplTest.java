@@ -7,10 +7,8 @@ import com.didit.server.data.external.openvidu.dto.OpenViduSessionRef;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.ResultError;
 import com.didit.server.share.result.impl.ServerError;
-import io.openvidu.java.client.Connection;
-import io.openvidu.java.client.OpenVidu;
-import io.openvidu.java.client.Session;
-import io.openvidu.java.client.SessionProperties;
+import com.navercorp.fixturemonkey.FixtureMonkey;
+import io.openvidu.java.client.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +20,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -31,6 +30,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.STRICT_STUBS)
 class OpenViduClientImplTest {
+
+    private final FixtureMonkey fixture = FixtureMonkey.builder().defaultNotNull(true).build();
 
     @Mock OpenVidu openVidu;
 
@@ -425,6 +426,120 @@ class OpenViduClientImplTest {
         verifyNoMoreInteractions(openVidu);
     }
 
+    /* ---------------- startRecording ---------------- */
+
+    @Test
+    void startRecording_sessionNotFound_returnsFailServerError() throws OpenViduJavaClientException, OpenViduHttpException {
+        // Given
+        String sessionId = "sess-1";
+        String recordName = fixture.giveMeOne(String.class);
+
+        when(openVidu.getActiveSession(sessionId)).thenReturn(null);
+
+        // When
+        Result<?> result = sut.startRecording(sessionId, recordName);
+
+        // Then
+        assertFailureContract(result);
+        assertSingleErrorCodeAndMetadata(result, 500, Map.of("resource", "세션을 찾을수가 없음", "key", sessionId));
+        verify(openVidu, never()).startRecording(anyString(), any(RecordingProperties.class));
+    }
+
+    @Test
+    void startRecording_openViduThrows_returnsFailServerError() throws OpenViduJavaClientException, OpenViduHttpException {
+        // Given
+        String sessionId = "sess-1";
+        String recordName = fixture.giveMeOne(String.class);
+
+        when(openVidu.getActiveSession(sessionId)).thenReturn(mock(Session.class));
+
+        RuntimeException ex = new RuntimeException("boom");
+        when(openVidu.startRecording(eq(sessionId), any(RecordingProperties.class))).thenThrow(ex);
+
+        // When
+        Result<?> result = sut.startRecording(sessionId, recordName);
+
+        // Then
+        assertFailureContract(result);
+        assertSingleErrorCodeAndMetadata(result, 500, Map.of("resource", "exception", "key", ex));
+        verify(openVidu).startRecording(eq(sessionId), any(RecordingProperties.class));
+    }
+
+    @Test
+    void startRecording_validInputs_returnsOk() throws OpenViduJavaClientException, OpenViduHttpException {
+        // Given
+        String sessionId = "sess-1";
+        String recordName = fixture.giveMeOne(String.class);
+
+        when(openVidu.getActiveSession(sessionId)).thenReturn(mock(Session.class));
+        when(openVidu.startRecording(eq(sessionId), any(RecordingProperties.class))).thenReturn(mock(Recording.class));
+
+        // When
+        Result<?> result = sut.startRecording(sessionId, recordName);
+
+        // Then
+        assertSuccessContract(result);
+        assertTrue(result.getValue().isEmpty()); // ok()는 value=null
+        verify(openVidu).startRecording(eq(sessionId), any(RecordingProperties.class));
+    }
+
+    /* ---------------- stopRecording ---------------- */
+
+    @Test
+    void stopRecording_recordingNotFound_returnsFailServerError() throws OpenViduJavaClientException, OpenViduHttpException {
+        // Given
+        String recordingId = "rec-1";
+
+        RuntimeException ex = new RuntimeException("not found");
+        when(openVidu.getRecording(recordingId)).thenThrow(ex);
+
+        // When
+        Result<?> result = sut.stopRecording(recordingId);
+
+        // Then
+        assertFailureContract(result);
+        assertSingleErrorCodeAndMetadata(result, 500, Map.of("resource", "세션을 찾을수가 없음", "key", recordingId));
+        verify(openVidu, never()).stopRecording(anyString());
+    }
+
+    @Test
+    void stopRecording_stopThrows_returnsFailServerError() throws OpenViduJavaClientException, OpenViduHttpException {
+        // Given
+        String recordingId = "rec-1";
+
+        when(openVidu.getRecording(recordingId)).thenReturn(mock(Recording.class));
+
+        RuntimeException ex = new RuntimeException("boom");
+        when(openVidu.stopRecording(recordingId)).thenThrow(ex);
+
+        // When
+        Result<?> result = sut.stopRecording(recordingId);
+
+        // Then
+        assertFailureContract(result);
+        assertSingleErrorCodeAndMetadata(result, 500, Map.of("resource", "exception", "key", ex));
+        verify(openVidu).stopRecording(recordingId);
+    }
+
+    @Test
+    void stopRecording_validRecording_returnsOk() throws OpenViduJavaClientException, OpenViduHttpException {
+        // Given
+        String recordingId = "rec-1";
+
+        when(openVidu.getRecording(recordingId)).thenReturn(mock(Recording.class));
+        when(openVidu.stopRecording(recordingId)).thenReturn(mock(Recording.class));
+
+        // When
+        Result<?> result = sut.stopRecording(recordingId);
+
+        // Then
+        assertSuccessContract(result);
+        assertTrue(result.getValue().isEmpty()); // ok()는 value=null
+        verify(openVidu).stopRecording(recordingId);
+    }
+
+
+
     /* ----------------------------------------------------------------------
      * helpers (Result 계약 / ServerError 고정)
      * ---------------------------------------------------------------------- */
@@ -456,5 +571,42 @@ class OpenViduClientImplTest {
 
         // (3) type 고정(필요 시)
         assertInstanceOf(ServerError.class, error);
+    }
+
+    private static void assertSuccessContract(Result<?> result) {
+        assertNotNull(result);
+        assertTrue(result.isSuccess());
+        assertFalse(result.isFailure());
+        assertNotNull(result.getErrors());
+        assertTrue(result.getErrors().isEmpty());
+    }
+
+    private static void assertFailureContract(Result<?> result) {
+        assertNotNull(result);
+        assertFalse(result.isSuccess());
+        assertTrue(result.isFailure());
+        assertNotNull(result.getErrors());
+        assertFalse(result.getErrors().isEmpty());
+        assertTrue(result.getValue().isEmpty());
+    }
+
+    private static void assertSingleErrorCodeAndMetadata(Result<?> result, int code, Map<String, Object> expectedMetadataKVs) {
+        assertEquals(1, result.getErrors().size());
+        ResultError err = result.getSingleErrorOrThrow();
+
+        assertEquals(code, err.getCode());
+
+        // metadata 최소 2개 이상 고정 (code + metadata로 계약 검증)
+        for (var entry : expectedMetadataKVs.entrySet()) {
+            assertTrue(err.getMetadata().containsKey(entry.getKey()));
+            Object expected = entry.getValue();
+            Object actual = err.getMetadata().get(entry.getKey());
+
+            if (expected instanceof Throwable) {
+                assertSame(expected, actual);
+            } else {
+                assertEquals(expected, actual);
+            }
+        }
     }
 }
