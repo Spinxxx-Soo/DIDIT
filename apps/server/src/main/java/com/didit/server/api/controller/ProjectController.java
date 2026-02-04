@@ -304,12 +304,24 @@ public class ProjectController {
     @DeleteMapping("/{projectId}")
     public ResponseEntity<?> DeleteProject(@PathVariable long projectId,
                                            @AuthenticationPrincipal CustomOAuth2User user){
+        long userId = user.getId();
+        var deleteResult = _ProjectService.DeleteProject(projectId, userId);
+        if (deleteResult.isFailure()) {
+            var err = deleteResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{projectId}/leave")
     public ResponseEntity<?> leaveProject(@PathVariable long projectId,
                                           @AuthenticationPrincipal CustomOAuth2User user) {
+        long userId = user.getId();
+        var leaveResult = _ProjectService.LeaveProject(projectId, userId);
+        if (leaveResult.isFailure()) {
+            var err = leaveResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
         return ResponseEntity.ok().build();
     }
 }

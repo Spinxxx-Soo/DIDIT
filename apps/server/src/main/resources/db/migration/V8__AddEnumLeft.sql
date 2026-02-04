@@ -1,0 +1,1 @@
+ALTER TABLE project_users MODIFY COLUMN status ENUM('PENDING', 'ACTIVE', 'LEFT') NOT NULL;
