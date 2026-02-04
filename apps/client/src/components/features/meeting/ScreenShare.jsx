@@ -24,14 +24,14 @@ const ScreenShare = () => {
   }, [screenShareStream]);
 
   return (
-    <div
-      className="w-full h-full min-h-[500px] flex flex-col items-center justify-center rounded-xl"
-      style={{ backgroundColor: '#1a1a1a' }}
-    >
+    <div className="w-full h-full min-h-[500px] flex items-center justify-center">
       {screenShareStream ? (
-        <>
+        <div
+          className="relative w-full h-full flex items-center justify-center rounded-xl overflow-hidden"
+          style={{ backgroundColor: '#1a1a1a' }}
+        >
           {/* 공유자 이름 */}
-          <div className="absolute top-4 left-4 text-sm text-gray-400">
+          <div className="absolute top-4 left-4 z-10 text-sm text-gray-400">
             {screenShareUser || '참가자'}의 화면
           </div>
 
@@ -40,17 +40,20 @@ const ScreenShare = () => {
             ref={videoRef}
             autoPlay
             playsInline
-            className="max-w-full max-h-full object-contain"
+            className="w-full h-full object-contain"
           />
-        </>
+        </div>
       ) : (
-        <>
+        <div
+          className="w-full h-full flex flex-col items-center justify-center rounded-xl"
+          style={{ backgroundColor: '#1a1a1a' }}
+        >
           {/* 화면 공유 없음 */}
           <div className="text-gray-400 mb-2">화면 공유 없음</div>
           <div className="text-gray-500 text-sm">
             참가자가 화면을 공유하면 여기에 표시됩니다
           </div>
-        </>
+        </div>
       )}
     </div>
   );
