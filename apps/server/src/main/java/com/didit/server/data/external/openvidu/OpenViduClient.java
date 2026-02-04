@@ -106,7 +106,7 @@ public interface OpenViduClient {
      * Failures:  // ★ 블랙박스 테스트의 핵심
      *  - 500: <오픈비두 커넥션 조회중 세션을 찾을수가 없음.>ServerError("세션을 찾을수가 없음", sessionId)
      */
-    Result startRecording(String sessionId);
+    Result startRecording(String sessionId, String recordName);
 
     /**
      * Action: 세션의 녹화 중단
