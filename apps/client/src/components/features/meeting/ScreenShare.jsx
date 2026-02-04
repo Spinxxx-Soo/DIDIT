@@ -45,13 +45,23 @@ const ScreenShare = () => {
         </div>
       ) : (
         <div
-          className="w-full h-full flex flex-col items-center justify-center rounded-xl"
+          className="relative inline-flex items-center justify-center p-2 rounded-xl"
           style={{ backgroundColor: '#1a1a1a' }}
         >
-          {/* 화면 공유 없음 */}
-          <div className="text-gray-400 mb-2">화면 공유 없음</div>
-          <div className="text-gray-500 text-sm">
-            참가자가 화면을 공유하면 여기에 표시됩니다
+          {/* 화면 공유 없음 - 16:9 비율 박스 */}
+          <div
+            className="flex flex-col items-center justify-center rounded-lg"
+            style={{
+              width: 'calc((100vh - 200px) * 16 / 9)',
+              maxWidth: 'calc(100vw - 400px)',
+              height: 'calc(100vh - 200px)',
+              backgroundColor: '#0a0a0a'
+            }}
+          >
+            <div className="text-gray-400 mb-2">화면 공유 없음</div>
+            <div className="text-gray-500 text-sm">
+              참가자가 화면을 공유하면 여기에 표시됩니다
+            </div>
           </div>
         </div>
       )}
