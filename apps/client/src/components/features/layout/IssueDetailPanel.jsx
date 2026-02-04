@@ -121,7 +121,7 @@ const IssueDetailPanel = () => {
       const result = await analyzeIssueContent(currentProject.id, {
         title: formData.title,
         body: formData.body,
-        issueStatus: formData.status.toUpperCase(),
+        status: formData.status.toUpperCase(),
         assigneeIds
       });
 
