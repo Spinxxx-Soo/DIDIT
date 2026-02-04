@@ -8,7 +8,7 @@ public record AiSortRequest(
         List<AiIssueInfo> issues
 ) {
     public record AiIssueInfo(
-            long issue_id,
+            long issueId,
             String title,
             String body
     ) {}
