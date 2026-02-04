@@ -28,4 +28,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUserEntity, 
     boolean existsByProject_IdAndUser_Id(long projectId, long userId);
 
     boolean existsByProject_IdAndUser_IdAndStatus(long projectId, long userId, ProjectUserStatus status);
+
+    Optional<ProjectUserEntity> findByProject_IdAndUser_IdAndStatus(long projectId, long userId, ProjectUserStatus status);
 }

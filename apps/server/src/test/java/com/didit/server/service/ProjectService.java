@@ -1031,6 +1031,105 @@ class ProjectServiceImplTest {
         verify(projectRepository, never()).save(any());
     }
 
+    @Test
+    @DisplayName("팀장 위임 성공 - 소유권이 이전되고 기존/신규 주인의 역할이 조정됨")
+    void transferOwnership_success() {
+        // Given
+        long projectId = 1L;
+        long currentOwnerId = 10L;
+        long newOwnerId = 20L;
+
+        UserEntity currentOwner = UserEntity.builder().id(currentOwnerId).build();
+        UserEntity newOwner = UserEntity.builder().id(newOwnerId).build();
+
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(currentOwner)
+                .build();
+
+        ProjectUserEntity oldOwnerMembership = ProjectUserEntity.builder()
+                .user(currentOwner)
+                .role(ProjectUserRole.ADMIN)
+                .status(ProjectUserStatus.ACTIVE)
+                .build();
+
+        ProjectUserEntity newOwnerMembership = ProjectUserEntity.builder()
+                .user(newOwner)
+                .role(ProjectUserRole.MEMBER)
+                .status(ProjectUserStatus.ACTIVE)
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+        given(projectUserRepository.findByProject_IdAndUser_IdAndStatus(projectId, newOwnerId, ProjectUserStatus.ACTIVE))
+                .willReturn(Optional.of(newOwnerMembership));
+        given(projectUserRepository.findByProject_IdAndUser_IdAndStatus(projectId, currentOwnerId, ProjectUserStatus.ACTIVE))
+                .willReturn(Optional.of(oldOwnerMembership));
+
+        // When
+        Result<Void> result = sut.transferOwnership(projectId, currentOwnerId, newOwnerId);
+
+        // Then
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(project.getOwner()).isEqualTo(newOwner);
+        assertThat(oldOwnerMembership.getRole()).isEqualTo(ProjectUserRole.MEMBER);
+        assertThat(newOwnerMembership.getRole()).isEqualTo(ProjectUserRole.ADMIN);
+
+        verify(projectRepository).save(project);
+        verify(projectUserRepository).save(oldOwnerMembership);
+        verify(projectUserRepository).save(newOwnerMembership);
+    }
+
+    @Test
+    @DisplayName("팀장 위임 실패 - 요청자가 프로젝트 소유자가 아닌 경우 ForbiddenError 반환")
+    void transferOwnership_fail_notOwner() {
+        // Given
+        long projectId = 1L;
+        long requesterId = 10L; // 요청자 (방장 아님)
+        long realOwnerId = 20L;  // 실제 방장
+        long newOwnerId = 30L;
+
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(UserEntity.builder().id(realOwnerId).build())
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+
+        // When
+        Result<Void> result = sut.transferOwnership(projectId, requesterId, newOwnerId);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ForbiddenError.class);
+        verify(projectUserRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("팀장 위임 실패 - 위임 대상자가 활성 멤버가 아닌 경우 NotFoundError 반환")
+    void transferOwnership_fail_targetNotActiveMember() {
+        // Given
+        long projectId = 1L;
+        long ownerId = 10L;
+        long newOwnerId = 20L;
+
+        ProjectEntity project = ProjectEntity.builder()
+                .id(projectId)
+                .owner(UserEntity.builder().id(ownerId).build())
+                .build();
+
+        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
+        given(projectUserRepository.findByProject_IdAndUser_IdAndStatus(projectId, newOwnerId, ProjectUserStatus.ACTIVE))
+                .willReturn(Optional.empty());
+
+        // When
+        Result<Void> result = sut.transferOwnership(projectId, ownerId, newOwnerId);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(NotFoundError.class);
+        verify(projectUserRepository, never()).save(any());
+    }
+
     // =========================================================
     // assert / fixture helpers
     // =========================================================

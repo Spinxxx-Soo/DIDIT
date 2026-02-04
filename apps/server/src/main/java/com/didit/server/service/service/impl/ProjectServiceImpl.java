@@ -296,4 +296,40 @@ public class ProjectServiceImpl implements ProjectService {
 
         return Result.ok();
     }
+
+    @Override
+    @Transactional
+    public Result<Void> transferOwnership(long projectId, long userId, long newOwnerId){
+        try {
+            var project = _ProjectRepository.findById(projectId);
+            if (project.isEmpty()){
+                return Result.fail(new NotFoundError("projectId", projectId));
+            }
+            if (!project.get().getOwner().getId().equals(userId)) {
+                return Result.fail(new ForbiddenError("프로젝트 소유자가 아니기에 권한이 부족합니다."));
+            }
+            var newOwnerMembership = _ProjectUserRepository
+                    .findByProject_IdAndUser_IdAndStatus(projectId, newOwnerId, ProjectUserStatus.ACTIVE)
+                    .orElse(null);
+            if (newOwnerMembership == null) {
+                return Result.fail(new NotFoundError("새로운 팀장이 될 유저가 프로젝트 멤버가 아닙니다.", newOwnerId));
+            }
+
+            var oldOwnerMembership = _ProjectUserRepository
+                    .findByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE)
+                    .orElseThrow();
+            oldOwnerMembership.setRole(ProjectUserRole.MEMBER);
+
+            project.get().setOwner(newOwnerMembership.getUser());
+            newOwnerMembership.setRole(ProjectUserRole.ADMIN);
+
+            _ProjectRepository.save(project.get());
+            _ProjectUserRepository.save(oldOwnerMembership);
+            _ProjectUserRepository.save(newOwnerMembership);
+
+            return Result.ok();
+        } catch (Exception e) {
+            return Result.fail(new ServerError("TransferOwnership", projectId));
+        }
+    }
 }

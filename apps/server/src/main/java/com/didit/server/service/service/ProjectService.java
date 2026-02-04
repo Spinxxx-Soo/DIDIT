@@ -256,4 +256,25 @@ public interface ProjectService {
      * - <500>: DB 저장 과정에서 제약 조건 위반 또는 시스템 오류 발생 시 ServerError
      */
     Result<Void> updateProjectRepo(long projectId, long userId, long repoId, String repoFullName);
+
+    /**
+     * Action: 프로젝트의 소유권(Owner)을 다른 멤버에게 위임하며, 관련 권한(Role)을 조정함
+     * Input:
+     * - long projectId: 대상 프로젝트 ID
+     * - long userId: 현재 소유자(Owner) ID (위임을 시도하는 주체)
+     * - long newOwnerId: 새 소유자가 될 멤버의 ID
+     * Success:
+     * - ok(): 소유권 이전 완료. 기존 Owner는 MEMBER로, 신규 Owner는 ADMIN으로 역할이 변경됨
+     * Auth/Permission:
+     * - 현재 프로젝트의 실소유자(Owner)만 수행 가능 (403)
+     * - 위임 대상자는 현재 프로젝트에 소속된 활성(ACTIVE) 멤버여야 함 (404)
+     * Persistence:
+     * - projects 테이블의 owner_id 필드 업데이트
+     * - project_users 테이블의 기존/신규 소유자 role 컬럼 업데이트
+     * Failures:
+     * - <403>: 요청자가 프로젝트 소유자가 아닌 경우 ForbiddenError
+     * - <404>: 프로젝트가 없거나 위임 대상자가 활성 멤버가 아닌 경우 NotFoundError
+     * - <500>: 데이터베이스 트랜잭션 처리 중 오류 발생 시 ServerError
+     */
+    Result<Void> transferOwnership(long projectId, long currentOwnerId, long newOwnerId);
 }
