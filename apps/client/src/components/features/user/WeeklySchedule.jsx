@@ -222,8 +222,7 @@ const WeeklySchedule = () => {
                   {format(day, 'd')}
                 </span>
               </div>
-              // [변경됨] 하나의 날짜에 여러 일정이 있을 수 있으므로 배열(daySchedules)을 순회하며 모두 표시합니다.
-              // 기존에는 하나만 표시되었으나, 이제는 리스트 형태로 렌더링됩니다.
+
               <div className="flex flex-col gap-1">
                 {daySchedules.map((schedule) => (
                   <div
