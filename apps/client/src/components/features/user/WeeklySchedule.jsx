@@ -254,7 +254,7 @@ const WeeklySchedule = () => {
                       setSelectedSchedule(schedule); // [추가됨] 클릭 시 상세 정보를 보기 위해 선택된 일정을 상태에 저장
                     }}
                     className={`
-                        text-xs px-2 py-1.5 rounded-[var(--radius-md)] font-medium truncate border cursor-pointer hover:opacity-80
+                        text-xs px-2 py-1.5 rounded-[var(--radius-md)] font-medium truncate border cursor-pointer hover:opacity-80 flex-shrink-0
                         ${getTypeStyle(schedule.type)}
                       `}
                   >
