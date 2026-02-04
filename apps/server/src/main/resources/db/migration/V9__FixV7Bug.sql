@@ -1,3 +1,0 @@
-ALTER TABLE issues
-    MODIFY COLUMN github_issue_id BIGINT NOT NULL,
-    MODIFY COLUMN issue_no INT NOT NULL;
