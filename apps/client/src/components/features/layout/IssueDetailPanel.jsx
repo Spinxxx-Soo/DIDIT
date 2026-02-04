@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, X, AlertCircle, CheckCircle2, Clock, Trash2 } from 'lucide-react';
+import { ArrowLeft, X, AlertCircle, CheckCircle2, Clock, Trash2, Github } from 'lucide-react';
 import { IconButton } from '@/components/common/Button/IconButton';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
@@ -191,6 +191,50 @@ const IssueDetailPanel = () => {
       assignees: formData.assignees.filter(a => a !== name)
     });
   };
+
+  // GitHub 저장소 연동 여부 확인
+  const isGithubConnected = !!currentProject?.repoFullName;
+
+  // GitHub 미연동 시 안내 화면 표시
+  if (!isGithubConnected) {
+    return (
+      <div className="flex flex-col h-full bg-white">
+        {/* 헤더 */}
+        <div className="h-14 flex items-center justify-between px-4 border-b border-[var(--border-default)] flex-shrink-0">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <IconButton
+              variant="ghost"
+              size="sm"
+              icon={<ArrowLeft size={18} />}
+              onClick={() => setActivePanel('issue')}
+              title="목록으로 돌아가기"
+            />
+            <h2 className="font-bold text-base truncate">이슈</h2>
+          </div>
+          <IconButton
+            variant="ghost"
+            size="sm"
+            icon={<X size={18} />}
+            onClick={closeSidebar}
+            title="닫기"
+          />
+        </div>
+
+        {/* GitHub 연동 안내 */}
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-[var(--bg-input)] flex items-center justify-center mb-4">
+            <Github size={32} className="text-[var(--text-tertiary)]" />
+          </div>
+          <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+            GitHub 저장소 연동이 필요합니다
+          </h3>
+          <p className="text-sm text-[var(--text-tertiary)] max-w-[240px]">
+            상단 GNB에서 GitHub 저장소를 연결하면 이슈를 생성하고 관리할 수 있습니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-white">

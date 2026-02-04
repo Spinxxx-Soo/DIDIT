@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from '@/store/useToastStore';
 import logo from '@/assets/didit_logo.png';
 import { MessageCircle, ClipboardList } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
@@ -73,6 +74,15 @@ const GNB = ({
     await leaveSession();
     setIsLeaveModalOpen(false);
     navigate('/mypage');
+  };
+
+  // 이슈 버튼 클릭 핸들러 (GitHub 연동 체크)
+  const handleIssueClick = () => {
+    if (!currentProject?.repoFullName) {
+      toast.error('GitHub 저장소 연동 후 이슈 기능을 사용할 수 있습니다');
+      return;
+    }
+    onIssueClick?.();
   };
 
   return (
@@ -146,7 +156,7 @@ const GNB = ({
               variant={activePanel === 'issue' ? 'secondary' : 'ghost'}
               size="sm"
               leftIcon={<ClipboardList size={16} />}
-              onClick={onIssueClick}
+              onClick={handleIssueClick}
               className={`
                 rounded-full
                 ${activePanel === 'issue'
