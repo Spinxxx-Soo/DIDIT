@@ -129,9 +129,9 @@ const Lounge = () => {
       {/* 메인 콘텐츠 */}
       <div className="space-y-6">
         {/* 1. 통계 카드 */}
-        <div ref={sectionRefs.stats} className="animate-fade-up" style={{ animationDelay: '0ms' }}>
+        {/* <div ref={sectionRefs.stats} className="animate-fade-up" style={{ animationDelay: '0ms' }}>
           <StatCards />
-        </div>
+        </div> */}
 
         {/* 2. 이슈 섹션 */}
         <div ref={sectionRefs.issues} className="animate-fade-up" style={{ animationDelay: '100ms' }}>
