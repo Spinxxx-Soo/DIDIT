@@ -133,7 +133,7 @@ const IssueDetailPanel = () => {
           body: formData.body,
           orgName,
           repoName,
-          issueId: 0,
+          // issueId: 0,
           issueStatus: formData.status.toUpperCase(),
           issuePriority: formData.priority.toUpperCase(),
           assigneeIds,
