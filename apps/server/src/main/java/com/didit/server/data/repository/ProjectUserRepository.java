@@ -22,6 +22,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUserEntity, 
         select pu.user
         from ProjectUserEntity pu
         where pu.project.id = :projectId
+        and pu.status = 'ACTIVE'
         """)
     List<UserEntity> findUsersByProjectId(@Param("projectId") long projectId);
 

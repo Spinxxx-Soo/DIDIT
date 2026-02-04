@@ -71,8 +71,10 @@ public class ProjectServiceImpl implements ProjectService {
         if(user.isEmpty()){
             return Result.fail(new NotFoundError("userId", cmd.ownerUserId()));
         }
-        if(_ProjectRepository.existsByRepoFullName(cmd.repoFullName())){
-            return Result.fail(new ConflictError("이미 등록된 깃허브 repo 입니다."));
+        if (cmd.repoFullName() != null && !cmd.repoFullName().isBlank()) {
+            if(_ProjectRepository.existsByRepoFullName(cmd.repoFullName())){
+                return Result.fail(new ConflictError("이미 등록된 깃허브 repo 입니다."));
+            }
         }
 
         var project = ProjectEntity
@@ -331,5 +333,48 @@ public class ProjectServiceImpl implements ProjectService {
         } catch (Exception e) {
             return Result.fail(new ServerError("TransferOwnership", projectId));
         }
+    }
+
+    @Override
+    @Transactional
+    public Result<Void> updateProjectName(long projectId, long userId, String name){
+        var project = _ProjectRepository.findById(projectId);
+        if(project.isEmpty()){
+            return Result.fail(new NotFoundError("projectId", projectId));
+        }
+        if (!project.get().getOwner().getId().equals(userId)) {
+            return Result.fail(new ForbiddenError("프로젝트 소유자가 아니기에 권한이 부족합니다."));
+        }
+        var entity = project.get();
+        entity.setName(name);
+        _ProjectRepository.save(entity);
+        return Result.ok();
+    }
+
+    @Override
+    @Transactional
+    public Result<Void> removeParticipant(long projectId, long userId, long ownerId){
+        try {
+            if (ownerId == userId){
+                return Result.fail(new ForbiddenError("본인은 추방시킬 수 없습니다. 팀장 위임 혹은 프로작트 삭제를 권장합니다."));
+            }
+            var project = _ProjectRepository.findById(projectId);
+            if(project.isEmpty()){
+                return Result.fail(new NotFoundError("projectId", projectId));
+            }
+            if (!project.get().getOwner().getId().equals(ownerId)){
+                return Result.fail(new ForbiddenError("프로젝트 소유자가 아니기에 권한이 부족합니다."));
+            }
+            var projectUser = _ProjectUserRepository.findByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE);
+            if(projectUser.isEmpty()){
+                return Result.fail(new NotFoundError("projectUser", userId));
+            }
+            projectUser.get().setStatus(ProjectUserStatus.LEFT);
+            projectUser.get().setLeftAt(LocalDateTime.now());
+            _ProjectUserRepository.save(projectUser.get());
+        } catch (Exception e) {
+            return Result.fail(new ServerError("RemoveParticipant", projectId));
+        }
+        return Result.ok();
     }
 }

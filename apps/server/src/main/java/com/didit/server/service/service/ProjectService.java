@@ -277,4 +277,42 @@ public interface ProjectService {
      * - <500>: 데이터베이스 트랜잭션 처리 중 오류 발생 시 ServerError
      */
     Result<Void> transferOwnership(long projectId, long currentOwnerId, long newOwnerId);
+
+    /**
+     * Action: 프로젝트의 이름을 변경함
+     * Input:
+     * - long projectId: 수정할 프로젝트 ID
+     * - long userId: 수정을 요청한 사용자 ID (소유자 권한 확인용)
+     * - String name: 변경할 새 프로젝트 이름
+     * Success:
+     * - ok(): 프로젝트 이름 업데이트 완료
+     * Auth/Permission:
+     * - 프로젝트의 실소유자(Owner)만 이름을 수정할 수 있음 (403)
+     * Persistence:
+     * - projects 테이블의 name 컬럼을 업데이트함
+     * Failures:
+     * - <403>: 요청자가 프로젝트 소유자가 아닌 경우 ForbiddenError
+     * - <404>: 존재하지 않는 프로젝트 ID인 경우 NotFoundError
+     */
+    Result<Void> updateProjectName(long projectId, long userId, String name);
+
+    /**
+     * Action: 프로젝트 소유자가 특정 참여자를 프로젝트에서 강제로 퇴장(추방)시킴
+     * Input:
+     * - long projectId: 대상 프로젝트 ID
+     * - long userId: 강제 퇴장시킬 대상 유저 ID
+     * - long ownerId: 요청을 수행하는 방장 ID
+     * Success:
+     * - ok(): 대상 유저의 상태를 LEFT로 변경하고 퇴장 시간을 기록함
+     * Auth/Permission:
+     * - 오직 프로젝트 Owner만 수행 가능함 (403)
+     * - 방장은 보안 및 시스템 관리상 본인을 스스로 강퇴할 수 없음 (403)
+     * Persistence:
+     * - project_users 테이블에서 해당 유저의 status를 'LEFT'로, left_at을 현재 시간으로 업데이트함
+     * Failures:
+     * - <403>: 권한이 없거나 본인 강퇴 시도 시 ForbiddenError
+     * - <404>: 프로젝트가 없거나 대상 유저가 해당 프로젝트의 활성(ACTIVE) 멤버가 아닌 경우 NotFoundError
+     * - <500>: 데이터베이스 처리 중 예외 발생 시 ServerError
+     */
+    Result<Void> removeParticipant(long projectId, long userId, long ownerId);
 }
