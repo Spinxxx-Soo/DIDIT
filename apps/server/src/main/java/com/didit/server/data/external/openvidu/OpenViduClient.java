@@ -98,6 +98,7 @@ public interface OpenViduClient {
      * Action: 세션의 녹화 시작
      * Input:
      *  - String sessionId
+     *  - String recordName
      * Success:
      *  - ok()
      * Persistence:
@@ -111,6 +112,7 @@ public interface OpenViduClient {
      * Action: 세션의 녹화 중단
      * Input:
      *  - String sessionId
+     *
      * Success:
      *  - ok()
      * Persistence:
