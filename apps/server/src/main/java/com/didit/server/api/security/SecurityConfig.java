@@ -45,6 +45,13 @@ public class SecurityConfig {
                         .addLogoutHandler((request, response, authentication) -> {
                             HttpSession session = request.getSession();
                             session.invalidate();
+
+                            jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("JSESSIONID", null);
+                            cookie.setPath("/");
+                            cookie.setMaxAge(0);
+                            cookie.setSecure(true);
+                            cookie.setHttpOnly(true);
+                            response.addCookie(cookie);
                         })
                         .logoutSuccessHandler((request, response, authentication) ->
 //                                response.sendRedirect("https://did-it.xyz")) //랜딩페이지로
