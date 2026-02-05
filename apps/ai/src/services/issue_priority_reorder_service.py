@@ -1,10 +1,7 @@
 # services/issue_priority_reorder_service.py
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from collections import defaultdict
-import json
 
-from common.redis_client import RedisClient
-from common.settings import settings
 from models.common.logger import get_logger
 from models.common.text_utils import build_issue_text
 from models.issue_priority_commit import IssuePriorityModel, PriorityLevel
@@ -15,14 +12,16 @@ logger = get_logger(__name__)
 
 class IssuePriorityReorderService:
     """
+    이슈 우선순위 재정렬 서비스 (순수 비즈니스 로직)
+    
     입력: 이미 priority(HIGH/MED/LOW or 상/중/하)가 붙은 이슈 리스트
     처리: priority 그룹 유지 + 그룹 내부는 모델 score로 재정렬
     출력: HIGH -> MED -> LOW 순으로 병합된 리스트
     """
 
     def __init__(self):
+        """모델 초기화"""
         self.model = IssuePriorityModel()
-        self.redis = RedisClient()
 
     # ---------- core pipeline ----------
 
@@ -135,82 +134,28 @@ class IssuePriorityReorderService:
             score += REORDER_PENALTY_SCORE  # config 값이 음수면 내려감
 
         return score
-
-    # ---------- redis entry ----------
-
-    def process_from_redis(self) -> Optional[Dict[str, Any]]:
-        task = self.redis.pop_from_queue(settings.REDIS_QUEUE_ISSUE_BATCH, timeout=1)
-        if not task:
-            return None
-
-        # Redis에서 받은 데이터 추출
-        user_id = task.get("userId")
-        project_id = task.get("projectId")
-        issues = task.get("issues")
-        return_scores = bool(task.get("return_scores", False))
-        logger.info(f"재정렬 모델 redis : userID{user_id}, issues {issues}")
-
-        if not user_id or not project_id:
-            logger.error("invalid task (userId/projectId 없음): %s", task)
-            return None
-
+    
+    def reorder_issues(self, issues: List[Dict[str, Any]]) -> tuple[List[Dict[str, Any]], Dict[int, float], List[int]]:
+        """
+        이슈를 재정렬하고 결과를 반환합니다.
+        
+        Args:
+            issues: 재정렬할 이슈 리스트
+        
+        Returns:
+            (재정렬된 이슈 리스트, {issueId: score} 딕셔너리, 재정렬된 issueId 리스트)
+        """
         if not issues:
-            logger.error("invalid task(no issues): %s", issues)
-            return None
-
+            return [], {}, []
+        
         # 이슈 재정렬 (점수 정보 포함)
         reordered_issues, score_map = self.reorder_with_scores(issues)
         
         if len(reordered_issues) == 0:
-            logger.warning("재정렬 결과가 비어있습니다. 입력 데이터 확인 필요")
-            return None
-
+            logger.warning("재정렬 결과가 비어있습니다.")
+            return [], {}, []
+        
         # 재정렬된 issueId 리스트 추출
         issue_ids = [issue.get("issueId") for issue in reordered_issues if issue.get("issueId") is not None]
         
-        # 최종 결과 형식 (백엔드가 기대하는 형식: userId, projectId, issueIds)
-        result = {
-            "userId": user_id,
-            "projectId": project_id,
-            "issueIds": issue_ids
-        }
-        
-        # 최종 result 값 상세 확인 로깅
-        logger.info("=" * 80)
-        logger.info("📤 백엔드로 전송할 최종 Result 값")
-        logger.info("재정렬된 이슈 ID 목록 (점수 순):")
-        for idx, issue_id in enumerate(issue_ids, 1):
-            # 원본 이슈 정보 찾기
-            original_issue = next((iss for iss in reordered_issues if iss.get("issueId") == issue_id), None)
-            score = score_map.get(issue_id, None)
-            score_str = f"{score:.4f}" if score is not None else "N/A"
-            title = original_issue.get("title", "N/A") if original_issue else "N/A"
-            priority = original_issue.get("priority", "N/A") if original_issue else "N/A"
-            logger.info(f"  [{idx}] id={issue_id}, title='{title}', priority={priority}, score={score_str}")
-        logger.info("-" * 80)
-        logger.info(f"재정렬된 ID 리스트: {issue_ids}")
-        logger.info("전체 Result JSON:")
-        try:
-            result_json = json.dumps(result, ensure_ascii=False, indent=2)
-            logger.info(f"\n{result_json}")
-        except Exception as e:
-            logger.warning(f"JSON 직렬화 실패: {e}")
-            logger.info(f"Result 객체: {result}")
-        logger.info("=" * 80)
-        
-        # 결과를 Redis에 저장 (백업용)
-        key = f"{settings.REDIS_RESULT_TOPIC_BATCH}"
-        self.redis.set_result(key, result, expire=3600)
-        logger.info(f"Redis에 저장 완료 (key: {key}, expire: 3600초)")
-        
-        pubsub_message = json.dumps(result, ensure_ascii=False)
-        subscribers = self.redis.client.publish(
-            settings.REDIS_RESULT_TOPIC_BATCH,
-            pubsub_message
-        )
-        logger.info(f"Redis Pub/Sub 발행 완료 (channel: {settings.REDIS_RESULT_TOPIC_BATCH}, subscribers: {subscribers})")
-
-        return result
-
-    def close(self):
-        self.redis.close()
+        return reordered_issues, score_map, issue_ids
