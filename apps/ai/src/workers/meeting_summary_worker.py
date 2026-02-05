@@ -99,14 +99,15 @@ class MeetingSummaryWorker:
             self.redis.set_result(result_key, result, expire=3600)
             logger.info(f"Redis에 저장 완료 (key: {result_key}, expire: 3600초)")
             
-            # 4. Redis Pub/Sub 발행 
+            # 4. Redis Pub/Sub 발행
             # 백엔드가 기대하는 형식: {summeryId, status, summary(String)}
+            # 프론트엔드가 summaryMd를 JSON.parse()하므로 JSON 문자열로 전달
             import json
             summary_data = result.get("summary")
-            
-            # summary가 Dict인 경우 마크다운 형식으로 변환
+
+            # summary가 Dict인 경우 JSON 문자열로 변환 (프론트엔드 JSON.parse 호환)
             if isinstance(summary_data, dict):
-                summary_md = self._dict_to_markdown(summary_data)
+                summary_md = json.dumps(summary_data, ensure_ascii=False)
             else:
                 summary_md = str(summary_data) if summary_data else ""
             
