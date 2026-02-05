@@ -7,10 +7,10 @@ export const chatApi = {
   getChats: (channelId, params) => api.get(`/api/v1/channels/${channelId}/chats`, { params }),
 
   // 채팅 수정
-  updateChat: (channelId, chatId, data) => api.patch(`/api/v1/channels/${channelId}/chats/${chatId}`, data),
+  updateChat: (chatId, data) => api.patch(`/api/v1/channels/chats/${chatId}`, data),
 
   // 채팅 삭제
-  deleteChat: (channelId, chatId) => api.delete(`/api/v1/channels/${channelId}/chats/${chatId}`),
+  deleteChat: (chatId) => api.delete(`/api/v1/channels/chats/${chatId}`),
 
   // 채팅 전송
   createChat: (channelId, data) => api.post(`/api/v1/channels/${channelId}/chats`, data),
