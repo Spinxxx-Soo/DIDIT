@@ -1,6 +1,8 @@
 package com.didit.server.api.redis;
 
+import com.didit.server.api.response.AiResponse;
 import com.didit.server.api.sse.SseHub;
+import com.didit.server.data.entity.enums.IssuePriority;
 import com.didit.server.service.service.IssueService;
 import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.ObjectMapper;
@@ -29,12 +31,22 @@ public class RedisSubscribeListener {
             }
             var projectId = findResult.getOrThrow().getProject().getId();
             if (clientKey != null) {
+                IssuePriority priority;
+                try {
+                    priority = IssuePriority.valueOf(result.priority().toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    priority = IssuePriority.MEDIUM;
+                }
+                AiResponse aiResponse = AiResponse.builder()
+                        .issueId(result.issueId())
+                        .priority(priority)
+                        .build();
                 sseHub.broadcastToClient(
                         projectId,
                         clientKey,
                         "ai_analysis_result",
                         String.valueOf(result.issueId()),
-                        result.priority()
+                        aiResponse
                 );
             }
         } catch (Exception e) {
