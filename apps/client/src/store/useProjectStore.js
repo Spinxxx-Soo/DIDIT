@@ -236,11 +236,14 @@ const useProjectStore = create((set, get) => ({
 
       const response = await projectApi.createProject(data);
 
-      set(state => ({
-        projects: [...state.projects, response.data],
-        allProjects: [...state.allProjects, response.data],
+      // 서버에서 전체 프로젝트 목록을 다시 가져와서 allProjects 갱신 (사이드바 자동 갱신)
+      const allProjectsRes = await projectApi.getProjects();
+      const allProjectsData = Array.isArray(allProjectsRes.data) ? allProjectsRes.data : [];
+
+      set({
+        allProjects: allProjectsData,
         isLoading: false,
-      }));
+      });
 
       return { success: true, project: response.data };
     } catch (error) {
