@@ -21,6 +21,9 @@ const useMeetingStore = create((set, get) => ({
   isScreenSharing: false,
   isScreenShareLoading: false, // 화면 공유 상태 전환 중인지 여부
   isRecording: false,
+  recordId: null,
+  isGenerating: false,
+  generatedSummaryId: null,
 
   // 참가자 목록
   participants: [],
@@ -105,6 +108,9 @@ const useMeetingStore = create((set, get) => ({
       isSpeakerOn: true,
       isScreenSharing: false,
       isRecording: false,
+      recordId: null,
+      isGenerating: false,
+      generatedSummaryId: null,
       participants: [],
       screenShareStream: null,
       screenShareUser: null,
@@ -182,6 +188,15 @@ const useMeetingStore = create((set, get) => ({
   // ------------------------------------------------------------------
   setRecording: (isRecording) => {
     set({ isRecording });
+  },
+  setRecordId: (recordId) => {
+    set({ recordId });
+  },
+  setGenerating: (isGenerating) => {
+    set({ isGenerating });
+  },
+  setGeneratedSummaryId: (generatedSummaryId) => {
+    set({ generatedSummaryId });
   },
 
   // ------------------------------------------------------------------

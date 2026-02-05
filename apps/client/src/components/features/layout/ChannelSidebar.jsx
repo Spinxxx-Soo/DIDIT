@@ -8,7 +8,6 @@ import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
 import useMeetingStore from '@/store/useMeetingStore';
 import useOpenVidu from '@/hooks/useOpenVidu';
 import { projectApi } from '@/api/project';
-import { meetingApi } from '@/api/meeting';
 import MeetingMinutesList from '@/components/features/meeting/MeetingMinutesList';
 import DraggableSummaryWindow from '@/components/features/meeting/DraggableSummaryWindow';
 import { ManageMembersModal } from '@/components/features/project/ManageMembersModal';
@@ -132,13 +131,8 @@ const ChannelSidebar = () => {
     navigate(`/workspace/${projectId}`);
   };
 
-  const handleMinuteClick = async (id) => {
-    try {
-      const response = await meetingApi.getMeetingSummaryDetail(id);
-      setSelectedSummary(response.data);
-    } catch (error) {
-      console.error('상세 조회 실패:', error);
-    }
+  const handleMinuteClick = (summary) => {
+    setSelectedSummary(summary);
   };
 
   const handleCopyInviteLink = async () => {
@@ -641,7 +635,13 @@ const ChannelSidebar = () => {
       />
 
       {selectedSummary && (
-        <DraggableSummaryWindow isOpen={!!selectedSummary} onClose={() => setSelectedSummary(null)} summary={selectedSummary} />
+        <DraggableSummaryWindow
+          isOpen={!!selectedSummary}
+          onClose={() => setSelectedSummary(null)}
+          summary={selectedSummary}
+          projectId={projectId}
+          onDelete={() => setSelectedSummary(null)}
+        />
       )}
 
       <ManageMembersModal
