@@ -12,12 +12,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "meeting_users",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_meeting_users_meeting_user",
-                        columnNames = {"meeting_id", "user_id"}
-                )
-        },
         indexes = {
                 @Index(name = "idx_meeting_users_meeting_id", columnList = "meeting_id"),
                 @Index(name = "idx_meeting_users_user_id", columnList = "user_id"),

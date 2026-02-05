@@ -1,6 +1,7 @@
 package com.didit.server.service.service.impl;
 
 import com.didit.server.data.entity.MeetingEntity;
+import com.didit.server.data.entity.MeetingRecordEntity;
 import com.didit.server.data.entity.enums.MeetingMode;
 import com.didit.server.data.entity.enums.MeetingStatus;
 import com.didit.server.data.entity.enums.ProjectUserRole;
@@ -30,6 +31,7 @@ public class MeetingServiceImpl implements MeetingService {
     private final UserRepository userRepository;
     private final MeetingRepository meetingRepository;
     private final MeetingUserRepository meetingUserRepository;
+    private final MeetingRecordRepository meetingRecordRepository;
 
     @Override
     public Result<Long> createMeeting(long projectId, long userId, String title, MeetingMode mode){
@@ -154,5 +156,17 @@ public class MeetingServiceImpl implements MeetingService {
         }
 
         return Result.ok(meeting.get());
+    }
+
+    @Override
+    public Result<MeetingRecordEntity> FindMeetingRecordingById(long recordingId) {
+        var meeting = meetingRecordRepository.findById(recordingId);
+        return meeting.map(Result::ok).orElseGet(() -> Result.fail(new NotFoundError("recordingId", recordingId)));
+    }
+
+    @Override
+    public Result<MeetingEntity> findBySessionId(String SessionId){
+        var findResult = meetingRepository.findBySessionId(SessionId);
+        return findResult.map(Result::ok).orElseGet(() -> Result.fail(new NotFoundError("SessionId", SessionId)));
     }
 }

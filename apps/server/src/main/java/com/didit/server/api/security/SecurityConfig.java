@@ -33,7 +33,8 @@ public class SecurityConfig {
                                 "/swagger-ui.html", "/swagger-ui/**",
                                 "/v3/api-docs/swagger-config",
                                 "/api/v1/auth/login", "/api/v1/auth/logout",
-                                "/login/**", "/oauth2/**", "/error"
+                                "/login/**", "/oauth2/**", "/error",
+                                "/api/v1/webhooks/openvidu"
                                 ).permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
