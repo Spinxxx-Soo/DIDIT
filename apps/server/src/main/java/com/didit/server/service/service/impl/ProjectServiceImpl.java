@@ -89,6 +89,8 @@ public class ProjectServiceImpl implements ProjectService {
         var addResult = AddProjectAdminUser(cmd.ownerUserId(), project.getId());
         if(addResult.isFailure()) return Result.fail(addResult.getErrors());
 
+        _ProjectRecentRepository.upsertRecentView(cmd.ownerUserId(), project.getId());
+
         return Result.ok();
     }
 
