@@ -8,6 +8,7 @@ import { toast } from '@/store/useToastStore';
 import logo from '@/assets/didit_logo.png';
 import { MessageCircle, ClipboardList } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
+import useLoungeStore from '@/store/useLoungeStore';
 import useProjectStore from '@/store/useProjectStore';
 import useMeetingStore from '@/store/useMeetingStore';
 import useOpenVidu from '@/hooks/useOpenVidu';
@@ -41,6 +42,7 @@ const GNB = ({
     validateGithubRepo,
     updateProjectRepo,
   } = useProjectStore();
+  const { fetchIssues } = useLoungeStore();
 
   // 회의 상태
   const { isInMeeting } = useMeetingStore();
@@ -87,8 +89,8 @@ const GNB = ({
 
   return (
     <>
-    <header
-      className="
+      <header
+        className="
         h-16
         pl-[18px]
         pr-6
@@ -105,107 +107,108 @@ const GNB = ({
         top-0
         z-40
       "
-    >
-      {/* 로고 + 저장소 영역 */}
-      <div className="flex items-center gap-5">
-        <Link
-          to={isWorkspace ? "/mypage" : "/"}
-          onClick={handleLogoClick}
-          className="flex items-center gap-2 transition-opacity hover:opacity-80"
-        >
-          <img
-            src={logo}
-            alt="로고"
-            className="h-9 w-auto"
-          />
-        </Link>
+      >
+        {/* 로고 + 저장소 영역 */}
+        <div className="flex items-center gap-5">
+          <Link
+            to={isWorkspace ? "/mypage" : "/"}
+            onClick={handleLogoClick}
+            className="flex items-center gap-2 transition-opacity hover:opacity-80"
+          >
+            <img
+              src={logo}
+              alt="로고"
+              className="h-9 w-auto"
+            />
+          </Link>
 
-        {/* workspace 모드에서 저장소 정보 표시 */}
-        {isWorkspace && projectId && (
-          <GithubRepoSection
-            repoFullName={currentProject?.repoFullName}
-            projectId={projectId}
-            onValidateRepo={validateGithubRepo}
-            onUpdateRepo={updateProjectRepo}
-          />
-        )}
-      </div>
+          {/* workspace 모드에서 저장소 정보 표시 */}
+          {isWorkspace && projectId && (
+            <GithubRepoSection
+              repoFullName={currentProject?.repoFullName}
+              projectId={projectId}
+              onValidateRepo={validateGithubRepo}
+              onUpdateRepo={updateProjectRepo}
+              onLinkSuccess={() => fetchIssues(projectId)}
+            />
+          )}
+        </div>
 
-      {/* 네비게이션 영역 */}
-      <nav className="flex items-center gap-2">
-        {isWorkspace ? (
-          <>
-            {showChat && (
-              <Button
-                variant={activePanel === 'chat' ? 'secondary' : 'ghost'}
-                size="sm"
-                leftIcon={<MessageCircle size={16} />}
-                onClick={onChatClick}
-                className={`
+        {/* 네비게이션 영역 */}
+        <nav className="flex items-center gap-2">
+          {isWorkspace ? (
+            <>
+              {showChat && (
+                <Button
+                  variant={activePanel === 'chat' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  leftIcon={<MessageCircle size={16} />}
+                  onClick={onChatClick}
+                  className={`
                   rounded-full
                   ${activePanel === 'chat'
+                      ? 'border-[var(--color-green-primary)] text-[var(--color-green-primary)] bg-[var(--success-bg)]'
+                      : ''
+                    }
+                `}
+                >
+                  채팅
+                </Button>
+              )}
+              <Button
+                variant={activePanel === 'issue' ? 'secondary' : 'ghost'}
+                size="sm"
+                leftIcon={<ClipboardList size={16} />}
+                onClick={handleIssueClick}
+                className={`
+                rounded-full
+                ${activePanel === 'issue'
                     ? 'border-[var(--color-green-primary)] text-[var(--color-green-primary)] bg-[var(--success-bg)]'
                     : ''
                   }
-                `}
-              >
-                채팅
-              </Button>
-            )}
-            <Button
-              variant={activePanel === 'issue' ? 'secondary' : 'ghost'}
-              size="sm"
-              leftIcon={<ClipboardList size={16} />}
-              onClick={handleIssueClick}
-              className={`
-                rounded-full
-                ${activePanel === 'issue'
-                  ? 'border-[var(--color-green-primary)] text-[var(--color-green-primary)] bg-[var(--success-bg)]'
-                  : ''
-                }
               `}
-            >
-              이슈
-            </Button>
-          </>
-        ) : (
-          <>
-            {isAuthenticated ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="rounded-full"
               >
-                Logout
+                이슈
               </Button>
-            ) : (
-              <Link to="/login">
+            </>
+          ) : (
+            <>
+              {isAuthenticated ? (
                 <Button
-                  variant="primary"
+                  variant="ghost"
                   size="sm"
-                  className="shadow-none hover:shadow-[var(--shadow-glow-strong)]"
+                  onClick={handleLogout}
+                  className="rounded-full"
                 >
-                  시작하기
+                  Logout
                 </Button>
-              </Link>
-            )}
-          </>
-        )}
-      </nav>
-    </header>
+              ) : (
+                <Link to="/login">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="shadow-none hover:shadow-[var(--shadow-glow-strong)]"
+                  >
+                    시작하기
+                  </Button>
+                </Link>
+              )}
+            </>
+          )}
+        </nav>
+      </header>
 
-    {/* 회의 종료 확인 모달 */}
-    <ConfirmModal
-      isOpen={isLeaveModalOpen}
-      onClose={() => setIsLeaveModalOpen(false)}
-      onConfirm={handleConfirmLeave}
-      title="회의 종료"
-      message="현재 회의에서 나가시겠습니까?"
-      confirmText="나가기"
-      confirmVariant="danger"
-    />
-  </>
+      {/* 회의 종료 확인 모달 */}
+      <ConfirmModal
+        isOpen={isLeaveModalOpen}
+        onClose={() => setIsLeaveModalOpen(false)}
+        onConfirm={handleConfirmLeave}
+        title="회의 종료"
+        message="현재 회의에서 나가시겠습니까?"
+        confirmText="나가기"
+        confirmVariant="danger"
+      />
+    </>
   );
 };
 
