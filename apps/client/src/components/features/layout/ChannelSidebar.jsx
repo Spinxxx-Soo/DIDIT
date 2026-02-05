@@ -606,15 +606,14 @@ const ChannelSidebar = () => {
           </div>
         </div>
 
-        <Divider />
+        {isInMeeting && (
+          <>
+            <Divider />
 
-        {/* 3. 하단 컨트롤 바 */}
-        <div className="flex-shrink-0 py-4 flex justify-center gap-2 px-4 bg-[var(--bg-sidebar)] mt-auto z-10">
-          <IconButton icon={isSpeakerOn ? <Headphones size={18} /> : <HeadphoneOff size={18} />} variant="ghost" size="sm" onClick={toggleSpeaker} className={!isSpeakerOn ? "text-[var(--color-error)]" : ""} />
-          <IconButton icon={isMicOn ? <Mic size={18} /> : <MicOff size={18} />} variant="ghost" size="sm" onClick={toggleMic} className={!isMicOn ? "text-[var(--color-error)]" : ""} />
-
-          {isInMeeting && (
-            <>
+            {/* 3. 하단 컨트롤 바 */}
+            <div className="flex-shrink-0 py-4 flex justify-center gap-2 px-4 bg-[var(--bg-sidebar)] mt-auto z-10">
+              <IconButton icon={isSpeakerOn ? <Headphones size={18} /> : <HeadphoneOff size={18} />} variant="ghost" size="sm" onClick={toggleSpeaker} className={!isSpeakerOn ? "text-[var(--color-error)]" : ""} />
+              <IconButton icon={isMicOn ? <Mic size={18} /> : <MicOff size={18} />} variant="ghost" size="sm" onClick={toggleMic} className={!isMicOn ? "text-[var(--color-error)]" : ""} />
               <IconButton
                 icon={isScreenSharing ? <MonitorOff size={18} /> : <Monitor size={18} />}
                 variant="ghost"
@@ -625,9 +624,9 @@ const ChannelSidebar = () => {
               />
               {isRecording && <div className="flex items-center justify-center w-8 h-8"><Circle size={10} className="text-[var(--color-error)] fill-current animate-pulse" /></div>}
               <IconButton icon={<PhoneOff size={18} />} variant="ghost" size="sm" onClick={handleLeaveMeeting} className="text-[var(--text-primary)] bg-[var(--color-error)] hover:bg-red-600" />
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* 모달 영역 */}
