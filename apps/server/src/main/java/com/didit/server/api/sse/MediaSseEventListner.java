@@ -65,4 +65,13 @@ public class MediaSseEventListner {
                 .build();
         sseHub.broadcast(payload);
     }
+
+    @EventListener
+    public void onMediaSummaryGeneratedEvent(MediaSummaryGeneratedEvent e) {
+        var payload = MediaSummaryGeneratedPayload.builder()
+                .projectId(e.projectId())
+                .summaryId(e.summaryId())
+                .build();
+        sseHub.broadcastInProject(payload);
+    }
 }
