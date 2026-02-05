@@ -85,6 +85,7 @@ public class IssueServiceImpl implements IssueService {
                     issue.getBody())).toList();
             AiSortRequest request = new AiSortRequest(userId, projectId, issueInfos);
             String jsonPayload = objectMapper.writeValueAsString(request);
+            log.info("AI Sort Request Payload: {}", jsonPayload);
             redisTemplate.opsForList().leftPush("queue:issue:priority:sort", jsonPayload);
             return Result.ok(issueList);
         } catch (Exception e) {
