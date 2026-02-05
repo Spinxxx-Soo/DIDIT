@@ -10,6 +10,7 @@ public record AiSortRequest(
     public record AiIssueInfo(
             long issueId,
             String title,
-            String body
+            String body,
+            String priority
     ) {}
 }

@@ -4,18 +4,13 @@ import com.didit.server.api.request.AnalyzeIssueRequest;
 import com.didit.server.api.request.CreateIssueRequest;
 import com.didit.server.api.request.UpdateIssueRequest;
 import com.didit.server.api.response.IssueResponse;
-import com.didit.server.api.response.ProjectResponse;
-import com.didit.server.api.response.UserResponse;
 import com.didit.server.api.security.CustomOAuth2User;
 import com.didit.server.data.repository.IssueRepository;
 import com.didit.server.service.service.IssueService;
-import com.didit.server.share.result.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -110,6 +105,14 @@ public class IssueController {
             var err = result.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{projectId}/github/issues")
+    public ResponseEntity<?> getGithubIssue(@PathVariable long projectId,
+                                            @AuthenticationPrincipal CustomOAuth2User user){
+        long userId = user.getId();
+
         return ResponseEntity.ok().build();
     }
 }
