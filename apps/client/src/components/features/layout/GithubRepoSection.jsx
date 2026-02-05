@@ -26,6 +26,7 @@ export function GithubRepoSection({
   projectId,
   onValidateRepo,
   onUpdateRepo,
+  onLinkSuccess,
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [repoInput, setRepoInput] = useState('');
@@ -108,6 +109,7 @@ export function GithubRepoSection({
       setRepoInput('');
       setGithubStatus(GITHUB_STATUS.IDLE);
       setValidatedRepoId(null);
+      if (onLinkSuccess) onLinkSuccess(); // Trigger sync
     } else {
       setRepoError(result.error || '저장소 연결에 실패했습니다');
     }

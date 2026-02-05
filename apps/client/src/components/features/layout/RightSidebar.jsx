@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, AlertCircle, CheckCircle2, Clock, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { X, AlertCircle, CheckCircle2, Clock, MoreVertical, Edit2, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { IconButton } from '@/components/common/Button/IconButton';
 import { Input } from '@/components/common/Input';
@@ -41,7 +41,7 @@ const STATUS_CONFIG = {
 
 const RightSidebar = ({ activePanel, onClose, channelId }) => {
   const { projectId } = useParams();
-  const { openIssueDetail, openCreateIssue, issues, fetchIssues } = useLoungeStore();
+  const { openIssueDetail, openCreateIssue, issues, fetchIssues, isLoading } = useLoungeStore();
   const { user } = useAuthStore();
   const { fetchParticipants } = useProjectStore();
   const [memberMap, setMemberMap] = useState({});
@@ -364,7 +364,17 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
             style={{ pointerEvents: isDetailView ? 'none' : 'auto' }}
           >
             <div className="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-100 shadow-sm shrink-0">
-              <h2 className="font-bold text-lg text-gray-800">이슈 트래커</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold text-lg text-gray-800">이슈 트래커</h2>
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  icon={<RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />}
+                  onClick={() => fetchIssues(projectId)}
+                  title="새로고침"
+                  disabled={isLoading}
+                />
+              </div>
               <IconButton variant="ghost" size="sm" icon={<X size={18} />} onClick={onClose} />
             </div>
 
