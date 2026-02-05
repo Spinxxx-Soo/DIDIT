@@ -74,7 +74,7 @@ class MeetingSummaryService:
             # return {"meetingId": meeting_id, "status": status, "summary": summary}
 
             return {
-                "summeryId": summary_id,
+                "summaryId": summary_id,
                 "status": status,
                 "summary": summary,
             }
