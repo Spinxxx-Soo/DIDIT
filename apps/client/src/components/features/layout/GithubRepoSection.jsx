@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Github, Check, AlertCircle, X, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
@@ -32,6 +32,15 @@ export function GithubRepoSection({
   const [githubStatus, setGithubStatus] = useState(GITHUB_STATUS.IDLE);
   const [repoError, setRepoError] = useState('');
   const [validatedRepoId, setValidatedRepoId] = useState(null);
+
+  // projectId 변경 시 편집 모드 초기화
+  useEffect(() => {
+    setIsEditing(false);
+    setRepoInput('');
+    setGithubStatus(GITHUB_STATUS.IDLE);
+    setRepoError('');
+    setValidatedRepoId(null);
+  }, [projectId]);
 
   /**
    * 입력값 변경 핸들러
@@ -199,7 +208,7 @@ export function GithubRepoSection({
           variant="secondary"
           size="sm"
           onClick={handleValidate}
-          disabled={!repoInput.trim() || githubStatus === GITHUB_STATUS.LOADING}
+          disabled={!repoInput.trim() || !projectId || githubStatus === GITHUB_STATUS.LOADING}
           isLoading={githubStatus === GITHUB_STATUS.LOADING}
           leftIcon={<Github size={14} />}
         >
