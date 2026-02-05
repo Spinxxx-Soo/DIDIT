@@ -403,9 +403,11 @@ const ChannelSidebar = () => {
                       </li>
                     ) : channels.length > 0 ? (
                       channels
-                        // [추가됨] 'SCHEDULED' 상태인 채널은 아직 시작되지 않은 예약 일정이므로,
-                        // 사이드바(채팅방 목록)에서는 숨기고 캘린더에서만 보이도록 필터링합니다.
-                        .filter(channel => channel.status !== 'SCHEDULED')
+                        // [변경됨] 'SCHEDULED' 상태인 채널은 시작 시간이 되었거나 지났을 때만 사이드바에 표시
+                        .filter(channel =>
+                          channel.status !== 'SCHEDULED' ||
+                          (channel.status === 'SCHEDULED' && (!channel.startedAt || new Date(channel.startedAt) <= new Date()))
+                        )
                         .map((channel) => {
                           const isVoiceChannel = channel.mode === 'VOICE';
                           const isSelected = currentChannelId === channel.id;
