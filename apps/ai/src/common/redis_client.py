@@ -19,7 +19,6 @@ class RedisClient:
                 host=settings.REDIS_HOST,
                 port=settings.REDIS_PORT,
                 password=settings.REDIS_PASSWORD if settings.REDIS_PASSWORD else None,
-                db=settings.REDIS_DB,
                 socket_timeout=settings.REDIS_TIMEOUT,
                 decode_responses=True  # 문자열로 자동 디코딩
             )
