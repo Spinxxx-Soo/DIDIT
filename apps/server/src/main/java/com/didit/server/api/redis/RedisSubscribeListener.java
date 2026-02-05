@@ -1,6 +1,5 @@
 package com.didit.server.api.redis;
 
-import com.didit.server.api.response.AiResponse;
 import com.didit.server.api.sse.SseHub;
 import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.ObjectMapper;
@@ -19,6 +18,7 @@ public class RedisSubscribeListener {
 
     public void onMessage(String message) {
         try {
+            log.info("RedisSubscribeListener - onMessage : {}", message);
             AiAnalysisResult result = objectMapper.readValue(message, AiAnalysisResult.class);
 
             String clientKey = (String) redisTemplate.opsForValue().get("sse:client_key:" + result.userId());
