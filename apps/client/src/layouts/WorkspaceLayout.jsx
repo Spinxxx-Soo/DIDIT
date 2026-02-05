@@ -11,6 +11,7 @@ import RightSidebar from '../components/features/layout/RightSidebar';
 import useLoungeStore from '@/store/useLoungeStore';
 import useMeetingStore from '@/store/useMeetingStore';
 import useProjectStore from '@/store/useProjectStore';
+import useProjectSSE from '@/hooks/useProjectSSE';
 
 const WorkspaceLayout = () => {
   const { projectId, channelId } = useParams();
@@ -19,6 +20,9 @@ const WorkspaceLayout = () => {
   const { activePanel, setActivePanel, closeSidebar, resetToIssueList } = useLoungeStore();
   const { isInMeeting, currentChannelMode } = useMeetingStore();
   const { allProjects, fetchAllProjects } = useProjectStore();
+
+  // 프로젝트 SSE 연결 (프로젝트 스트림 + chat 워크어라운드 스트림)
+  useProjectSSE(projectId);
 
   // 프로젝트 접근 권한 체크
   React.useEffect(() => {
