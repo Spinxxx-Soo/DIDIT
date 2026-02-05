@@ -20,8 +20,6 @@ import java.time.LocalDateTime;
                 @Index(name = "uq_projects_repo_active", columnList = "repo_full_name, active_key", unique = true)
         }
 )
-@SQLDelete(sql = "UPDATE projects SET deleted_at = NOW() WHERE id = ?")
-@SQLRestriction("deleted_at IS NULL")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
