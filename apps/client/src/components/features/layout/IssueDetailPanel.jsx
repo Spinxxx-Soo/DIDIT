@@ -201,6 +201,23 @@ const IssueDetailPanel = () => {
     return es;
   };
 
+  // 임시 이슈 정리 함수 (분석만 하고 나가는 경우)
+  const cleanupDraft = async () => {
+    if (isCreateMode && analyzedData?.issueId) {
+      console.log('Clearing draft issue:', analyzedData.issueId);
+      try {
+        await deleteIssue(currentProject.id, analyzedData.issueId);
+      } catch (e) {
+        console.warn('Draft cleanup warning:', e);
+      }
+    }
+  };
+
+  const handleClose = async () => {
+    await cleanupDraft();
+    closeSidebar();
+  };
+
   const handleAnalyze = async () => {
     if (!formData.title.trim() || !formData.body.trim()) {
       alert('분석을 위해 제목과 내용을 모두 입력해주세요.');
@@ -359,13 +376,14 @@ const IssueDetailPanel = () => {
     }
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (isCreateMode && (formData.title || formData.body)) {
       if (!confirm("작성 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
     }
     if (isEditing && !isCreateMode) {
       if (!confirm("수정 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
     }
+    await cleanupDraft();
     setActivePanel('issue');
   };
 
@@ -444,7 +462,7 @@ const IssueDetailPanel = () => {
           variant="ghost"
           size="sm"
           icon={<X size={18} />}
-          onClick={closeSidebar}
+          onClick={handleClose}
           title="닫기"
         />
       </div>
