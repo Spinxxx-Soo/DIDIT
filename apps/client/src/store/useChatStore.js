@@ -303,7 +303,12 @@ const useChatStore = create((set, get) => ({
     editMessage: async (channelId, chatId, content) => {
         try {
             await chatApi.updateChat(chatId, { content });
-            // SSE 'chat_update' 이벤트가 상태를 업데이트합니다.
+            // API 성공 시 로컬 상태 즉시 업데이트
+            set(state => ({
+                messages: state.messages.map(m =>
+                    m.id === chatId ? { ...m, content } : m
+                )
+            }));
         } catch (error) {
             console.error("Message edit failed:", error);
             throw error;
@@ -314,7 +319,10 @@ const useChatStore = create((set, get) => ({
     deleteMessage: async (channelId, chatId) => {
         try {
             await chatApi.deleteChat(chatId);
-            // SSE 'chat_delete' 이벤트가 상태를 업데이트합니다.
+            // API 성공 시 로컬 상태 즉시 업데이트
+            set(state => ({
+                messages: state.messages.filter(m => m.id !== chatId)
+            }));
         } catch (error) {
             console.error("Message delete failed:", error);
             throw error;
