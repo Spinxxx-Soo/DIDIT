@@ -27,7 +27,7 @@ public class MediaSummaryGeneratedListener {
                 log.error("Failed to FindById: {}", findResult.getSingleErrorOrThrow().getMessage());
                 return;
             }
-            var updateResult = meetingSummaryService.UpdateSummaryByAi(result.summeryId(), result.title(),
+            var updateResult = meetingSummaryService.UpdateSummaryByAi(result.summeryId(),
                     result.summary());
             if (updateResult.isFailure()) {
                 log.error("Failed to UpdateSummaryByAi: {}", updateResult.getSingleErrorOrThrow().getMessage());

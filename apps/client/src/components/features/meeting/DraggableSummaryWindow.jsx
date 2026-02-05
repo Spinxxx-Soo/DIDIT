@@ -15,6 +15,7 @@ const parseSummaryMd = (summaryMd) => {
     try {
         const parsed = JSON.parse(summaryMd || '{}');
         return {
+            title: parsed.title || '',
             discussionPoints: parsed.discussion_points || [],
             actionItems: (parsed.action_items || []).map((item, index) =>
                 typeof item === 'string'
@@ -246,7 +247,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
                             />
                         ) : (
                             <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-1 leading-tight">
-                                {summary.title || '제목 없는 회의'}
+                                {editTitle || parsed.title || summary.title || '제목 없는 회의'}
                             </h1>
                         )}
                         <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
@@ -319,10 +320,10 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
                         </div>
                     </section>
                 </div>
-            </Rnd>
+            </Rnd >
 
             {/* 삭제 확인 모달 */}
-            <div className="pointer-events-auto">
+            < div className="pointer-events-auto" >
                 <ConfirmModal
                     isOpen={isDeleteModalOpen}
                     onClose={() => setIsDeleteModalOpen(false)}
@@ -334,8 +335,8 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
                     confirmVariant="danger"
                     isLoading={isDeleting}
                 />
-            </div>
-        </div>,
+            </div >
+        </div >,
         document.body
     );
 };
