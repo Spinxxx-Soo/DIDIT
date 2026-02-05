@@ -35,12 +35,13 @@ class IssuePriorityLabelService:
             return None
 
         # 데이터 추출 (백엔드 필드명 userId, issueId 등 대응)
+        project_id = task.get("projectId")
         issue_id = task.get("issueId")  # Java의 issueId와 매칭
         user_id = task.get("userId")    # Java의 userId와 매칭
         title = task.get("title")
         body = task.get("body", "")
         
-        logger.info(f" 모델이 받는 이슈 등록 - 이슈ID: {issue_id}, 유저ID {user_id}, 제목:{title}, 내용:{body}")
+        logger.info(f" 모델이 받는 이슈 등록 - pjId : {project_id}, 이슈ID: {issue_id}, 유저ID {user_id}, 제목:{title}, 내용:{body}")
 
         if not issue_id:
             logger.error("잘못된 task 수신: issueId가 없습니다.")
@@ -52,6 +53,7 @@ class IssuePriorityLabelService:
 
         # 결과 데이터 구성
         result_data = {
+            "projectId": project_id,
             "userId": user_id,
             "issueId": issue_id,
             "priority": priority

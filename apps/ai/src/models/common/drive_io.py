@@ -65,15 +65,28 @@ def download_file_from_drive(file_id: str, local_path: str) -> bool:
         session = requests.Session()
         
         # 첫 번째 요청 (큰 파일의 경우 확인 페이지로 리다이렉트)
-        response = session.get(download_url, stream=True)
+        response = session.get(download_url, stream=True, allow_redirects=True)
         
-        # 확인 페이지 처리 (큰 파일의 경우)
-        if 'virus scan warning' in response.text.lower() or 'download quota exceeded' in response.text.lower():
+        # HTML 응답인 경우 (확인 페이지)
+        if response.headers.get('content-type', '').startswith('text/html'):
             # 확인 링크에서 실제 다운로드 URL 추출
+            # Google Drive는 큰 파일의 경우 확인 링크를 제공
             confirm_match = re.search(r'href="(/uc\?export=download[^"]+)"', response.text)
             if confirm_match:
-                confirm_url = "https://drive.google.com" + confirm_match.group(1)
-                response = session.get(confirm_url, stream=True)
+                confirm_url = "https://drive.google.com" + confirm_match.group(1).replace('&amp;', '&')
+                logger.info(f"확인 페이지 감지, 실제 다운로드 URL로 재시도: {confirm_url}")
+                response = session.get(confirm_url, stream=True, allow_redirects=True)
+            else:
+                # 다른 방법: confirm 파라미터 추가
+                confirm_match = re.search(r'confirm=([a-zA-Z0-9_-]+)', response.text)
+                if confirm_match:
+                    confirm_code = confirm_match.group(1)
+                    download_url_with_confirm = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={confirm_code}"
+                    logger.info(f"확인 코드 발견, 재시도: {download_url_with_confirm}")
+                    response = session.get(download_url_with_confirm, stream=True, allow_redirects=True)
+        
+        # 응답이 성공인지 확인
+        response.raise_for_status()
         
         # 파일 저장
         local_file = Path(local_path)
@@ -92,9 +105,17 @@ def download_file_from_drive(file_id: str, local_path: str) -> bool:
                         if downloaded % (8192 * 100) == 0:  # 100번마다 로그
                             logger.debug(f"다운로드 진행률: {progress:.1f}%")
         
-        logger.info(f"✅ Google Drive 파일 다운로드 완료: {local_path}")
-        return True
+        # 다운로드된 파일 크기 확인
+        if local_file.exists() and local_file.stat().st_size > 0:
+            logger.info(f"✅ Google Drive 파일 다운로드 완료: {local_path} ({local_file.stat().st_size} bytes)")
+            return True
+        else:
+            logger.error(f"다운로드된 파일이 비어있거나 존재하지 않습니다: {local_path}")
+            return False
         
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Google Drive 파일 다운로드 실패 (네트워크 오류): {e}")
+        return False
     except Exception as e:
         logger.error(f"Google Drive 파일 다운로드 실패: {e}")
         return False
@@ -207,13 +228,34 @@ def download_json_files_from_drive(
                 logger.warning(f"파일 ID 추출 실패, 건너뜀: {url}")
                 continue
             
-            # 파일명은 URL에서 추출하거나 기본값 사용
-            # 실제로는 다운로드 후 Content-Disposition 헤더에서 파일명을 가져올 수 있음
-            # 여기서는 간단히 file_id를 파일명으로 사용
-            local_file_path = local_path / f"{file_id}.json"
+            # 파일명 추출 시도 (Content-Disposition 헤더에서)
+            # 먼저 파일명을 가져오기 위해 HEAD 요청
+            try:
+                download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+                session = requests.Session()
+                response = session.head(download_url, allow_redirects=True)
+                
+                # Content-Disposition에서 파일명 추출
+                content_disposition = response.headers.get('Content-Disposition', '')
+                filename_match = re.search(r'filename[^;=\n]*=(([\'"]).*?\2|[^\s\n]+)', content_disposition)
+                if filename_match:
+                    filename = filename_match.group(1).strip('"\'')
+                    # 파일명에 경로가 포함된 경우 처리
+                    filename = Path(filename).name
+                else:
+                    # 파일명을 추출할 수 없으면 file_id 사용
+                    filename = f"{file_id}.json"
+            except Exception as e:
+                logger.warning(f"파일명 추출 실패, file_id 사용: {e}")
+                filename = f"{file_id}.json"
             
+            local_file_path = local_path / filename
+            
+            logger.info(f"다운로드 시도: {url} -> {local_file_path}")
             if download_file_from_drive(file_id, str(local_file_path)):
                 success_count += 1
+            else:
+                logger.error(f"다운로드 실패: {url}")
         
         logger.info(f"✅ 총 {success_count}/{len(file_urls)}개 파일 다운로드 완료")
         return success_count > 0
