@@ -1299,6 +1299,90 @@
   }
 }
 
+/* Calendar Preview Styles */
+.calendar-preview {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-sm);
+  margin-top: var(--space-lg);
+  flex: 1; /* Fill remaining space */
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-preview-expanded {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  height: 100%;
+}
+
+.calendar-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  margin-bottom: var(--space-xs);
+}
+
+.calendar-header span {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-gray-400);
+  text-transform: uppercase;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-xs);
+  flex: 1;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px;
+  font-size: 0.8rem;
+  color: var(--color-gray-600);
+  cursor: default;
+  transition: all var(--transition-fast);
+  background: var(--color-gray-50);
+  min-height: 48px;
+}
+
+.calendar-day:hover {
+  background: var(--color-gray-100);
+}
+
+.calendar-day.active {
+  background: var(--color-emerald-50);
+  color: var(--color-emerald-700);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--color-emerald-200);
+}
+
+.calendar-day .day-number {
+  margin-bottom: 4px;
+}
+
+/* Event Bars */
+.event-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  margin-bottom: 2px;
+}
+
+.event-purple { background: #A78BFA; } /* Violet */
+.event-blue { background: #60A5FA; }   /* Blue */
+.event-green { background: #34D399; }  /* Emerald */
+.event-orange { background: #FBBF24; } /* Amber */
+
+
 /* Prefers reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .fade-up {
