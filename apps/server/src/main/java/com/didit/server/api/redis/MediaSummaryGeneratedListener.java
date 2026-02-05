@@ -23,17 +23,18 @@ public class MediaSummaryGeneratedListener {
         try {
             MediaSummaryGeneratedPayload result = objectMapper.readValue(message, MediaSummaryGeneratedPayload.class);
             var findResult = meetingSummaryService.FindById(result.summeryId());
-            if (findResult.isFailure()){
+            if (findResult.isFailure()) {
                 log.error("Failed to FindById: {}", findResult.getSingleErrorOrThrow().getMessage());
                 return;
             }
-            var updateResult = meetingSummaryService.UpdateSummaryByAi(result.summeryId(), result.summary());
-            if (updateResult.isFailure()){
+            var updateResult = meetingSummaryService.UpdateSummaryByAi(result.summeryId(), result.title(),
+                    result.summary());
+            if (updateResult.isFailure()) {
                 log.error("Failed to UpdateSummaryByAi: {}", updateResult.getSingleErrorOrThrow().getMessage());
                 return;
             }
             var summary = findResult.getOrThrow();
-            var event = new MediaSummaryGeneratedEvent(summary.getProject().getId(),summary.getId());
+            var event = new MediaSummaryGeneratedEvent(summary.getProject().getId(), summary.getId());
             publisher.publishEvent(event);
         } catch (Exception e) {
             log.error("Failed to parse MediaSummaryGenerated: {}", e.getMessage());

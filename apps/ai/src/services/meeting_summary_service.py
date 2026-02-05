@@ -1,5 +1,6 @@
 import os
 import uuid
+import tempfile
 import subprocess
 import requests
 from datetime import datetime
@@ -38,9 +39,10 @@ class MeetingSummaryService:
             logger.warning(f"유효하지 않은 meeting_file (meetingID/filePath 확인 필요): {meeting_file}")
             return None
 
-        # 1) ffmpeg output wav 경로를 /tmp에 명시적으로 생성
+        # 1) ffmpeg output wav 경로를 임시 디렉토리에 명시적으로 생성
         base = os.path.splitext(os.path.basename(file_path))[0]
-        wav_path = os.path.join("/tmp", f"{base}_{uuid.uuid4().hex}.wav")
+        temp_dir = tempfile.gettempdir()
+        wav_path = os.path.join(temp_dir, f"{base}_{uuid.uuid4().hex}.wav")
 
         try:
             # 1) FFmpeg: webm -> wav
