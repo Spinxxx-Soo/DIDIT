@@ -49,28 +49,29 @@ public class IssueServiceImpl implements IssueService {
     public Result<List<IssueEntity>> GetActiveIssues(long userId, long projectId) {
         try {
             var project = projectRepository.findById(projectId);
-            if(project.isEmpty()){
+            if (project.isEmpty()) {
                 return Result.fail(new NotFoundError("projectId", projectId));
             }
             var list = issueRepository.findTop5ByProject_IdAndStatusOrderByUpdatedAtDesc(projectId, IssueStatus.OPEN);
             List<AiSortRequest.AiIssueInfo> issueInfos = list.stream().map(issue -> new AiSortRequest.AiIssueInfo(
-                            issue.getId(),
-                            issue.getTitle(),
-                            issue.getBody(),
-                            issue.getPriority().name())).toList();
+                    issue.getId(),
+                    issue.getTitle(),
+                    issue.getBody(),
+                    issue.getPriority().name())).toList();
             AiSortRequest request = new AiSortRequest(userId, projectId, issueInfos);
             String jsonPayload = objectMapper.writeValueAsString(request);
             redisTemplate.opsForList().leftPush("queue:issue:priority:sort", jsonPayload);
             return Result.ok(list);
-        }catch (Exception e) {
+        } catch (Exception e) {
             return Result.fail(new ServerError("IssueList", projectId));
         }
     }
 
     @Override
-    public Result<List<IssueEntity>> GetAllIssues(long userId, long projectId){
+    public Result<List<IssueEntity>> GetAllIssues(long userId, long projectId) {
         try {
-            boolean isMember = projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE);
+            boolean isMember = projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId,
+                    ProjectUserStatus.ACTIVE);
             if (!isMember) {
                 return Result.fail(new ForbiddenError("해당 프로젝트의 멤버만 이슈를 조회할 수 있습니다."));
             }
@@ -103,8 +104,8 @@ public class IssueServiceImpl implements IssueService {
 
     @Override
     public Result<AiResponse> AnalyzeIssue(long projectId, long userId,
-                                           String title, IssueStatus status,
-                                           String body, List<Long> assigneeIds){
+            String title, IssueStatus status,
+            String body, List<Long> assigneeIds) {
         try {
             IssueEntity issue = IssueEntity.builder()
                     .project(projectRepository.getReferenceById(projectId))
@@ -148,13 +149,13 @@ public class IssueServiceImpl implements IssueService {
     @Override
     @Transactional
     public Result<Long> CreateIssue(long projectId, long userId,
-                                    String orgName, String repoName,
-                                    String title, String body,
-                                    List<Long> assigneeIds, long issueId,
-                                    IssuePriority issuePriority){
+            String orgName, String repoName,
+            String title, String body,
+            List<Long> assigneeIds, long issueId,
+            IssuePriority issuePriority) {
         try {
             var issueEntity = issueRepository.findById(issueId);
-            if(issueEntity.isEmpty()){
+            if (issueEntity.isEmpty()) {
                 return Result.fail(new NotFoundError("issueId", issueId));
             }
             var entity = issueEntity.get();
@@ -162,13 +163,14 @@ public class IssueServiceImpl implements IssueService {
                 return Result.fail(new ForbiddenError("본인이 작성 중인 이슈만 등록할 수 있습니다."));
             }
             var findAuth = userGithubAuthRepository.findById(userId).orElse(null);
-            if (findAuth == null){
+            if (findAuth == null) {
                 return Result.fail(new ForbiddenError(""));
             }
             var accessToken = findAuth.getAccessToken();
             String githubAuth = findAuth.getUser().getGithubLogin();
 
-            var githubResult = githubService.createIssue(accessToken,githubAuth,orgName,repoName,title,body,assigneeIds);
+            var githubResult = githubService.createIssue(accessToken, githubAuth, orgName, repoName, title, body,
+                    assigneeIds);
             if (githubResult.isFailure()) {
                 return Result.fail(githubResult.getSingleErrorOrThrow());
             }
@@ -205,14 +207,14 @@ public class IssueServiceImpl implements IssueService {
     @Override
     @Transactional
     public Result<Void> updateIssue(long projectId, long userId, long issueId,
-                                    String title, String body, List<Long> assigneeIds,
-                                    IssueStatus issueStatus, IssuePriority issuePriority) {
+            String title, String body, List<Long> assigneeIds,
+            IssueStatus issueStatus, IssuePriority issuePriority) {
         try {
             var issue = issueRepository.findById(issueId);
-            if(issue.isEmpty()){
+            if (issue.isEmpty()) {
                 return Result.fail(new NotFoundError("issueId", issueId));
             }
-            if (!issue.get().getProject().getId().equals(projectId)){
+            if (!issue.get().getProject().getId().equals(projectId)) {
                 return Result.fail(new NotFoundError("projectId", projectId));
             }
             var entity = issue.get();
@@ -237,7 +239,8 @@ public class IssueServiceImpl implements IssueService {
                         entity.getProject().getRepoFullName(),
                         entity.getIssueNo(), title, body, assigneeLogins,
                         issueStatus);
-                if (gitResult.isFailure()) return gitResult;
+                if (gitResult.isFailure())
+                    return gitResult;
             }
 
             entity.setTitle(title);
@@ -268,10 +271,10 @@ public class IssueServiceImpl implements IssueService {
     public Result<Void> deleteIssue(long projectId, long userId, long issueId) {
         try {
             var issue = issueRepository.findById(issueId);
-            if(issue.isEmpty()){
+            if (issue.isEmpty()) {
                 return Result.fail(new NotFoundError("issueId", issueId));
             }
-            if (!issue.get().getProject().getId().equals(projectId)){
+            if (!issue.get().getProject().getId().equals(projectId)) {
                 return Result.fail(new NotFoundError("projectId", projectId));
             }
             var entity = issue.get();
@@ -289,8 +292,7 @@ public class IssueServiceImpl implements IssueService {
                 var gitResult = githubService.closeIssue(
                         auth.getAccessToken(),
                         entity.getProject().getRepoFullName(),
-                        entity.getIssueNo()
-                );
+                        entity.getIssueNo());
 
                 if (gitResult.isFailure()) {
                     return Result.fail(gitResult.getSingleErrorOrThrow());
