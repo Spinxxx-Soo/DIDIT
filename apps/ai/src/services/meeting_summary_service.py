@@ -32,10 +32,10 @@ class MeetingSummaryService:
             return None
 
         # TODO 백엔드 형식 통일시켜야함
-        meeting_id = meeting_file.get("meetingID")
-        file_path = meeting_file.get("filePath")
+        summary_id = meeting_file.get("summaryId")
+        file_path = meeting_file.get("downloadUrl")
 
-        if not meeting_id or not file_path:
+        if not summary_id or not file_path:
             logger.warning(f"유효하지 않은 meeting_file (meetingID/filePath 확인 필요): {meeting_file}")
             return None
 
@@ -73,13 +73,13 @@ class MeetingSummaryService:
             # return {"meetingId": meeting_id, "status": status, "summary": summary}
 
             return {
-                "meetingId": meeting_id,
+                "summeryId": summary_id,
                 "status": status,
                 "summary": summary,
             }
 
         except Exception as e:
-            logger.exception(f"회의 요약 처리 실패 (meetingId={meeting_id}): {e}")
+            logger.exception(f"회의 요약 처리 실패 (meetingId={summary_id}): {e}")
             return None
 
         finally:
