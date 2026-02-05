@@ -26,7 +26,42 @@ class IssuePriorityIssueModel:
             )
             
             if USE_LORA:
-                self.model = PeftModel.from_pretrained(self.base_model, ADAPTER_PATH)
+                # 가중치 경로 확인
+                from pathlib import Path
+                adapter_path = Path(ADAPTER_PATH)
+                adapter_config = adapter_path / "adapter_config.json"
+                
+                if not adapter_path.exists():
+                    logger.warning(f"⚠️ 가중치 경로가 존재하지 않습니다: {ADAPTER_PATH}")
+                    logger.warning("기본 모델을 사용합니다.")
+                    self.model = self.base_model
+                elif not adapter_config.exists():
+                    logger.warning(f"⚠️ adapter_config.json 파일이 없습니다: {adapter_config}")
+                    logger.warning("기본 모델을 사용합니다.")
+                    self.model = self.base_model
+                else:
+                    try:
+                        # adapter_config.json 파일이 유효한지 확인
+                        import json
+                        with open(adapter_config, 'r', encoding='utf-8') as f:
+                            config_content = f.read().strip()
+                            if not config_content or config_content.startswith('<!DOCTYPE'):
+                                logger.error(f"❌ adapter_config.json이 유효하지 않습니다 (HTML 파일로 다운로드됨)")
+                                logger.warning("기본 모델을 사용합니다.")
+                                self.model = self.base_model
+                            else:
+                                json.loads(config_content)  # JSON 유효성 검사
+                                logger.info(f"가중치 로드 시도: {ADAPTER_PATH}")
+                                self.model = PeftModel.from_pretrained(self.base_model, ADAPTER_PATH)
+                                logger.info("✅ LoRA 가중치 로드 성공")
+                    except json.JSONDecodeError as e:
+                        logger.error(f"❌ adapter_config.json 파싱 오류: {e}")
+                        logger.warning("기본 모델을 사용합니다.")
+                        self.model = self.base_model
+                    except Exception as e:
+                        logger.error(f"❌ LoRA 가중치 로드 실패: {e}")
+                        logger.warning("기본 모델을 사용합니다.")
+                        self.model = self.base_model
             else:
                 self.model = self.base_model
                 

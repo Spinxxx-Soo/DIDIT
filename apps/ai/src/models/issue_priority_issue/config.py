@@ -106,10 +106,38 @@ if not ADAPTER_DIR.exists():
             else:
                 # 개별 파일 다운로드
                 logger.info("파일로 감지됨, 직접 다운로드 시도...")
-                # 파일명 추출 시도
-                local_file_path = ADAPTER_DIR / "adapter_config.json"  # 기본 파일명
-                if download_file_from_drive(file_id, str(local_file_path)):
-                    logger.info(f"✅ 파일 다운로드 완료: {local_file_path}")
+                # 파일 크기로 ZIP인지 확인하기 위해 임시 파일로 다운로드
+                temp_file = CONFIG_DIR / "temp_download_file"
+                if download_file_from_drive(file_id, str(temp_file)):
+                    # 다운로드된 파일이 ZIP인지 확인
+                    is_zip = False
+                    try:
+                        with open(temp_file, 'rb') as f:
+                            first_bytes = f.read(4)
+                            # ZIP 파일 시그니처 확인 (PK\x03\x04)
+                            if first_bytes == b'PK\x03\x04':
+                                is_zip = True
+                                logger.info("다운로드된 파일이 ZIP 형식입니다. 압축 해제 중...")
+                    except Exception as e:
+                        logger.warning(f"파일 형식 확인 실패: {e}")
+                    
+                    if is_zip:
+                        # ZIP 파일 압축 해제
+                        try:
+                            with zipfile.ZipFile(temp_file, 'r') as zip_ref:
+                                zip_ref.extractall(str(ADAPTER_DIR))
+                            logger.info(f"✅ 가중치 압축 해제 완료: {ADAPTER_DIR}")
+                            temp_file.unlink()  # 임시 파일 삭제
+                        except Exception as e:
+                            logger.error(f"ZIP 압축 해제 실패: {e}")
+                            temp_file.unlink()
+                    else:
+                        # 일반 파일인 경우 adapter_config.json으로 이동
+                        local_file_path = ADAPTER_DIR / "adapter_config.json"
+                        ADAPTER_DIR.mkdir(parents=True, exist_ok=True)
+                        import shutil
+                        shutil.move(str(temp_file), str(local_file_path))
+                        logger.info(f"✅ 파일 다운로드 완료: {local_file_path}")
                 else:
                     logger.error("파일 다운로드 실패")
         else:
@@ -124,10 +152,38 @@ if not ADAPTER_DIR.exists():
         logger.warning("Google Drive URL이 설정되지 않았습니다. 로컬 가중치를 사용합니다.")
 else:
     logger.info(f"로컬 가중치 폴더가 이미 존재합니다: {ADAPTER_DIR}")
+    # 기존 파일이 ZIP인지 확인하고 압축 해제
+    adapter_config_file = ADAPTER_DIR / "adapter_config.json"
+    if adapter_config_file.exists():
+        try:
+            # 파일이 ZIP인지 확인 (ZIP 시그니처: PK\x03\x04)
+            with open(adapter_config_file, 'rb') as f:
+                first_bytes = f.read(4)
+                if first_bytes == b'PK\x03\x04':
+                    logger.warning("기존 adapter_config.json이 실제로는 ZIP 파일입니다. 압축 해제 중...")
+                    # 백업 후 압축 해제
+                    zip_backup = ADAPTER_DIR / "adapter_config_backup.zip"
+                    import shutil
+                    shutil.move(str(adapter_config_file), str(zip_backup))
+                    # ZIP 압축 해제
+                    with zipfile.ZipFile(zip_backup, 'r') as zip_ref:
+                        zip_ref.extractall(str(ADAPTER_DIR))
+                    logger.info(f"✅ ZIP 압축 해제 완료: {ADAPTER_DIR}")
+                    # 백업 파일 삭제
+                    zip_backup.unlink()
+        except Exception as e:
+            logger.error(f"기존 파일 처리 중 오류: {e}")
 
 MODEL_ID = "unsloth/llama-3-8b-bnb-4bit"
 # 절대 경로가 존재하면 사용, 없으면 상대 경로 fallback
-ADAPTER_PATH = str(ADAPTER_DIR) if ADAPTER_DIR.exists() else "./final_lora_weights"
+# ADAPTER_DIR이 존재하지 않으면 절대 경로를 사용하되, 모델 로드 시 존재 여부를 확인
+if ADAPTER_DIR.exists():
+    ADAPTER_PATH = str(ADAPTER_DIR)
+    logger.info(f"가중치 경로 설정: {ADAPTER_PATH}")
+else:
+    # 상대 경로 대신 절대 경로 사용 (현재 작업 디렉토리에 의존하지 않도록)
+    ADAPTER_PATH = str(ADAPTER_DIR)
+    logger.warning(f"가중치 폴더가 존재하지 않습니다: {ADAPTER_PATH}")
 
 # VRAM 6GB 최적화 핵심 설정
 MAX_MEMORY = {0: "5GiB", "cpu": "14GiB"}

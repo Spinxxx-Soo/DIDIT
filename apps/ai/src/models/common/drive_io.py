@@ -88,6 +88,47 @@ def download_file_from_drive(file_id: str, local_path: str) -> bool:
         # 응답이 성공인지 확인
         response.raise_for_status()
         
+        # HTML 응답인지 확인 (바이러스 스캔 경고 페이지 등)
+        content_type = response.headers.get('content-type', '').lower()
+        if 'text/html' in content_type:
+            # stream=True일 때는 text 속성을 사용할 수 없으므로 content를 읽어야 함
+            html_content = response.content.decode('utf-8', errors='ignore')
+            content_preview = html_content[:2000]  # 충분한 길이로 확인
+            
+            if 'virus scan' in content_preview.lower() or 'download anyway' in content_preview.lower():
+                logger.warning("Google Drive 바이러스 스캔 경고 페이지 감지, 확인 링크 추출 시도...")
+                # form action URL 추출
+                action_match = re.search(r'action="([^"]+)"', html_content)
+                # form 데이터 추출
+                id_match = re.search(r'name="id"\s+value="([^"]+)"', html_content)
+                export_match = re.search(r'name="export"\s+value="([^"]+)"', html_content)
+                confirm_value_match = re.search(r'name="confirm"\s+value="([^"]+)"', html_content)
+                uuid_match = re.search(r'name="uuid"\s+value="([^"]+)"', html_content)
+                
+                if action_match and id_match and confirm_value_match:
+                    # 실제 다운로드 URL 구성
+                    base_url = action_match.group(1)
+                    if not base_url.startswith('http'):
+                        base_url = 'https://drive.usercontent.google.com' + base_url
+                    
+                    download_params = {
+                        'id': id_match.group(1),
+                        'export': export_match.group(1) if export_match else 'download',
+                        'confirm': confirm_value_match.group(1),
+                    }
+                    if uuid_match:
+                        download_params['uuid'] = uuid_match.group(1)
+                    
+                    download_url = base_url + '?' + '&'.join([f"{k}={v}" for k, v in download_params.items()])
+                    
+                    logger.info(f"확인 링크로 재다운로드 시도: {download_url}")
+                    response = session.get(download_url, stream=True, allow_redirects=True)
+                    response.raise_for_status()
+                else:
+                    logger.error("확인 링크에서 필요한 파라미터를 추출할 수 없습니다.")
+                    logger.debug(f"추출 결과 - action: {action_match}, id: {id_match}, confirm: {confirm_value_match}")
+                    return False
+        
         # 파일 저장
         local_file = Path(local_path)
         local_file.parent.mkdir(parents=True, exist_ok=True)
@@ -105,8 +146,16 @@ def download_file_from_drive(file_id: str, local_path: str) -> bool:
                         if downloaded % (8192 * 100) == 0:  # 100번마다 로그
                             logger.debug(f"다운로드 진행률: {progress:.1f}%")
         
-        # 다운로드된 파일 크기 확인
+        # 다운로드된 파일이 HTML인지 확인
         if local_file.exists() and local_file.stat().st_size > 0:
+            # 파일의 첫 부분을 읽어서 HTML인지 확인
+            with open(local_path, 'rb') as f:
+                first_bytes = f.read(100)
+                if first_bytes.startswith(b'<!DOCTYPE') or first_bytes.startswith(b'<html'):
+                    logger.error(f"❌ 다운로드된 파일이 HTML입니다 (바이러스 스캔 페이지로 다운로드됨): {local_path}")
+                    local_file.unlink()  # 잘못된 파일 삭제
+                    return False
+            
             logger.info(f"✅ Google Drive 파일 다운로드 완료: {local_path} ({local_file.stat().st_size} bytes)")
             return True
         else:
