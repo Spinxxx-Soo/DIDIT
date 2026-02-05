@@ -5,7 +5,7 @@
 import React, { useRef } from 'react';
 import WeeklySchedule from '@/components/features/user/WeeklySchedule';
 import RecentMinutes from '@/components/features/user/RecentMinutes';
-import StatCards from '@/components/features/user/StatCards';
+// import StatCards from '@/components/features/user/StatCards';
 import IssueStatusChart from '@/components/features/user/IssueStatusChart';
 import PriorityDistribution from '@/components/features/user/PriorityDistribution';
 import useProjectStore from '@/store/useProjectStore';
@@ -53,7 +53,7 @@ const DashboardCard = ({ children, className = '', hover = true }) => (
 
 // 플로팅 네비게이션 아이템
 const NAV_ITEMS = [
-  { id: 'stats', label: '통계', icon: LayoutGrid },
+  // { id: 'stats', label: '통계', icon: LayoutGrid },
   { id: 'issues', label: '이슈', icon: BarChart3 },
   { id: 'minutes', label: '회의', icon: FileText },
   { id: 'schedule', label: '일정', icon: Calendar },
@@ -64,7 +64,7 @@ const Lounge = () => {
   const isGithubConnected = !!currentProject?.repoFullName;
 
   const sectionRefs = {
-    stats: useRef(null),
+    // stats: useRef(null),
     issues: useRef(null),
     minutes: useRef(null),
     schedule: useRef(null),
@@ -132,7 +132,7 @@ const Lounge = () => {
 
       {/* 메인 콘텐츠 */}
       <div className="space-y-6">
-        {/* 1. 통계 카드 */}
+        {/* 1. 통계 카드 (삭제됨) */}
         {/* <div ref={sectionRefs.stats} className="animate-fade-up" style={{ animationDelay: '0ms' }}>
           <StatCards />
         </div> */}

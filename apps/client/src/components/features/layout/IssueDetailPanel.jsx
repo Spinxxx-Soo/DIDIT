@@ -524,19 +524,22 @@ const IssueDetailPanel = () => {
               <span className="text-xs text-blue-600 font-bold animate-pulse">
                 AI가 내용을 분석 중입니다...
               </span>
-            ) : analyzedData ? (
-              <span className="text-xs text-green-600 font-bold">
-                분석 완료! (추천: {analyzedData.priority})
-              </span>
             ) : (
-              <Button
-                size="xs"
-                variant="secondary"
-                onClick={handleAnalyze}
-                disabled={!formData.title || !formData.body}
-              >
-                {isCreateMode ? '지금 분석하기' : '다시 분석하기'}
-              </Button>
+              <div className="flex items-center gap-2">
+                {analyzedData && (
+                  <span className="text-xs text-green-600 font-bold">
+                    분석 완료! (추천: {analyzedData.priority})
+                  </span>
+                )}
+                <Button
+                  size="xs"
+                  variant="secondary"
+                  onClick={handleAnalyze}
+                  disabled={!formData.title || !formData.body}
+                >
+                  {isCreateMode ? (analyzedData ? '다시 분석하기' : '지금 분석하기') : '다시 분석하기'}
+                </Button>
+              </div>
             )}
           </div>
           <p className="text-[11px] text-blue-600/80 leading-relaxed">
