@@ -85,6 +85,12 @@ public class IssueServiceImpl implements IssueService {
     }
 
     @Override
+    public Result<IssueEntity> FindById(long issueId) {
+        var findResult = issueRepository.findById(issueId);
+        return findResult.map(Result::ok).orElseGet(() -> Result.fail(new NotFoundError("issueId", issueId)));
+    }
+
+    @Override
     public Result<AiResponse> AnalyzeIssue(long projectId, long userId,
                                            String title, IssueStatus status,
                                            String body, List<Long> assigneeIds){
@@ -182,6 +188,103 @@ public class IssueServiceImpl implements IssueService {
             return Result.ok(entity.getId());
         } catch (Exception e) {
             return Result.fail(new ServerError("Internal", e.getMessage()));
+        }
+    }
+
+    @Override
+    @Transactional
+    public Result<Void> updateIssue(long projectId, long userId, long issueId, String title, String body, List<Long> assigneeIds) {
+        try {
+            var issue = issueRepository.findById(issueId);
+            if(issue.isEmpty()){
+                return Result.fail(new NotFoundError("issueId", issueId));
+            }
+            if (!issue.get().getProject().getId().equals(projectId)){
+                return Result.fail(new NotFoundError("projectId", projectId));
+            }
+            var entity = issue.get();
+            if (entity.getAuthor().getId() != userId) {
+                return Result.fail(new ForbiddenError("이슈 수정 권한이 없습니다."));
+            }
+            if (entity.getGithubIssueId() != null) {
+                var auth = userGithubAuthRepository.findById(userId).orElse(null);
+                if (auth == null) {
+                    return Result.fail(new ForbiddenError("깃허브 인증 정보가 없습니다."));
+                }
+
+                List<String> assigneeLogins = new ArrayList<>();
+                if (assigneeIds != null) {
+                    assigneeLogins = userRepository.findAllById(assigneeIds).stream()
+                            .map(UserEntity::getGithubLogin)
+                            .filter(login -> login != null && !login.isEmpty())
+                            .toList();
+                }
+
+                var gitResult = githubService.updateIssue(auth.getAccessToken(),
+                        entity.getProject().getRepoFullName(),
+                        entity.getIssueNo(), title, body, assigneeLogins);
+                if (gitResult.isFailure()) return gitResult;
+            }
+
+            entity.setTitle(title);
+            entity.setBody(body);
+
+            entity.getAssignees().clear();
+            if (assigneeIds != null) {
+                for (Long id : assigneeIds) {
+                    userRepository.findById(id).ifPresent(user -> {
+                        entity.getAssignees().add(IssueAssigneeEntity.builder()
+                                .issue(entity)
+                                .user(user)
+                                .build());
+                    });
+                }
+            }
+
+            return Result.ok();
+        } catch (Exception e) {
+            return Result.fail(new ServerError("UpdateIssue", issueId));
+        }
+    }
+
+    @Override
+    @Transactional
+    public Result<Void> deleteIssue(long projectId, long userId, long issueId) {
+        try {
+            var issue = issueRepository.findById(issueId);
+            if(issue.isEmpty()){
+                return Result.fail(new NotFoundError("issueId", issueId));
+            }
+            if (!issue.get().getProject().getId().equals(projectId)){
+                return Result.fail(new NotFoundError("projectId", projectId));
+            }
+            var entity = issue.get();
+
+            if (entity.getAuthor().getId() != userId) {
+                return Result.fail(new ForbiddenError("이슈 삭제 권한이 없습니다."));
+            }
+
+            if (entity.getGithubIssueId() != null) {
+                var auth = userGithubAuthRepository.findById(userId).orElse(null);
+                if (auth == null) {
+                    return Result.fail(new ForbiddenError("깃허브 인증 정보가 필요합니다."));
+                }
+
+                var gitResult = githubService.closeIssue(
+                        auth.getAccessToken(),
+                        entity.getProject().getRepoFullName(),
+                        entity.getIssueNo()
+                );
+
+                if (gitResult.isFailure()) {
+                    return Result.fail(gitResult.getSingleErrorOrThrow());
+                }
+            }
+
+            issueRepository.delete(entity);
+            return Result.ok();
+        } catch (Exception e) {
+            return Result.fail(new ServerError("DeleteIssue", issueId));
         }
     }
 }

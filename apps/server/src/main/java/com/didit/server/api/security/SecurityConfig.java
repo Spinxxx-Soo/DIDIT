@@ -33,7 +33,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html", "/swagger-ui/**",
                                 "/v3/api-docs/swagger-config",
                                 "/api/v1/auth/login", "/api/v1/auth/logout",
-                                "/login/**", "/oauth2/**", "/error"
+                                "/api/v1/auth/me",
+                                "/login/**", "/oauth2/**", "/error",
+                                "/api/v1/webhooks/openvidu"
                                 ).permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
@@ -44,11 +46,20 @@ public class SecurityConfig {
                         .addLogoutHandler((request, response, authentication) -> {
                             HttpSession session = request.getSession();
                             session.invalidate();
+
+                            jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("JSESSIONID", null);
+                            cookie.setPath("/");
+                            cookie.setMaxAge(0);
+                            cookie.setSecure(true);
+                            cookie.setHttpOnly(true);
+                            response.addCookie(cookie);
                         })
                         .logoutSuccessHandler((request, response, authentication) ->
-                                response.sendRedirect("https://did-it.xyz")) //랜딩페이지로
-                        .deleteCookies("JSESSIONID")
-                        .logoutSuccessUrl("/")
+//                                response.sendRedirect("https://did-it.xyz")) //랜딩페이지로
+                                {
+                                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_OK);
+                                    response.getWriter().flush();
+                                })
                 );
         return http.build();
     }

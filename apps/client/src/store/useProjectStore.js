@@ -111,9 +111,9 @@ const useProjectStore = create((set, get) => ({
       const response = await projectApi.getRecentProjects();
       const recentProjects = Array.isArray(response.data) ? response.data : [];
 
-      // 4. 현재 속한 프로젝트만 필터링 (탈퇴한 프로젝트 제외)
+      // 4. 현재 속한 프로젝트만 필터링 (탈퇴/삭제된 프로젝트 제외)
       const filteredRecentProjects = recentProjects.filter(
-        recent => validProjectIds.has(recent.project.id)
+        recent => recent.project && validProjectIds.has(recent.project.id)
       );
 
       // 5. 각 프로젝트의 참여자 수 조회

@@ -1,6 +1,7 @@
 package com.didit.server.service.service;
 
 import com.didit.server.data.entity.UserEntity;
+import com.didit.server.service.result.MediaCreateConnectionResult;
 import com.didit.server.share.result.Result;
 
 import java.util.List;
@@ -32,7 +33,7 @@ public interface MeetingMediaService {
      * - <404>: 존재하지 않는 meetingId
      * - <404>: 존재하지 않는 userId
      */
-    Result<String> createConnection(Long meetingId, Long userId);
+    Result<MediaCreateConnectionResult> createConnection(Long meetingId, Long userId);
 
     /**
      * Action: meeting의 session Id 기반으로 session 삭제

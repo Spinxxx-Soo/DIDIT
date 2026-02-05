@@ -89,6 +89,8 @@ public class ProjectServiceImpl implements ProjectService {
         var addResult = AddProjectAdminUser(cmd.ownerUserId(), project.getId());
         if(addResult.isFailure()) return Result.fail(addResult.getErrors());
 
+        _ProjectRecentRepository.upsertRecentView(cmd.ownerUserId(), project.getId());
+
         return Result.ok();
     }
 
@@ -290,6 +292,9 @@ public class ProjectServiceImpl implements ProjectService {
         }
         if (!project.getOwner().getId().equals(userId)) {
             return Result.fail(new ForbiddenError("프로젝트 이름을 수정 할 권한이 부족합니다."));
+        }
+        if(_ProjectRepository.existsByRepoFullName(repoFullName)){
+            return Result.fail(new ConflictError("등록된 repo가 이미 존재합니다."));
         }
 
         project.setRepoId(repoId);

@@ -91,4 +91,47 @@ public interface IssueService {
      * - <500>: 시스템 내부 오류 발생 시 ServerError 반환
      */
     Result<List<IssueEntity>> GetAllIssues(long userId, long projectId);
+
+    /**
+     * Action: 기존 이슈의 정보를 수정하고 GitHub 저장소와 동기화함
+     * Input:
+     * - long projectId: 이슈가 속한 프로젝트 ID (검증용)
+     * - long userId: 수정을 요청한 사용자 ID (작성자 권한 확인용)
+     * - long issueId: 수정 대상 이슈 ID
+     * - String title: 수정할 제목
+     * - String body: 수정할 본문 내용
+     * - List<Long> assigneeIds: 수정할 담당자 ID 리스트
+     * Success:
+     * - ok(): 로컬 DB 수정 및 GitHub API(제목, 본문, 담당자) 업데이트 성공
+     * Auth/Permission:
+     * - 해당 이슈의 작성자(Author) 본인만 수정 가능 (403)
+     * - 요청된 projectId가 실제 이슈가 속한 프로젝트와 일치해야 함 (404)
+     * - GitHub 연동 이슈인 경우, 요청자의 유효한 GitHub AccessToken이 필수임
+     * Failures:
+     * - <404>: 이슈가 존재하지 않거나, 요청된 프로젝트에 속하지 않은 이슈인 경우 NotFoundError 반환
+     * - <403>: 작성자가 아니거나 유효한 GitHub 인증 정보가 없는 경우 ForbiddenError 반환
+     * - <500>: GitHub API 통신 장애 또는 시스템 내부 오류 발생 시 ServerError 반환
+     */
+    Result<Void> updateIssue(long projectId, long userId, long issueId, String title, String body, List<Long> assigneeIds);
+
+    /**
+     * Action: 로컬 DB에서 이슈를 삭제하고, GitHub 저장소의 해당 이슈를 'CLOSED' 상태로 변경함
+     * Input:
+     * - long projectId: 이슈가 속한 프로젝트 ID (검증용)
+     * - long userId: 삭제를 요청한 사용자 ID (작성자 권한 확인용)
+     * - long issueId: 삭제 대상 이슈 ID
+     * Success:
+     * - ok(): DB 데이터 삭제 및 GitHub 이슈 Close 처리 성공
+     * Auth/Permission:
+     * - 해당 이슈의 작성자(Author) 본인만 삭제 가능 (403)
+     * - 요청된 projectId가 실제 이슈가 속한 프로젝트와 일치해야 함 (404)
+     * - GitHub 연동 이슈인 경우, 요청자의 유효한 GitHub AccessToken이 필수임
+     * Failures:
+     * - <404>: 이슈가 존재하지 않거나, 요청된 프로젝트에 속하지 않은 이슈인 경우 NotFoundError 반환
+     * - <403>: 삭제 권한이 없거나 유효한 GitHub 인증 정보가 없는 경우 ForbiddenError 반환
+     * - <500>: GitHub API 통신 장애 또는 시스템 내부 오류 발생 시 ServerError 반환
+     */
+    Result<Void> deleteIssue(long projectId, long userId, long issueId);
+
+    Result<IssueEntity> FindById(long issueId);
 }

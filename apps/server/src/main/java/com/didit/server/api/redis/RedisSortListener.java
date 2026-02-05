@@ -34,6 +34,7 @@ public class RedisSortListener {
     }
 
     public record AiSortResult (
+            Long userId,
             Long projectId,
             List<Long> issueIds
     ){}

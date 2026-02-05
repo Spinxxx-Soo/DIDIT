@@ -1,6 +1,7 @@
 package com.didit.server.service.service;
 
 import com.didit.server.data.entity.MeetingEntity;
+import com.didit.server.data.entity.MeetingRecordEntity;
 import com.didit.server.data.entity.enums.MeetingMode;
 import com.didit.server.data.entity.enums.MeetingStatus;
 import com.didit.server.service.command.BookMeetingCommand;
@@ -137,4 +138,7 @@ public interface MeetingService {
      * - <404>: 존재하지 않는 projectId
      */
     Result<List<MeetingEntity>> GetMeetingListByDate(long projectId, LocalDateTime start, LocalDateTime end);
+
+    Result<MeetingRecordEntity> FindMeetingRecordingById(long recordingId);
+    Result<MeetingEntity> findBySessionId(String SessionId);
 }

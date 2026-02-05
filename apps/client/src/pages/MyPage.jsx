@@ -42,6 +42,10 @@ export function MyPage() {
   }, [fetchProjects]);
 
   const handleProjectClick = (projectId) => {
+    if (!projectId) {
+      console.error('프로젝트 ID가 없습니다:', projectId);
+      return;
+    }
     navigate(`/workspace/${projectId}`);
   };
 
@@ -50,6 +54,7 @@ export function MyPage() {
     const result = await createProject(submitData);
     if (result.success) {
       setIsCreateModalOpen(false);
+      await fetchProjects();  // 최신 데이터 다시 조회
     }
   };
 

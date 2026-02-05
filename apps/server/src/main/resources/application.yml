@@ -52,6 +52,8 @@ spring:
 openvidu:
   url: ${OPENVIDU_URL}
   secret: ${OPENVIDU_SECRET}
+  webhook:
+    token: ${OPENVIDU_WEBHOOK_TOKEN:}
 
 springdoc:
   swagger-ui:

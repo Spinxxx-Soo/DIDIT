@@ -49,6 +49,7 @@ services:
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-defaultSecret}
       OPENVIDU_URL: ${OPENVIDU_URL:-default}
       OPENVIDU_SECRET: ${OPENVIDU_SECRET:-default}
+      OPENVIDU_WEBHOOK_TOKEN: ${OPENVIDU_WEBHOOK_TOKEN:-secret}
       REDIS_HOST: ${REDIS_HOST:-default}
       REDIS_PORT: ${REDIS_PORT:-default}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-default}
