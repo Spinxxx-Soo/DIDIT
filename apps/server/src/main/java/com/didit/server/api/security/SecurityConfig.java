@@ -33,6 +33,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html", "/swagger-ui/**",
                                 "/v3/api-docs/swagger-config",
                                 "/api/v1/auth/login", "/api/v1/auth/logout",
+                                "/api/v1/auth/me",
                                 "/login/**", "/oauth2/**", "/error",
                                 "/api/v1/webhooks/openvidu"
                                 ).permitAll()
