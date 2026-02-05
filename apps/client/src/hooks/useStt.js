@@ -10,12 +10,12 @@ const useStt = () => {
         setRecording,
         currentChannelId,
         recordId,
-        setRecordId
+        setRecordId,
+        isGenerating,
+        setGenerating,
     } = useMeetingStore();
 
     const [remainingTime, setRemainingTime] = useState(RECORDING_LIMIT_SECONDS);
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedSummary, setGeneratedSummary] = useState(null);
     const [error, setError] = useState(null);
 
     const timerRef = useRef(null);
@@ -55,31 +55,19 @@ const useStt = () => {
         }
     }, [currentChannelId, setRecording, setRecordId]);
 
-    // 녹화 종료 및 요약 생성 트리거
+    // 녹화 종료 (회의록 생성은 서버에서 비동기 처리 → SSE로 완료 수신)
     const stopRecording = useCallback(async () => {
         if (!currentChannelId || !recordId) return;
         try {
             await meetingApi.stopRecording(currentChannelId, recordId);
             setRecording(false);
             setRecordId(null);
-
-            // 요약 생성 시작
-            setIsGenerating(true);
-            try {
-                const response = await meetingApi.createSummary(currentChannelId);
-                setGeneratedSummary(response.data);
-            } catch (err) {
-                console.error('요약 생성 실패:', err);
-                setError('요약 생성에 실패했습니다.');
-            } finally {
-                setIsGenerating(false);
-            }
-
+            setGenerating(true);
         } catch (err) {
             console.error('녹화 종료 실패:', err);
             setError('녹화를 종료할 수 없습니다.');
         }
-    }, [currentChannelId, recordId, setRecording, setRecordId]);
+    }, [currentChannelId, recordId, setRecording, setRecordId, setGenerating]);
 
     // 시간 포맷팅 헬퍼
     const formatTime = (seconds) => {
@@ -95,8 +83,6 @@ const useStt = () => {
         startRecording,
         stopRecording,
         isGenerating,
-        generatedSummary,
-        setGeneratedSummary, // 모달 닫을 때 초기화용
         error
     };
 };

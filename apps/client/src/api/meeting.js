@@ -97,82 +97,32 @@ export const meetingApi = {
   stopRecording: (channelId, recordId) =>
     api.post(`/api/v1/channels/${channelId}/recording/stop/${recordId}`),
 
-  // 회의 요약 생성 요청 (Mock)
-  createSummary: (meetingId) => {
-    console.log(`[Mock] Creating summary for meeting ${meetingId}`);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          data: {
-            summaryId: `summary_${Date.now()}`,
-            title: '주간 업무 보고 및 이슈 공유',
-            date: new Date().toISOString(),
-            content: [
-              '백엔드 API 연동 일정 조율 필요',
-              '프론트엔드 UI 컴포넌트 라이브러리 선정 완료',
-              '다음 주 월요일 데모 시연 준비',
-            ],
-            actionItems: [
-              { id: 1, text: 'API 명세서 업데이트 (담당: 김철수)', checked: false },
-              { id: 2, text: '로그인 페이지 퍼블리싱 (담당: 이영희)', checked: true },
-            ],
-          },
-        });
-      }, 3000); // 3초 딜레이로 생성 시뮬레이션
-    });
-  },
+  // --- [회의 요약(회의록)] ---
 
-  // 프로젝트별 회의록 리스트 조회 (Mock)
-  getMeetingSummaries: (projectId) => {
-    return Promise.resolve({
-      data: [
-        {
-          id: 1,
-          title: '1주차 스프린트 계획 회의',
-          date: '2026-01-20T10:00:00',
-          summaryPreview: '스프린트 목표 설정 및 업무 분배...',
-        },
-        {
-          id: 2,
-          title: 'FE/BE 인터페이스 협의',
-          date: '2026-01-22T14:00:00',
-          summaryPreview: 'API 앤드포인트 명명 규칙 확정...',
-        },
-        {
-          id: 3,
-          title: '중간 점검 회의',
-          date: '2026-01-25T11:00:00',
-          summaryPreview: '현재 진행 상황 공유 및 블로커 해결...',
-        },
-      ],
-    });
-  },
+  /**
+   * 프로젝트 회의록 목록 조회
+   * @param {number} projectId
+   * @returns {Promise<MeetingSummaryResponse[]>}
+   */
+  getMeetingSummaries: (projectId) =>
+    api.get(`/api/v1/projects/${projectId}/summary`),
 
-  // 특정 회의록 상세 조회 (Mock)
-  getMeetingSummaryDetail: (summaryId) => {
-    return Promise.resolve({
-      data: {
-        id: summaryId,
-        title: '상세 회의록 예시',
-        date: new Date().toISOString(),
-        content: [
-          '주요 안건 논의 완료',
-          '다음 일정 확정',
-        ],
-        actionItems: [
-          { id: 1, text: '회의록 공유하기', checked: false },
-        ],
-      },
-    });
-  },
-  // 회의록 수정 (Mock)
-  updateMeetingSummary: (summaryId, data) => {
-    console.log(`[Mock] Updating summary ${summaryId}`, data);
-    return Promise.resolve({
-      data: {
-        id: summaryId,
-        ...data,
-      },
-    });
-  },
+  /**
+   * 회의록 수정 (프로젝트 멤버만)
+   * @param {number} projectId
+   * @param {number} summaryId
+   * @param {object} data - { title?, summary? }
+   * @returns {Promise}
+   */
+  updateMeetingSummary: (projectId, summaryId, data) =>
+    api.patch(`/api/v1/projects/${projectId}/summary/${summaryId}`, data),
+
+  /**
+   * 회의록 삭제 (프로젝트 관리자만)
+   * @param {number} projectId
+   * @param {number} summaryId
+   * @returns {Promise}
+   */
+  deleteMeetingSummary: (projectId, summaryId) =>
+    api.delete(`/api/v1/projects/${projectId}/summary/${summaryId}`),
 };
