@@ -496,4 +496,188 @@ class IssueServiceImplTest {
         assertThat(result.isFailure()).isTrue();
         assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ServerError.class);
     }
+
+    @Test
+    @DisplayName("이슈 수정 성공 - GitHub 동기화 및 DB 정보 업데이트 확인")
+    void updateIssue_Success() throws IOException {
+        // Given
+        long projectId = 1L;
+        long userId = 10L;
+        long issueId = 100L;
+        String newTitle = "수정된 제목";
+        String newBody = "수정된 내용";
+        List<Long> assigneeIds = List.of(20L);
+
+        UserEntity author = UserEntity.builder().id(userId).githubLogin("author").build();
+        ProjectEntity project = ProjectEntity.builder().id(projectId).repoFullName("org/repo").build();
+        IssueEntity entity = IssueEntity.builder()
+                .id(issueId)
+                .author(author)
+                .project(project)
+                .githubIssueId(555L)
+                .issueNo(1)
+                .build();
+
+        given(issueRepository.findById(issueId)).willReturn(Optional.of(entity));
+
+        // GitHub 인증 정보 모킹
+        UserGithubAuthEntity auth = UserGithubAuthEntity.builder().accessToken("token").build();
+        given(userGithubAuthRepository.findById(userId)).willReturn(Optional.of(auth));
+
+        // 담당자 조회 모킹
+        UserEntity assignee = UserEntity.builder().id(20L).githubLogin("assignee1").build();
+        given(userRepository.findAllById(assigneeIds)).willReturn(List.of(assignee));
+        given(userRepository.findById(20L)).willReturn(Optional.of(assignee));
+
+        // GitHub 서비스 성공 모킹
+        given(githubService.updateIssue(anyString(), anyString(), anyInt(), anyString(), anyString(), anyList()))
+                .willReturn(Result.ok());
+
+        // When
+        Result<Void> result = issueService.updateIssue(projectId, userId, issueId, newTitle, newBody, assigneeIds);
+
+        // Then
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(entity.getTitle()).isEqualTo(newTitle);
+        assertThat(entity.getBody()).isEqualTo(newBody);
+        verify(githubService).updateIssue(eq("token"), eq("org/repo"), eq(1), eq(newTitle), eq(newBody), anyList());
+    }
+
+    @Test
+    @DisplayName("이슈 수정 실패 - 요청된 projectId와 이슈의 실제 projectId가 다를 경우 NotFoundError 반환")
+    void updateIssue_Fail_ProjectMismatch() {
+        // Given
+        long projectId = 1L;
+        long mismatchProjectId = 2L;
+        long issueId = 100L;
+
+        ProjectEntity project = ProjectEntity.builder().id(projectId).build();
+        IssueEntity entity = IssueEntity.builder().id(issueId).project(project).build();
+
+        given(issueRepository.findById(issueId)).willReturn(Optional.of(entity));
+
+        // When
+        Result<Void> result = issueService.updateIssue(mismatchProjectId, 10L, issueId, "T", "B", null);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(NotFoundError.class);
+    }
+
+    @Test
+    @DisplayName("이슈 수정 실패 - GitHub API 호출 실패 시 Result 그대로 반환")
+    void updateIssue_Fail_GitHubError() {
+        // Given
+        long projectId = 1L;
+        long userId = 10L;
+        long issueId = 100L;
+        UserEntity author = UserEntity.builder().id(userId).build();
+        ProjectEntity project = ProjectEntity.builder().id(projectId).repoFullName("org/repo").build();
+
+        IssueEntity entity = IssueEntity.builder()
+                .id(issueId)
+                .author(author)
+                .project(project) // projectId 일치시킴
+                .githubIssueId(555L)
+                .issueNo(1)
+                .build();
+
+        given(issueRepository.findById(issueId)).willReturn(Optional.of(entity));
+        given(userGithubAuthRepository.findById(userId)).willReturn(Optional.of(UserGithubAuthEntity.builder().accessToken("t").build()));
+
+        lenient().when(githubService.updateIssue(any(), any(), anyInt(), any(), any(), any()))
+                .thenReturn(Result.fail(new ServerError("GitHubAPI", "Error")));
+
+        // When
+        Result<Void> result = issueService.updateIssue(projectId, userId, issueId, "T", "B", null);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+    }
+
+    @Test
+    @DisplayName("이슈 삭제 성공 - GitHub Close 및 DB 삭제 확인")
+    void deleteIssue_Success() {
+        // Given
+        long projectId = 1L;
+        long userId = 10L;
+        long issueId = 100L;
+
+        UserEntity author = UserEntity.builder().id(userId).build();
+        ProjectEntity project = ProjectEntity.builder().id(projectId).repoFullName("org/repo").build();
+        IssueEntity entity = IssueEntity.builder()
+                .id(issueId)
+                .author(author)
+                .project(project)
+                .githubIssueId(555L)
+                .issueNo(1)
+                .build();
+
+        given(issueRepository.findById(issueId)).willReturn(Optional.of(entity));
+        given(userGithubAuthRepository.findById(userId)).willReturn(Optional.of(UserGithubAuthEntity.builder().accessToken("t").build()));
+        given(githubService.closeIssue(anyString(), anyString(), anyInt())).willReturn(Result.ok());
+
+        // When
+        Result<Void> result = issueService.deleteIssue(projectId, userId, issueId);
+
+        // Then
+        assertThat(result.isSuccess()).isTrue();
+        verify(githubService).closeIssue(eq("t"), eq("org/repo"), eq(1));
+        verify(issueRepository).delete(entity);
+    }
+
+    @Test
+    @DisplayName("이슈 삭제 실패 - 작성자가 아닌 경우 ForbiddenError 반환")
+    void deleteIssue_Fail_NotAuthor() {
+        // Given
+        long userId = 10L;
+        long otherUserId = 99L;
+        IssueEntity entity = IssueEntity.builder()
+                .id(100L)
+                .author(UserEntity.builder().id(otherUserId).build())
+                .project(ProjectEntity.builder().id(1L).build())
+                .build();
+
+        given(issueRepository.findById(100L)).willReturn(Optional.of(entity));
+
+        // When
+        Result<Void> result = issueService.deleteIssue(1L, userId, 100L);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ForbiddenError.class);
+        verify(issueRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("이슈 삭제 실패 - GitHub Close 실패 시 DB 삭제하지 않음")
+    void deleteIssue_Fail_GitHubCloseError() {
+        // Given
+        long projectId = 1L;
+        long userId = 10L;
+        long issueId = 100L;
+        UserEntity author = UserEntity.builder().id(userId).build();
+        ProjectEntity project = ProjectEntity.builder().id(projectId).repoFullName("org/repo").build();
+
+        IssueEntity entity = IssueEntity.builder()
+                .id(issueId)
+                .author(author)
+                .project(project) // projectId 일치시킴
+                .githubIssueId(555L)
+                .issueNo(1)
+                .build();
+
+        given(issueRepository.findById(issueId)).willReturn(Optional.of(entity));
+        given(userGithubAuthRepository.findById(userId)).willReturn(Optional.of(UserGithubAuthEntity.builder().accessToken("t").build()));
+
+        lenient().when(githubService.closeIssue(any(), any(), anyInt()))
+                .thenReturn(Result.fail(new ServerError("GitHubAPI", "Fail")));
+
+        // When
+        Result<Void> result = issueService.deleteIssue(projectId, userId, issueId);
+
+        // Then
+        assertThat(result.isFailure()).isTrue();
+        verify(issueRepository, never()).delete(any());
+    }
 }

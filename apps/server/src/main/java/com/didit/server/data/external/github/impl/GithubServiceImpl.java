@@ -86,4 +86,44 @@ public class GithubServiceImpl implements GithubService {
             return Result.fail(new ServerError("Internal", e.getMessage()));
         }
     }
+
+    @Override
+    public Result<Void> updateIssue(String accessToken, String repoFullName, int issueNo,
+                                    String title, String body, List<String> assigneeLogins) {
+        try {
+            GitHub gitHub = new GitHubBuilder().withOAuthToken(accessToken).build();
+            GHRepository repository = gitHub.getRepository(repoFullName);
+            GHIssue issue = repository.getIssue(issueNo);
+
+            if (assigneeLogins != null) {
+                List<GHUser> ghUsers = new ArrayList<>();
+                for (String login : assigneeLogins) {
+                    ghUsers.add(gitHub.getUser(login));
+                }
+                issue.setAssignees(ghUsers);
+            }
+
+            issue.setTitle(title);
+            issue.setBody(body);
+
+            return Result.ok();
+        } catch (IOException e) {
+            return Result.fail(new ServerError("GitHubAPI", "이슈 수정 중 오류가 발생했습니다."));
+        }
+    }
+
+    @Override
+    public Result<Void> closeIssue(String accessToken, String repoFullName, int issueNo) {
+        try {
+            GitHub gitHub = new GitHubBuilder().withOAuthToken(accessToken).build();
+            GHRepository repository = gitHub.getRepository(repoFullName);
+            GHIssue issue = repository.getIssue(issueNo);
+
+            issue.close();
+
+            return Result.ok();
+        } catch (IOException e) {
+            return Result.fail(new ServerError("GitHubAPI", "이슈 닫기 중 오류가 발생했습니다."));
+        }
+    }
 }

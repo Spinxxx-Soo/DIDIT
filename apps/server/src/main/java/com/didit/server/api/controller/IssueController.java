@@ -2,6 +2,7 @@ package com.didit.server.api.controller;
 
 import com.didit.server.api.request.AnalyzeIssueRequest;
 import com.didit.server.api.request.CreateIssueRequest;
+import com.didit.server.api.request.UpdateIssueRequest;
 import com.didit.server.api.response.IssueResponse;
 import com.didit.server.api.response.ProjectResponse;
 import com.didit.server.api.response.UserResponse;
@@ -85,5 +86,30 @@ public class IssueController {
         var issueEntities = findIssue.getOrThrow();
         var result = issueRepository.findById(issueEntities).stream().map(IssueResponse::fromEntity);
         return ResponseEntity.ok(result);
+    }
+
+    @PatchMapping("/{projectId}/issues/{issueId}")
+    public ResponseEntity<?> updateIssue(@PathVariable long projectId,
+                                         @PathVariable long issueId,
+                                         @AuthenticationPrincipal CustomOAuth2User user,
+                                         @RequestBody UpdateIssueRequest req) {
+        var result = issueService.updateIssue(projectId, user.getId(), issueId, req.title(), req.body(), req.assigneeIds());
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{projectId}/issues/{issueId}")
+    public ResponseEntity<?> deleteIssue(@PathVariable long projectId,
+                                         @PathVariable long issueId,
+                                         @AuthenticationPrincipal CustomOAuth2User user) {
+        var result = issueService.deleteIssue(projectId, user.getId(), issueId);
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        return ResponseEntity.ok().build();
     }
 }
