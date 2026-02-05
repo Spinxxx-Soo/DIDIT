@@ -30,8 +30,7 @@ class MeetingSummaryService:
     def process_meeting_summary_model(self, meeting_file: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         if not meeting_file:
             return None
-
-        # TODO 백엔드 형식 통일시켜야함
+            
         summary_id = meeting_file.get("summaryId")
         file_path = meeting_file.get("downloadUrl")
 
