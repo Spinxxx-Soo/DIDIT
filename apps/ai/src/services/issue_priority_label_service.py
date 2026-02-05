@@ -39,18 +39,21 @@ class IssuePriorityLabelService:
         user_id = task.get("userId")    # Java의 userId와 매칭
         title = task.get("title")
         body = task.get("body", "")
-        logger.info("=" * 80)
-        logger.info("📤 이슈 라벨링 모델 움직여요")
-        logger.info("=" * 80)
-        logger.info(f" 모델이 받는 이슈 등록 - , 이슈ID: {issue_id}, 유저ID {user_id}, 제목:{title}, 내용:{body}")
 
         if not issue_id:
             logger.error("잘못된 task 수신: issueId가 없습니다.")
             return None
 
-        # [2] 모델 추론 (우리가 만든 15개 예시 프롬프트 작동)
-        prediction = self.predict(title, body)
-        priority = prediction["priority"]
+        # [1.5] 텍스트 유효성 검증
+        from models.common.text_utils import validate_issue_text
+        is_valid, error_msg = validate_issue_text(title, body)
+        if not is_valid:
+            logger.warning(f"⚠️ 의미없는 텍스트 감지: {error_msg}")
+            priority = "LOW"
+            logger.info(f"기본 우선순위(LOW)로 설정: issueId={issue_id}")
+        else:
+            prediction = self.predict(title, body)
+            priority = prediction["priority"]
 
         # 결과 데이터 구성
         result_data = {
@@ -75,7 +78,7 @@ class IssuePriorityLabelService:
             json.dumps(result_data)
         )
 
-        logger.info(f"✅ 처리 완료: 제목- {title} 아이디 {issue_id}-> {priority}")
+        logger.info(f"처리 완료: 제목- {title} 아이디 {issue_id}-> {priority}")
         return result_data
 
     def close(self):

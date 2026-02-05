@@ -72,8 +72,8 @@ class IssuePriorityReorderService:
             p = issue.get("priority")
             if not p:
                 p = PriorityLevel.MEDIUM
-                issue["priority"] = p  # 원본 딕셔너리에 priority 추가
-            # priority 값을 PriorityLevel enum으로 변환
+                issue["priority"] = p
+
             if isinstance(p, str):
                 p_upper = p.upper()
                 if p_upper == "HIGH":
@@ -84,7 +84,7 @@ class IssuePriorityReorderService:
                     p = PriorityLevel.LOW
                 else:
                     p = PriorityLevel.MEDIUM
-                issue["priority"] = p  # 변환된 값으로 업데이트
+                issue["priority"] = p
             groups[p].append(issue)
         return dict(groups)
 
@@ -109,6 +109,14 @@ class IssuePriorityReorderService:
         return merged
 
     def _score(self, subject: str, body: str = "") -> float:
+        # 텍스트 유효성 검증
+        from models.common.text_utils import validate_issue_text, is_meaningless_text
+        
+        # 의미없는 텍스트는 낮은 점수 반환 (재정렬 시 뒤로 밀림)
+        if is_meaningless_text(subject) or (body and is_meaningless_text(body)):
+            logger.debug(f"의미없는 텍스트 감지 - 제목: '{subject[:20]}...', 기본 점수 반환")
+            return 0.3
+        
         text = build_issue_text(subject, body)
         score = self.model.predict_score(text)
 
@@ -193,16 +201,14 @@ class IssuePriorityReorderService:
         # 결과를 Redis에 저장 (백업용)
         key = f"{settings.REDIS_RESULT_TOPIC_BATCH}"
         self.redis.set_result(key, result, expire=3600)
-        logger.info(f"✅ Redis에 저장 완료 (key: {key}, expire: 3600초)")
+        logger.info(f"Redis에 저장 완료 (key: {key}, expire: 3600초)")
         
-        # Redis Pub/Sub으로 발행 (백엔드가 구독 중)
-        # label_service와 동일한 방식으로 publish 사용
         pubsub_message = json.dumps(result, ensure_ascii=False)
         subscribers = self.redis.client.publish(
             settings.REDIS_RESULT_TOPIC_BATCH,
             pubsub_message
         )
-        logger.info(f"✅ Redis Pub/Sub 발행 완료 (channel: {settings.REDIS_RESULT_TOPIC_BATCH}, subscribers: {subscribers})")
+        logger.info(f"Redis Pub/Sub 발행 완료 (channel: {settings.REDIS_RESULT_TOPIC_BATCH}, subscribers: {subscribers})")
 
         return result
 
