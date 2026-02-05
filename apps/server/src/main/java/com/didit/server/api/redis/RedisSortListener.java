@@ -18,6 +18,7 @@ public class RedisSortListener {
     private final ObjectMapper objectMapper;
 
     public void onMessage(String message) {
+        log.info("AI로부터 수신한 정렬 데이터: {}", message);
         try {
             RedisSortListener.AiSortResult result = objectMapper.readValue(message, RedisSortListener.AiSortResult.class);
 
