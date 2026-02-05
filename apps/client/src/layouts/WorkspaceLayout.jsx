@@ -3,44 +3,19 @@
  * Clean panels, subtle borders, elegant spacing
  */
 import React from 'react';
-import { Outlet, useParams, useNavigate } from 'react-router-dom';
+import { Outlet, useParams } from 'react-router-dom';
 import GNB from '../components/features/layout/GNB';
 import ProjectSidebar from '../components/features/layout/ProjectSidebar';
 import ChannelSidebar from '../components/features/layout/ChannelSidebar';
 import RightSidebar from '../components/features/layout/RightSidebar';
 import useLoungeStore from '@/store/useLoungeStore';
 import useMeetingStore from '@/store/useMeetingStore';
-import useProjectStore from '@/store/useProjectStore';
 
 const WorkspaceLayout = () => {
   const { projectId, channelId } = useParams();
-  const navigate = useNavigate();
 
   const { activePanel, setActivePanel, closeSidebar, resetToIssueList } = useLoungeStore();
   const { isInMeeting, currentChannelMode } = useMeetingStore();
-  const { allProjects, fetchAllProjects } = useProjectStore();
-
-  // 프로젝트 접근 권한 체크
-  React.useEffect(() => {
-    const checkProjectAccess = async () => {
-      // allProjects가 없으면 먼저 로드
-      let projects = allProjects;
-      if (!projects || projects.length === 0) {
-        await fetchAllProjects();
-        projects = useProjectStore.getState().allProjects;
-      }
-
-      // 현재 프로젝트가 사용자가 속한 프로젝트 목록에 있는지 확인
-      const hasAccess = projects.some(p => p.id === Number(projectId));
-      if (!hasAccess) {
-        navigate('/mypage', { replace: true });
-      }
-    };
-
-    if (projectId) {
-      checkProjectAccess();
-    }
-  }, [projectId, navigate, allProjects, fetchAllProjects]);
 
   const handleChatClick = () => {
     setActivePanel(activePanel === 'chat' ? null : 'chat');

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Check, Pencil, Plus } from 'lucide-react';
 import { Modal } from '@/components/common/Modal';
 import { Button } from '@/components/common/Button';
@@ -19,7 +18,6 @@ import { getProjectColor, getProjectInitial } from '@/utils/projectUtils';
  * @param {Function} props.onClose - 닫기 핸들러
  */
 export function ProjectManageModal({ isOpen, onClose }) {
-  const navigate = useNavigate();
   const { user } = useAuthStore();
   const {
     allProjects,
@@ -149,8 +147,6 @@ export function ProjectManageModal({ isOpen, onClose }) {
     setIsLeaving(false);
     setLeaveTarget(null);
     setIsDeleteMode(false);
-    onClose();
-    navigate('/mypage');
   };
 
   // Transfer 확인 (팀장 위임 후 Leave)
@@ -162,8 +158,6 @@ export function ProjectManageModal({ isOpen, onClose }) {
     await leaveProject(transferTarget.id);
     setIsTransferring(false);
     setTransferTarget(null);
-    onClose();
-    navigate('/mypage');
   };
 
   // 프로젝트 생성 핸들러 추가
