@@ -22,6 +22,7 @@ public interface ChatService {
      * - (저장) chatMessageRepository.save 호출
      * Failures:
      * - <400>: content가 null이거나 비어있는 경우 BadRequestError 반환
+     * - <404>: NotFoundError("channelId", channelId)
      * - <403>: 해당 프로젝트/미팅의 멤버가 아닌 경우 ForbiddenError 반환
      */
     Result<Void> sendMessage(long channelId, long userId, String content);
@@ -41,6 +42,7 @@ public interface ChatService {
      * Failures:
      * - <404>: 존재하지 않는 프로젝트 ID인 경우 NotFoundError 반환
      * - <403>: 채널 멤버가 아닌 경우 ForbiddenError 반환
+     * - <404>: new NotFoundError("channelId", channelId));
      * - <500>: DB 조회 중 예외 발생 시 ServerError 반환
      */
     Result<List<ChatEntity>> getMessage(long channelId, long userId, Long lastId, Pageable pageable);

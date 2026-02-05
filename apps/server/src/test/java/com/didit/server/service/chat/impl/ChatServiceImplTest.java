@@ -1,45 +1,45 @@
 package com.didit.server.service.chat.impl;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.BDDMockito.*;
-
 import com.didit.server.data.entity.ChatEntity;
 import com.didit.server.data.entity.MeetingEntity;
 import com.didit.server.data.entity.ProjectEntity;
 import com.didit.server.data.entity.enums.ProjectUserStatus;
 import com.didit.server.data.repository.ChatMessageRepository;
 import com.didit.server.data.repository.MeetingRepository;
-import com.didit.server.data.repository.ProjectRepository;
 import com.didit.server.data.repository.ProjectUserRepository;
-import com.didit.server.service.chat.event.ChatMessageCreatedEvent;
-
-import java.util.List;
-import java.util.Optional;
-
-import com.didit.server.service.chat.event.ChatMessageDeletedEvent;
-import com.didit.server.service.chat.event.ChatMessageUpdatedEvent;
+import com.didit.server.share.event.ChatMessageCreatedEvent;
+import com.didit.server.share.event.ChatMessageDeletedEvent;
+import com.didit.server.share.event.ChatMessageUpdatedEvent;
 import com.didit.server.share.result.Result;
-import com.didit.server.share.result.impl.BadRequestError;
-import com.didit.server.share.result.impl.ForbiddenError;
-import com.didit.server.share.result.impl.NotFoundError;
-import com.didit.server.share.result.impl.ServerError;
+import com.didit.server.share.result.ResultError;
+import com.navercorp.fixturemonkey.FixtureMonkey;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
 
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 @ExtendWith(MockitoExtension.class)
+@DisplayName("ChatServiceImpl 유닛 테스트")
 class ChatServiceImplTest {
 
-    @InjectMocks
-    private ChatServiceImpl chatService;
+    private final FixtureMonkey fixture = FixtureMonkey.builder().defaultNotNull(true).build();
+
+    @Mock
+    private ApplicationEventPublisher publisher;
 
     @Mock
     private ProjectUserRepository projectUserRepository;
@@ -48,338 +48,660 @@ class ChatServiceImplTest {
     private ChatMessageRepository chatMessageRepository;
 
     @Mock
-    private ApplicationEventPublisher publisher;
-
-    @Mock
-    private ProjectRepository projectRepository;
-
-    @Mock
     private MeetingRepository meetingRepository;
 
+    @InjectMocks
+    private ChatServiceImpl sut;
+
+    // -------------------------
+    // sendMessage
+    // -------------------------
 
     @Test
-    @DisplayName("성공: 프로젝트 채널에서 메시지를 저장하고 이벤트를 발행한다.")
-    void sendMessage_Success_Project() {
+    void sendMessage_blankContent_returnsFailBadRequest() {
         // Given
-        long channelId = 1L;
-        long userId = 10L;
-        String content = "안녕하세요!";
-
-        given(meetingRepository.findById(channelId)).willReturn(Optional.empty()); // 미팅 아님
-        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
-
-        // When
-        Result<Void> result = chatService.sendMessage(channelId, userId, content);
-
-        // Then
-        assertThat(result.isSuccess()).isTrue();
-        then(chatMessageRepository).should(times(1)).save(any(ChatEntity.class));
-        then(publisher).should(times(1)).publishEvent(any(ChatMessageCreatedEvent.class));
-    }
-
-    @Test
-    @DisplayName("실패 <400>: 채팅 내용이 비어있으면 BadRequestError를 반환한다.")
-    void sendMessage_Fail_EmptyContent() {
-        // Given
-        long channelId = 1L;
-        long userId = 10L;
+        long channelId = 10L;
+        long userId = 20L;
         String content = "   ";
 
         // When
-        Result<Void> result = chatService.sendMessage(channelId, userId, content);
+        Result<Void> result = sut.sendMessage(channelId, userId, content);
 
         // Then
+        assertThat(result.isSuccess()).isFalse();
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(BadRequestError.class);
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(400);
+        assertThat(error.getMetadata()).containsEntry("field", "content");
+
+        verify(chatMessageRepository, never()).saveAndFlush(any(ChatEntity.class));
+        verify(publisher, never()).publishEvent(any());
     }
 
     @Test
-    @DisplayName("실패 <403>: 권한이 없으면 ForbiddenError를 반환한다.")
-    void sendMessage_Fail_Forbidden() {
+    void sendMessage_meetingNotFound_returnsFailNotFound() {
         // Given
-        long channelId = 1L;
-        long userId = 10L;
-        given(meetingRepository.findById(channelId)).willReturn(Optional.empty());
-        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(false);
+        long channelId = 10L;
+        long userId = 20L;
+        String content = "hello";
+
+        when(meetingRepository.findById(channelId)).thenReturn(Optional.empty());
 
         // When
-        Result<Void> result = chatService.sendMessage(channelId, userId, "내용");
+        Result<Void> result = sut.sendMessage(channelId, userId, content);
 
         // Then
+        assertThat(result.isSuccess()).isFalse();
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ForbiddenError.class);
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(404);
+        assertThat(error.getMetadata()).containsEntry("resource", "channelId");
+        assertThat(error.getMetadata()).containsEntry("key", channelId);
+
+        verify(chatMessageRepository, never()).saveAndFlush(any(ChatEntity.class));
+        verify(publisher, never()).publishEvent(any());
     }
 
     @Test
-    @DisplayName("성공: 프로젝트 채널 최초 조회 시 최신 메시지 목록을 반환한다.")
-    void getMessage_Success_FirstLoad() {
+    void sendMessage_notMember_returnsFailForbidden() {
         // Given
-        long channelId = 1L;
-        long userId = 10L;
+        long channelId = 10L;
+        long userId = 20L;
+        String content = "hello";
+
+        long projectId = 99L;
+        ProjectEntity project = fixture.giveMeBuilder(ProjectEntity.class)
+                .set("id", projectId)
+                .sample();
+        MeetingEntity meeting = fixture.giveMeBuilder(MeetingEntity.class)
+                .set("id", channelId)
+                .set("project", project)
+                .sample();
+
+        when(meetingRepository.findById(channelId)).thenReturn(Optional.of(meeting));
+        when(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE))
+                .thenReturn(false);
+
+        // When
+        Result<Void> result = sut.sendMessage(channelId, userId, content);
+
+        // Then
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(403);
+
+        verify(chatMessageRepository, never()).saveAndFlush(any(ChatEntity.class));
+        verify(publisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void sendMessage_validRequest_returnsOk() {
+        // Given
+        long channelId = 10L;
+        long userId = 20L;
+        String content = "hello";
+
+        long projectId = 99L;
+        ProjectEntity project = fixture.giveMeBuilder(ProjectEntity.class)
+                .set("id", projectId)
+                .sample();
+        MeetingEntity meeting = fixture.giveMeBuilder(MeetingEntity.class)
+                .set("id", channelId)
+                .set("project", project)
+                .sample();
+
+        when(meetingRepository.findById(channelId)).thenReturn(Optional.of(meeting));
+        when(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE))
+                .thenReturn(true);
+
+        // When
+        Result<Void> result = sut.sendMessage(channelId, userId, content);
+
+        // Then
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.isFailure()).isFalse();
+        assertThat(result.getErrors()).isNotNull().isEmpty();
+        assertThat(result.getValue()).isEmpty(); // Result<Void> ok() => value null
+
+        ArgumentCaptor<ChatEntity> chatCaptor = ArgumentCaptor.forClass(ChatEntity.class);
+        verify(chatMessageRepository).saveAndFlush(chatCaptor.capture());
+        ChatEntity saved = chatCaptor.getValue();
+        assertThat(saved).isNotNull();
+        assertThat(saved.getMeetingId()).isEqualTo(channelId);
+        assertThat(saved.getProjectId()).isEqualTo(projectId);
+        assertThat(saved.getUserId()).isEqualTo(userId);
+        assertThat(saved.getMessage()).isEqualTo(content);
+
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(publisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue()).isInstanceOf(ChatMessageCreatedEvent.class);
+    }
+
+    // -------------------------
+    // getMessage
+    // -------------------------
+
+    @Test
+    void getMessage_meetingNotFound_returnsFailNotFound() {
+        // Given
+        long channelId = 10L;
+        long userId = 20L;
         Long lastId = null;
         Pageable pageable = PageRequest.of(0, 20);
-        List<ChatEntity> chats = List.of(mock(ChatEntity.class), mock(ChatEntity.class));
-        Slice<ChatEntity> slice = new SliceImpl<>(chats);
 
-        // ID 해석 및 권한 체크 모킹
-        given(meetingRepository.findById(channelId)).willReturn(Optional.empty()); // 미팅 아님
-        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(true); // 멤버임
-        given(projectRepository.existsById(channelId)).willReturn(true); // 프로젝트 존재함
-
-        // 프로젝트 전용 쿼리 호출 모킹
-        given(chatMessageRepository.getProjectMessages(channelId, lastId, pageable)).willReturn(slice);
+        when(meetingRepository.findById(channelId)).thenReturn(Optional.empty());
 
         // When
-        Result<List<ChatEntity>> result = chatService.getMessage(channelId, userId, lastId, pageable);
+        Result<List<ChatEntity>> result = sut.getMessage(channelId, userId, lastId, pageable);
 
         // Then
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOrThrow()).hasSize(2);
-        then(chatMessageRepository).should(times(1)).getProjectMessages(channelId, lastId, pageable);
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(404);
+        assertThat(error.getMetadata()).containsEntry("resource", "channelId");
+        assertThat(error.getMetadata()).containsEntry("key", channelId);
+
+        verify(chatMessageRepository, never()).getMeetingMessages(anyLong(), any(), any(Pageable.class));
     }
 
     @Test
-    @DisplayName("성공: 미팅 채널 조회 시 미팅 전용 쿼리를 통해 메시지 목록을 반환한다.")
-    void getMessage_Success_Meeting() {
+    void getMessage_notMember_returnsFailForbidden() {
         // Given
-        long meetingId = 50L;
-        long projectId = 1L;
-        long userId = 10L;
-        Long lastId = 100L;
+        long channelId = 10L;
+        long userId = 20L;
+        Long lastId = 123L;
         Pageable pageable = PageRequest.of(0, 20);
 
-        // 미팅 정보 모킹
-        ProjectEntity project = mock(ProjectEntity.class);
-        given(project.getId()).willReturn(projectId);
-        MeetingEntity meeting = mock(MeetingEntity.class);
-        given(meeting.getProject()).willReturn(project);
+        long projectId = 99L;
+        ProjectEntity project = fixture.giveMeBuilder(ProjectEntity.class)
+                .set("id", projectId)
+                .sample();
+        MeetingEntity meeting = fixture.giveMeBuilder(MeetingEntity.class)
+                .set("id", channelId)
+                .set("project", project)
+                .sample();
 
-        given(meetingRepository.findById(meetingId)).willReturn(Optional.of(meeting));
-        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
-        given(projectRepository.existsById(projectId)).willReturn(true);
-        given(chatMessageRepository.getMeetingMessages(meetingId, lastId, pageable))
-                .willReturn(new SliceImpl<>(List.of(mock(ChatEntity.class))));
+        when(meetingRepository.findById(channelId)).thenReturn(Optional.of(meeting));
+        when(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE))
+                .thenReturn(false);
 
         // When
-        Result<List<ChatEntity>> result = chatService.getMessage(meetingId, userId, lastId, pageable);
+        Result<List<ChatEntity>> result = sut.getMessage(channelId, userId, lastId, pageable);
+
+        // Then
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(403);
+
+        verify(chatMessageRepository, never()).getMeetingMessages(anyLong(), any(), any(Pageable.class));
+    }
+
+    @Test
+    void getMessage_validRequest_returnsOkWithList() {
+        // Given
+        long channelId = 10L;
+        long userId = 20L;
+        Long lastId = null;
+        Pageable pageable = PageRequest.of(0, 20);
+
+        long projectId = 99L;
+        ProjectEntity project = fixture.giveMeBuilder(ProjectEntity.class)
+                .set("id", projectId)
+                .sample();
+        MeetingEntity meeting = fixture.giveMeBuilder(MeetingEntity.class)
+                .set("id", channelId)
+                .set("project", project)
+                .sample();
+
+        ChatEntity c1 = fixture.giveMeBuilder(ChatEntity.class)
+                .set("id", 1L)
+                .set("meetingId", channelId)
+                .set("projectId", projectId)
+                .set("userId", userId)
+                .set("message", "m1")
+                .sample();
+        ChatEntity c2 = fixture.giveMeBuilder(ChatEntity.class)
+                .set("id", 2L)
+                .set("meetingId", channelId)
+                .set("projectId", projectId)
+                .set("userId", userId)
+                .set("message", "m2")
+                .sample();
+
+        when(meetingRepository.findById(channelId)).thenReturn(Optional.of(meeting));
+        when(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE))
+                .thenReturn(true);
+
+        var slice = new SliceImpl<>(List.of(c1, c2), pageable, false);
+        when(chatMessageRepository.getMeetingMessages(channelId, lastId, pageable)).thenReturn(slice);
+
+        // When
+        Result<List<ChatEntity>> result = sut.getMessage(channelId, userId, lastId, pageable);
 
         // Then
         assertThat(result.isSuccess()).isTrue();
-        then(chatMessageRepository).should(times(1)).getMeetingMessages(meetingId, lastId, pageable);
+        assertThat(result.isFailure()).isFalse();
+        assertThat(result.getErrors()).isNotNull().isEmpty();
+        assertThat(result.getValue()).isPresent();
+
+        List<ChatEntity> list = result.getOrThrow();
+        assertThat(list).hasSize(2);
+        assertThat(list).extracting(ChatEntity::getId).containsExactlyInAnyOrder(1L, 2L);
     }
 
     @Test
-    @DisplayName("실패 <403>: 채널 멤버가 아닌 경우 ForbiddenError를 반환한다.")
-    void getMessage_Fail_Forbidden() {
+    void getMessage_repositoryThrows_returnsFailServerError() {
         // Given
-        long channelId = 1L;
-        long userId = 999L; // 권한 없는 유저
-        given(meetingRepository.findById(channelId)).willReturn(Optional.empty());
-        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(false);
+        long channelId = 10L;
+        long userId = 20L;
+        Long lastId = null;
+        Pageable pageable = PageRequest.of(0, 20);
+
+        long projectId = 99L;
+        ProjectEntity project = fixture.giveMeBuilder(ProjectEntity.class)
+                .set("id", projectId)
+                .sample();
+        MeetingEntity meeting = fixture.giveMeBuilder(MeetingEntity.class)
+                .set("id", channelId)
+                .set("project", project)
+                .sample();
+
+        when(meetingRepository.findById(channelId)).thenReturn(Optional.of(meeting));
+        when(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE))
+                .thenReturn(true);
+
+        when(chatMessageRepository.getMeetingMessages(channelId, lastId, pageable))
+                .thenThrow(new RuntimeException("db error"));
 
         // When
-        Result<List<ChatEntity>> result = chatService.getMessage(channelId, userId, null, PageRequest.of(0, 20));
+        Result<List<ChatEntity>> result = sut.getMessage(channelId, userId, lastId, pageable);
 
         // Then
+        assertThat(result.isSuccess()).isFalse();
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ForbiddenError.class);
-        then(chatMessageRepository).shouldHaveNoInteractions();
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(500);
+        assertThat(error.getMetadata()).containsEntry("resource", "ChatList");
+        assertThat(error.getMetadata()).containsEntry("key", channelId);
     }
 
+    // -------------------------
+    // updateMessage
+    // -------------------------
+
     @Test
-    @DisplayName("실패 <404>: 존재하지 않는 프로젝트 ID인 경우 NotFoundError를 반환한다.")
-    void getMessage_Fail_NotFound() {
+    void updateMessage_chatNotFound_returnsFailNotFound() {
         // Given
-        long channelId = 1L;
-        long userId = 10L;
-        given(meetingRepository.findById(channelId)).willReturn(Optional.empty());
-        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
-        given(projectRepository.existsById(channelId)).willReturn(false); // 프로젝트 없음
+        long userId = 20L;
+        long chatId = 10L;
+        String content = "new";
+
+        when(chatMessageRepository.findById(chatId)).thenReturn(Optional.empty());
 
         // When
-        Result<List<ChatEntity>> result = chatService.getMessage(channelId, userId, null, PageRequest.of(0, 20));
+        Result<Void> result = sut.updateMessage(userId, chatId, content);
 
         // Then
+        assertThat(result.isSuccess()).isFalse();
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(NotFoundError.class);
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(404);
+        assertThat(error.getMetadata()).containsEntry("resource", "chatId");
+        assertThat(error.getMetadata()).containsEntry("key", chatId);
+
+        verify(chatMessageRepository, never()).saveAndFlush(any(ChatEntity.class));
+        verify(publisher, never()).publishEvent(any());
     }
 
     @Test
-    @DisplayName("실패 <500>: DB 조회 중 예외가 발생하면 ServerError를 반환한다.")
-    void getMessage_Fail_ServerError() {
+    void updateMessage_notOwner_returnsFailForbidden() {
         // Given
-        long channelId = 1L;
-        long userId = 10L;
-        given(meetingRepository.findById(channelId)).willReturn(Optional.empty());
-        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
-        given(projectRepository.existsById(channelId)).willReturn(true);
+        long userId = 20L;
+        long chatId = 10L;
+        String content = "new";
 
-        // 의도적으로 예외 발생시키기
-        given(chatMessageRepository.getProjectMessages(anyLong(), any(), any()))
-                .willThrow(new RuntimeException("DB 연결 실패"));
+        ChatEntity chat = fixture.giveMeBuilder(ChatEntity.class)
+                .set("id", chatId)
+                .set("userId", 999L)
+                .set("message", "old")
+                .sample();
+
+        when(chatMessageRepository.findById(chatId)).thenReturn(Optional.of(chat));
 
         // When
-        Result<List<ChatEntity>> result = chatService.getMessage(channelId, userId, null, PageRequest.of(0, 20));
+        Result<Void> result = sut.updateMessage(userId, chatId, content);
 
         // Then
+        assertThat(result.isSuccess()).isFalse();
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ServerError.class); // 500 에러 객체인지 확인
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(403);
+
+        verify(chatMessageRepository, never()).saveAndFlush(any(ChatEntity.class));
+        verify(publisher, never()).publishEvent(any());
     }
 
     @Test
-    @DisplayName("성공: 작성자 본인이 유효한 내용을 입력하면 메시지를 수정하고 이벤트를 발행한다.")
-    void updateMessage_Success() {
+    void updateMessage_blankContent_returnsFailBadRequest() {
         // Given
-        long userId = 10L;
-        long chatId = 100L;
-        String newContent = "수정된 내용입니다.";
+        long userId = 20L;
+        long chatId = 10L;
+        String content = "  ";
 
-        ChatEntity chat = spy(ChatEntity.builder()
-                .projectId(1L)
-                .userId(userId)
-                .message("기존 내용")
-                .build());
+        ChatEntity chat = fixture.giveMeBuilder(ChatEntity.class)
+                .set("id", chatId)
+                .set("userId", userId)
+                .set("message", "old")
+                .sample();
 
-        given(chatMessageRepository.findById(chatId)).willReturn(Optional.of(chat));
+        when(chatMessageRepository.findById(chatId)).thenReturn(Optional.of(chat));
 
         // When
-        Result<Void> result = chatService.updateMessage(userId, chatId, newContent);
+        Result<Void> result = sut.updateMessage(userId, chatId, content);
+
+        // Then
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(400);
+        assertThat(error.getMetadata()).containsEntry("field", "content");
+
+        verify(chatMessageRepository, never()).saveAndFlush(any(ChatEntity.class));
+        verify(publisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void updateMessage_validRequest_returnsOk() {
+        // Given
+        long userId = 20L;
+        long chatId = 10L;
+        String content = "new message";
+
+        ChatEntity chat = fixture.giveMeBuilder(ChatEntity.class)
+                .set("id", chatId)
+                .set("userId", userId)
+                .set("meetingId", 777L)
+                .set("message", "old")
+                .sample();
+
+        when(chatMessageRepository.findById(chatId)).thenReturn(Optional.of(chat));
+
+        // When
+        Result<Void> result = sut.updateMessage(userId, chatId, content);
 
         // Then
         assertThat(result.isSuccess()).isTrue();
-        assertThat(chat.getMessage()).isEqualTo(newContent);
-        assertThat(chat.getEditedAt()).isNotNull();
-        then(publisher).should(times(1)).publishEvent(any(ChatMessageUpdatedEvent.class));
+        assertThat(result.isFailure()).isFalse();
+        assertThat(result.getErrors()).isNotNull().isEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ArgumentCaptor<ChatEntity> chatCaptor = ArgumentCaptor.forClass(ChatEntity.class);
+        verify(chatMessageRepository).saveAndFlush(chatCaptor.capture());
+        ChatEntity saved = chatCaptor.getValue();
+        assertThat(saved.getId()).isEqualTo(chatId);
+        assertThat(saved.getMessage()).isEqualTo(content);
+        assertThat(saved.getEditedAt()).isNotNull();
+
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(publisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue()).isInstanceOf(ChatMessageUpdatedEvent.class);
     }
 
     @Test
-    @DisplayName("실패 <404>: 존재하지 않는 chatId인 경우 NotFoundError를 반환한다.")
-    void updateMessage_Fail_NotFound() {
+    void updateMessage_saveThrows_returnsFailServerError() {
         // Given
-        long userId = 10L;
-        long chatId = 999L;
+        long userId = 20L;
+        long chatId = 10L;
+        String content = "new message";
 
-        given(chatMessageRepository.findById(chatId)).willReturn(Optional.empty());
+        ChatEntity chat = fixture.giveMeBuilder(ChatEntity.class)
+                .set("id", chatId)
+                .set("userId", userId)
+                .set("meetingId", 777L)
+                .set("message", "old")
+                .sample();
+
+        when(chatMessageRepository.findById(chatId)).thenReturn(Optional.of(chat));
+        doThrow(new RuntimeException("db error")).when(chatMessageRepository).saveAndFlush(any(ChatEntity.class));
 
         // When
-        Result<Void> result = chatService.updateMessage(userId, chatId, "내용");
+        Result<Void> result = sut.updateMessage(userId, chatId, content);
 
         // Then
+        assertThat(result.isSuccess()).isFalse();
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(NotFoundError.class);
-        then(publisher).shouldHaveNoInteractions();
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(500);
+        assertThat(error.getMetadata()).containsEntry("resource", "UpdateMessage");
+        assertThat(error.getMetadata()).containsEntry("key", chatId);
+
+        verify(publisher, never()).publishEvent(any());
     }
 
+    // -------------------------
+    // deleteMessage
+    // -------------------------
+
     @Test
-    @DisplayName("실패 <403>: 작성자가 아닌 유저가 수정을 시도하면 ForbiddenError를 반환한다.")
-    void updateMessage_Fail_Forbidden() {
+    void deleteMessage_chatNotFound_returnsFailNotFound() {
         // Given
-        long ownerId = 10L;
-        long requesterId = 20L; // 다른 유저
-        long chatId = 100L;
+        long chatId = 10L;
+        long userId = 20L;
 
-        ChatEntity chat = ChatEntity.builder()
-                .userId(ownerId)
-                .build();
-
-        given(chatMessageRepository.findById(chatId)).willReturn(Optional.of(chat));
+        when(chatMessageRepository.findById(chatId)).thenReturn(Optional.empty());
 
         // When
-        Result<Void> result = chatService.updateMessage(requesterId, chatId, "해킹 시도");
+        Result<Void> result = sut.deleteMessage(chatId, userId);
 
         // Then
+        assertThat(result.isSuccess()).isFalse();
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ForbiddenError.class);
-        assertThat(result.getSingleErrorOrThrow().getMessage()).contains("자신의 메시지만");
-        then(publisher).shouldHaveNoInteractions();
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(404);
+        assertThat(error.getMetadata()).containsEntry("resource", "chatId");
+        assertThat(error.getMetadata()).containsEntry("key", chatId);
+
+        verify(chatMessageRepository, never()).delete(any(ChatEntity.class));
+        verify(publisher, never()).publishEvent(any());
     }
 
     @Test
-    @DisplayName("실패 <400>: 수정할 내용이 비어있으면 BadRequestError를 반환한다.")
-    void updateMessage_Fail_BadRequest() {
+    void deleteMessage_notOwner_returnsFailForbidden() {
         // Given
-        long userId = 10L;
-        long chatId = 100L;
-        String emptyContent = "   ";
+        long chatId = 10L;
+        long userId = 20L;
 
-        ChatEntity chat = ChatEntity.builder()
-                .userId(userId)
-                .build();
-        given(chatMessageRepository.findById(chatId)).willReturn(Optional.of(chat));
+        ChatEntity chat = fixture.giveMeBuilder(ChatEntity.class)
+                .set("id", chatId)
+                .set("userId", 999L)
+                .set("meetingId", 777L)
+                .set("message", "m")
+                .sample();
+
+        when(chatMessageRepository.findById(chatId)).thenReturn(Optional.of(chat));
 
         // When
-        Result<Void> result = chatService.updateMessage(userId, chatId, emptyContent);
+        Result<Void> result = sut.deleteMessage(chatId, userId);
 
         // Then
+        assertThat(result.isSuccess()).isFalse();
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(BadRequestError.class);
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(403);
+
+        verify(chatMessageRepository, never()).delete(any(ChatEntity.class));
+        verify(publisher, never()).publishEvent(any());
     }
 
     @Test
-    @DisplayName("성공: 작성자 본인이 삭제를 요청하면 deletedAt을 업데이트하고 이벤트를 발행한다.")
-    void deleteMessage_Success() {
+    void deleteMessage_validRequest_returnsOk() {
         // Given
-        long userId = 10L;
-        long chatId = 100L;
+        long chatId = 10L;
+        long userId = 20L;
 
-        ChatEntity chat = spy(ChatEntity.builder()
-                .projectId(1L)
-                .userId(userId)
-                .message("삭제될 메시지")
-                .build());
+        ChatEntity chat = fixture.giveMeBuilder(ChatEntity.class)
+                .set("id", chatId)
+                .set("userId", userId)
+                .set("meetingId", 777L)
+                .set("message", "m")
+                .sample();
 
-        given(chatMessageRepository.findById(chatId)).willReturn(Optional.of(chat));
+        when(chatMessageRepository.findById(chatId)).thenReturn(Optional.of(chat));
 
         // When
-        Result<Void> result = chatService.deleteMessage(chatId, userId);
+        Result<Void> result = sut.deleteMessage(chatId, userId);
 
         // Then
         assertThat(result.isSuccess()).isTrue();
-        assertThat(chat.getDeletedAt()).isNotNull(); // Soft Delete 검증
-        then(publisher).should(times(1)).publishEvent(any(ChatMessageDeletedEvent.class));
+        assertThat(result.isFailure()).isFalse();
+        assertThat(result.getErrors()).isNotNull().isEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ArgumentCaptor<ChatEntity> chatCaptor = ArgumentCaptor.forClass(ChatEntity.class);
+        verify(chatMessageRepository).delete(chatCaptor.capture());
+        ChatEntity deleted = chatCaptor.getValue();
+        assertThat(deleted.getId()).isEqualTo(chatId);
+        assertThat(deleted.getDeletedAt()).isNotNull();
+
+        verify(chatMessageRepository).flush();
+
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(publisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue()).isInstanceOf(ChatMessageDeletedEvent.class);
     }
 
     @Test
-    @DisplayName("실패 <404>: 존재하지 않는 chatId인 경우 NotFoundError를 반환한다.")
-    void deleteMessage_Fail_NotFound() {
+    void deleteMessage_deleteThrows_returnsFailServerError() {
         // Given
-        long userId = 10L;
-        long chatId = 999L;
+        long chatId = 10L;
+        long userId = 20L;
 
-        given(chatMessageRepository.findById(chatId)).willReturn(Optional.empty());
+        ChatEntity chat = fixture.giveMeBuilder(ChatEntity.class)
+                .set("id", chatId)
+                .set("userId", userId)
+                .set("meetingId", 777L)
+                .set("message", "m")
+                .sample();
+
+        when(chatMessageRepository.findById(chatId)).thenReturn(Optional.of(chat));
+        doThrow(new RuntimeException("db error")).when(chatMessageRepository).delete(any(ChatEntity.class));
 
         // When
-        Result<Void> result = chatService.deleteMessage(chatId, userId);
+        Result<Void> result = sut.deleteMessage(chatId, userId);
 
         // Then
+        assertThat(result.isSuccess()).isFalse();
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(NotFoundError.class);
-        then(publisher).shouldHaveNoInteractions();
+        assertThat(result.getErrors()).isNotNull().isNotEmpty();
+        assertThat(result.getValue()).isEmpty();
+
+        ResultError error = result.getSingleErrorOrThrow();
+        assertThat(error.getCode()).isEqualTo(500);
+        assertThat(error.getMetadata()).containsEntry("resource", "DeleteMessage");
+        assertThat(error.getMetadata()).containsEntry("key", chatId);
+
+        verify(publisher, never()).publishEvent(any());
+    }
+
+    // -------------------------
+    // checkMembership / checkMembershipInProject
+    // -------------------------
+
+    @Test
+    void checkMembership_meetingExists_returnsRepositoryResult() {
+        // Given
+        long channelId = 10L;
+        long userId = 20L;
+
+        long projectId = 99L;
+        ProjectEntity project = fixture.giveMeBuilder(ProjectEntity.class)
+                .set("id", projectId)
+                .sample();
+        MeetingEntity meeting = fixture.giveMeBuilder(MeetingEntity.class)
+                .set("id", channelId)
+                .set("project", project)
+                .sample();
+
+        when(meetingRepository.findById(channelId)).thenReturn(Optional.of(meeting));
+        when(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE))
+                .thenReturn(true);
+
+        // When
+        boolean result = sut.checkMembership(channelId, userId);
+
+        // Then
+        assertThat(result).isTrue();
     }
 
     @Test
-    @DisplayName("실패 <403>: 작성자가 아닌 유저가 삭제를 시도하면 ForbiddenError를 반환한다.")
-    void deleteMessage_Fail_Forbidden() {
+    void checkMembership_meetingMissing_usesChannelIdAsProjectId_returnsRepositoryResult() {
         // Given
-        long ownerId = 10L;
-        long requesterId = 20L;
-        long chatId = 100L;
+        long channelId = 10L;
+        long userId = 20L;
 
-        ChatEntity chat = ChatEntity.builder()
-                .userId(ownerId)
-                .build();
-
-        given(chatMessageRepository.findById(chatId)).willReturn(Optional.of(chat));
+        when(meetingRepository.findById(channelId)).thenReturn(Optional.empty());
+        when(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE))
+                .thenReturn(false);
 
         // When
-        Result<Void> result = chatService.deleteMessage(chatId, requesterId);
+        boolean result = sut.checkMembership(channelId, userId);
 
         // Then
-        assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ForbiddenError.class);
-        assertThat(result.getSingleErrorOrThrow().getMessage()).contains("자신의 메시지만");
+        assertThat(result).isFalse();
+    }
 
-        assertThat(chat.getDeletedAt()).isNull();
-        then(publisher).shouldHaveNoInteractions();
+    @Test
+    void checkMembershipInProject_returnsRepositoryResult() {
+        // Given
+        long projectId = 99L;
+        long userId = 20L;
+
+        when(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE))
+                .thenReturn(true);
+
+        // When
+        boolean result = sut.checkMembershipInProject(projectId, userId);
+
+        // Then
+        assertThat(result).isTrue();
     }
 }
