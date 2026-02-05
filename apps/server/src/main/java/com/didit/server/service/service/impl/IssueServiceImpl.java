@@ -56,7 +56,8 @@ public class IssueServiceImpl implements IssueService {
             List<AiSortRequest.AiIssueInfo> issueInfos = list.stream().map(issue -> new AiSortRequest.AiIssueInfo(
                             issue.getId(),
                             issue.getTitle(),
-                            issue.getBody())).toList();
+                            issue.getBody(),
+                            issue.getPriority().name())).toList();
             AiSortRequest request = new AiSortRequest(userId, projectId, issueInfos);
             String jsonPayload = objectMapper.writeValueAsString(request);
             redisTemplate.opsForList().leftPush("queue:issue:priority:sort", jsonPayload);
@@ -82,7 +83,8 @@ public class IssueServiceImpl implements IssueService {
             List<AiSortRequest.AiIssueInfo> issueInfos = issueList.stream().map(issue -> new AiSortRequest.AiIssueInfo(
                     issue.getId(),
                     issue.getTitle(),
-                    issue.getBody())).toList();
+                    issue.getBody(),
+                    issue.getPriority().name())).toList();
             AiSortRequest request = new AiSortRequest(userId, projectId, issueInfos);
             String jsonPayload = objectMapper.writeValueAsString(request);
             log.info("AI Sort Request Payload: {}", jsonPayload);
