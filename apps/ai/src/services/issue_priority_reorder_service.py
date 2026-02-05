@@ -40,17 +40,35 @@ class IssuePriorityReorderService:
     def _group_by_priority(self, issues: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
         groups = defaultdict(list)
         for issue in issues:
+            # priority가 없으면 기본값 MEDIUM 사용
             p = issue.get("priority")
-            if p:
-                groups[p].append(issue)
+            if not p:
+                p = PriorityLevel.MEDIUM
+                issue["priority"] = p  # 원본 딕셔너리에 priority 추가
+            # priority 값을 PriorityLevel enum으로 변환
+            if isinstance(p, str):
+                p_upper = p.upper()
+                if p_upper == "HIGH":
+                    p = PriorityLevel.HIGH
+                elif p_upper == "MEDIUM" or p_upper == "MED":
+                    p = PriorityLevel.MEDIUM
+                elif p_upper == "LOW":
+                    p = PriorityLevel.LOW
+                else:
+                    p = PriorityLevel.MEDIUM
+                issue["priority"] = p  # 변환된 값으로 업데이트
+            groups[p].append(issue)
         return dict(groups)
 
     def _sort_group(self, issues: List[Dict[str, Any]], return_scores: bool) -> List[Dict[str, Any]]:
         scored = []
         for it in issues:
-            subject = it.get("subject")
+            subject = it.get("title")
             body = it.get("body")
             score = self._score(subject, body)
+
+            # 점수 로그 출력
+            logger.info(f"이슈 점수 계산 - 제목: '{subject}', 점수: {score:.4f}")
 
             out = dict(it)
             if return_scores:
@@ -58,6 +76,8 @@ class IssuePriorityReorderService:
             scored.append((score, out))
 
         scored.sort(key=lambda x: x[0], reverse=True)
+        titles_with_scores = [f"{s[1].get('title', 'N/A')}: {s[0]:.4f}" for s in scored]
+        logger.info(f"그룹 내 정렬 완료: {len(scored)}개 이슈 (점수 순: {titles_with_scores})")
         return [x[1] for x in scored]
 
     def _merge(self, groups: Dict[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
@@ -96,34 +116,37 @@ class IssuePriorityReorderService:
         # Redis에서 받은 데이터 추출
         user_id = task.get("userId")
         project_id = task.get("projectId")
-        issues = task.get("issuesInfos") or []
+        issues = task.get("issues")
         return_scores = bool(task.get("return_scores", False))
-        logger.info(f"재정렬 모델 redis : userID{user_id}, issuesInfos {issues}")
+        logger.info(f"재정렬 모델 redis : userID{user_id}, issues {issues}")
 
         if not user_id or not project_id:
             logger.error("invalid task (userId/projectId 없음): %s", task)
             return None
 
         if not issues:
-            logger.error("invalid task(no issues): %s", task)
+            logger.error("invalid task(no issues): %s", issues)
             return None
 
         # 이슈 재정렬
         reordered_issues = self.reorder(issues, return_scores)
+        
+        logger.info(f"재정렬 완료: 입력 {len(issues)}개, 출력 {len(reordered_issues)}개")
+        if len(reordered_issues) == 0:
+            logger.warning("재정렬 결과가 비어있습니다. 입력 데이터 확인 필요")
 
         # 반환 형식에 맞게 변환: {"issue_id": .., "title": .., "body": ..}
         formatted_issues = []
         for issue in reordered_issues:
             formatted_issue = {
-                "issue_id": issue.get("issueId"),
+                "id": issue.get("issueId"),
                 "title": issue.get("title"),
-                "body": issue.get("body") or ""
+                "body": issue.get("body"),
+                "priority": issue.get("priority")
             }
-            # priority가 있으면 포함
-            if "priority" in issue:
-                formatted_issue["priority"] = issue["priority"]
-            
             formatted_issues.append(formatted_issue)
+        
+        logger.info(f"포맷팅 완료: {len(formatted_issues)}개 이슈")
 
         # 최종 결과 형식
         result = {
