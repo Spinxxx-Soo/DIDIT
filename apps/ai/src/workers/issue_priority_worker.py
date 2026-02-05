@@ -60,6 +60,7 @@ class IssuePriorityWorker:
             작업이 처리되었으면 True, 없으면 False
         """
         try:
+            
             result = self.reorder_service.process_from_redis()
             if result:
                 logger.info(

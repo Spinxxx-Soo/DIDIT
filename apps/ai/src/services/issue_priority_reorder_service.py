@@ -96,8 +96,9 @@ class IssuePriorityReorderService:
         # Redis에서 받은 데이터 추출
         user_id = task.get("userId")
         project_id = task.get("projectId")
-        issues = task.get("issues") or []
+        issues = task.get("issuesInfos") or []
         return_scores = bool(task.get("return_scores", False))
+        logger.info(f"재정렬 모델 redis : userID{user_id}, issuesInfos {issues}")
 
         if not user_id or not project_id:
             logger.error("invalid task (userId/projectId 없음): %s", task)
@@ -114,8 +115,8 @@ class IssuePriorityReorderService:
         formatted_issues = []
         for issue in reordered_issues:
             formatted_issue = {
-                "issue_id": issue.get("issue_id") or issue.get("id"),
-                "title": issue.get("title") or issue.get("subject"),
+                "issue_id": issue.get("issueId"),
+                "title": issue.get("title"),
                 "body": issue.get("body") or ""
             }
             # priority가 있으면 포함
