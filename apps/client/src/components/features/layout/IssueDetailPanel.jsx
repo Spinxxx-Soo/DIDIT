@@ -521,7 +521,11 @@ const IssueDetailPanel = () => {
                 <Sparkles size={14} className="fill-blue-700" />
                 AI 우선순위 분석 (필수)
               </span>
-              {analyzedData ? (
+              {isAnalyzing ? (
+                <span className="text-xs text-blue-600 font-bold animate-pulse">
+                  AI가 내용을 분석 중입니다...
+                </span>
+              ) : analyzedData ? (
                 <span className="text-xs text-green-600 font-bold">
                   분석 완료! (추천: {analyzedData.priority})
                 </span>
@@ -530,9 +534,9 @@ const IssueDetailPanel = () => {
                   size="xs"
                   variant="secondary"
                   onClick={handleAnalyze}
-                  disabled={isAnalyzing || !formData.title || !formData.body}
+                  disabled={!formData.title || !formData.body}
                 >
-                  {isAnalyzing ? '분석 중...' : '지금 분석하기'}
+                  지금 분석하기
                 </Button>
               )}
             </div>
