@@ -36,6 +36,8 @@ const WorkspaceLayout = () => {
     }
   }, [channelId, activePanel, closeSidebar, isInMeeting, currentChannelMode]);
 
+  const isChannelView = !!channelId;
+
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-[var(--bg-app)]">
       <GNB
@@ -79,15 +81,13 @@ const WorkspaceLayout = () => {
 
         {/* 메인 콘텐츠 */}
         <main
-          className="
+          className={`
             flex-1 
-            overflow-y-auto 
             bg-[var(--bg-app)] 
-            p-8
-            scrollbar-thin
-          "
+            ${isChannelView ? 'overflow-hidden relative' : 'overflow-y-auto p-8 scrollbar-thin'}
+          `}
         >
-          <div className="max-w-[1400px] mx-auto">
+          <div className={isChannelView ? 'w-full h-full' : 'max-w-[1400px] mx-auto'}>
             <Outlet />
           </div>
         </main>

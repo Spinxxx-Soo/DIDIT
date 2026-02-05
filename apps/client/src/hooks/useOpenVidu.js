@@ -373,19 +373,25 @@ const useOpenVidu = () => {
       const currentMicState = useMeetingStore.getState().isMicOn;
       console.log(`[Mic Check] Initial Join - publishAudio: ${currentMicState}`);
 
-      const newPublisher = await OV.initPublisherAsync(undefined, {
-        audioSource: undefined,
-        videoSource: false,
-        publishAudio: currentMicState,
-        publishVideo: false,
-        resolution: '640x480',
-        frameRate: 30,
-        insertMode: 'APPEND',
-        mirror: false,
-      });
+      // Publisher 초기화 시도 (마이크 없어도 세션 참가 가능)
+      try {
+        const newPublisher = await OV.initPublisherAsync(undefined, {
+          audioSource: undefined,
+          videoSource: false,
+          publishAudio: currentMicState,
+          publishVideo: false,
+          resolution: '640x480',
+          frameRate: 30,
+          insertMode: 'APPEND',
+          mirror: false,
+        });
 
-      setPublisher(newPublisher);
-      await session.publish(newPublisher);
+        setPublisher(newPublisher);
+        await session.publish(newPublisher);
+      } catch (publisherError) {
+        console.warn('Publisher 초기화 실패 (마이크 없이 참가):', publisherError);
+        // Publisher 없이 세션에만 연결된 상태로 유지 - 다른 참가자 스트림은 수신 가능
+      }
 
       return { success: true };
     } catch (error) {

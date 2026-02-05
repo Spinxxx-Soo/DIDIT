@@ -96,13 +96,29 @@ const useProjectStore = create((set, get) => ({
     }
 
     try {
-      // 최근 조회 프로젝트 목록 가져오기
+      // 1. 현재 속한 프로젝트 목록 먼저 확보 (필터링용)
+      let currentAllProjects = get().allProjects;
+      if (!currentAllProjects || currentAllProjects.length === 0) {
+        const allProjectsRes = await projectApi.getProjects();
+        currentAllProjects = Array.isArray(allProjectsRes.data) ? allProjectsRes.data : [];
+        set({ allProjects: currentAllProjects });
+      }
+
+      // 2. 유효한 프로젝트 ID Set 생성
+      const validProjectIds = new Set(currentAllProjects.map(p => p.id));
+
+      // 3. 최근 조회 프로젝트 목록 가져오기
       const response = await projectApi.getRecentProjects();
       const recentProjects = Array.isArray(response.data) ? response.data : [];
 
-      // 각 프로젝트의 참여자 수 조회
+      // 4. 현재 속한 프로젝트만 필터링 (탈퇴한 프로젝트 제외)
+      const filteredRecentProjects = recentProjects.filter(
+        recent => validProjectIds.has(recent.project.id)
+      );
+
+      // 5. 각 프로젝트의 참여자 수 조회
       const projectsWithCounts = await Promise.all(
-        recentProjects.map(async (recent) => {
+        filteredRecentProjects.map(async (recent) => {
           try {
             const participantsRes = await projectApi.getParticipants(recent.project.id);
             const memberCount = Array.isArray(participantsRes.data) ? participantsRes.data.length : 0;
@@ -190,7 +206,7 @@ const useProjectStore = create((set, get) => ({
   // ------------------------------------------------------------------
   // [3] 프로젝트 생성
   // ------------------------------------------------------------------
-  createProject: async ({ name, imageFile, githubRepo }) => {
+  createProject: async ({ name }) => {
     set({ isLoading: true, error: null });
 
     if (IS_MOCK) {
@@ -199,8 +215,8 @@ const useProjectStore = create((set, get) => ({
       const newProject = {
         id: Date.now(),
         name,
-        thumbnailUrl: imageFile ? URL.createObjectURL(imageFile) : null,
-        repoFullName: githubRepo || null,
+        thumbnailUrl: null,
+        repoFullName: null,
         createdAt: new Date().toISOString(),
       };
 
@@ -214,13 +230,8 @@ const useProjectStore = create((set, get) => ({
     }
 
     try {
-      // Backend API expects: { projectName, githubUrl }
-      // Backend API expects a full URL due to @URL validation
-      const githubUrl = githubRepo ? `https://github.com/${githubRepo}` : null;
-
       const data = {
         projectName: name,
-        githubUrl: githubUrl || null,
       };
 
       const response = await projectApi.createProject(data);
@@ -265,7 +276,16 @@ const useProjectStore = create((set, get) => ({
   // ------------------------------------------------------------------
   // [5] GitHub 저장소 검증
   // ------------------------------------------------------------------
-  validateGithubRepo: async (repo) => {
+  validateGithubRepo: async (projectId, repo) => {
+    // projectId 유효성 검증
+    if (!projectId) {
+      console.error('validateGithubRepo: projectId가 없습니다');
+      return { success: false, error: '프로젝트 정보를 불러올 수 없습니다' };
+    }
+
+    // repo를 orgName/repoName으로 파싱
+    const [orgName, repoName] = repo.split('/');
+
     if (IS_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 400));
 
@@ -273,7 +293,7 @@ const useProjectStore = create((set, get) => ({
       const validRepos = ['ssafy/algo-study', 'ssafy/common-project', 'organization/repo'];
 
       if (validRepos.some(r => repo.toLowerCase().includes(r.split('/')[0]))) {
-        return { success: true };
+        return { success: true, data: { repoId: Date.now() } };
       }
 
       if (repo.startsWith('private/')) {
@@ -283,19 +303,16 @@ const useProjectStore = create((set, get) => ({
       return { success: false, error: '유효한 레퍼지토리가 아닙니다' };
     }
 
-    // [Modified] 백엔드 엔드포인트(api/v1/github/validate) 부재로 인해 검증 로직 임시 비활성화
-    // 무조건 성공 처리
-    return { success: true };
-
-    /*
     try {
-      const response = await projectApi.validateGithubRepo(repo);
+      const response = await projectApi.validateGithubRepo(projectId, orgName, repoName);
+
+      // 백엔드 응답에서 repoId 포함
       return { success: true, data: response.data };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || '저장소 검증에 실패했습니다';
+      console.error('저장소 검증 실패:', error);
+      const errorMessage = error.response?.data?.message || '유효하지 않은 저장소입니다';
       return { success: false, error: errorMessage };
     }
-    */
   },
 
   // ------------------------------------------------------------------
@@ -332,7 +349,7 @@ const useProjectStore = create((set, get) => ({
   // ------------------------------------------------------------------
   // [7] 프로젝트 GitHub 저장소 업데이트
   // ------------------------------------------------------------------
-  updateProjectRepo: async (projectId, repoFullName) => {
+  updateProjectRepo: async (projectId, repoId, repoFullName) => {
     set({ isLoading: true, error: null });
 
     if (IS_MOCK) {
@@ -355,7 +372,7 @@ const useProjectStore = create((set, get) => ({
     }
 
     try {
-      await projectApi.updateProjectRepo(projectId, repoFullName);
+      await projectApi.updateProjectRepo(projectId, repoId, repoFullName);
 
       set(state => ({
         allProjects: state.allProjects.map(p =>

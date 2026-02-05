@@ -12,7 +12,10 @@ const normalizeIssue = (issue) => ({
   body: issue.body || '',
   status: issue.status?.toLowerCase() || 'open',
   priority: issue.priority?.toLowerCase() || 'medium',
-  assignees: issue.assignees?.map((a) => a.name || a.nickname) || [],
+  assignees: issue.assignees?.map((a) => {
+    if (typeof a === 'string') return a;
+    return a.name || a.nickname;
+  }).filter(Boolean) || [],
   author: issue.author?.name || issue.author?.nickname || '',
   createdAt: issue.createdAt,
   updatedAt: issue.updatedAt,
@@ -169,40 +172,113 @@ const useLoungeStore = create((set, get) => ({
     }
   },
 
-  addIssue: async (projectId, issueData) => {
+  // 1단계: 이슈 분석 (저장하지 않음)
+  analyzeIssueContent: async (projectId, issueData) => {
+    set({ isLoading: true, error: null });
+
+    // API expects: { title, body, status, assigneeIds }
+    // User Input: { title, body, issueStatus (or status), assigneeIds }
+    const status = (issueData.status || issueData.issueStatus || 'OPEN').toUpperCase();
+
     if (IS_MOCK) {
-      await new Promise((r) => setTimeout(r, 500));
-      const newIssue = {
-        id: Date.now(),
-        issueNo: Date.now() % 1000,
-        ...issueData,
-        assignees: issueData.assignees || [],
-        status: issueData.status || 'open',
-        priority: issueData.priority || 'medium',
-        author: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      await new Promise((r) => setTimeout(r, 1000));
+      // Mock 분석 결과
+      return {
+        issueId: Date.now(),
+        priority: 'HIGH', // Mock Result
+        status: status
       };
-      set((state) => ({
-        issues: [newIssue, ...state.issues],
-        activePanel: 'issue',
-        selectedIssueId: null,
-      }));
-      return newIssue;
     }
 
     try {
-      // TODO: API 완성 후 features.js에서 createIssue 주석 해제 (Deprecated -> loungeApi 사용)
-      const response = await loungeApi.createIssue(projectId, issueData);
-      const normalizedIssue = normalizeIssue(response.data);
+      const analyzePayload = {
+        title: issueData.title,
+        body: issueData.body,
+        status: status, // Matches AnalyzeIssueRequest.java
+        assigneeIds: issueData.assigneeIds
+      };
+
+      const analyzeRes = await loungeApi.analyzeIssue(projectId, analyzePayload);
+      const analyzedIssue = analyzeRes.data;
+
+      if (!analyzedIssue || !analyzedIssue.issueId) {
+        throw new Error('이슈 분석 단계에서 ID를 반환하지 않았습니다.');
+      }
+
+      set({ isLoading: false });
+      return analyzedIssue; // { issueId, priority, status ... }
+    } catch (error) {
+      console.error('이슈 분석 실패:', error);
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  // 2단계: 이슈 실제 등록
+  registerIssue: async (projectId, issueData) => {
+    set({ isLoading: true, error: null });
+
+    if (IS_MOCK) {
+      await new Promise((r) => setTimeout(r, 500));
+
+      // Mock: Use provided issueId or fallback
+      const finalIssueId = issueData.issueId || Date.now();
+
+      const newIssue = {
+        id: finalIssueId,
+        issueNo: finalIssueId % 1000,
+        title: issueData.title,
+        body: issueData.body,
+        status: (issueData.issueStatus || 'OPEN').toUpperCase(),
+        priority: (issueData.issuePriority || 'MEDIUM').toUpperCase(),
+        assignees: issueData.assignees || [], // Mock expects names/strings for UI display immediately
+        author: { name: 'CurrentUser' },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Mock Normalization (to match UI structure)
+      const normalizedMock = normalizeIssue(newIssue);
+
+      set((state) => ({
+        issues: [normalizedMock, ...state.issues],
+        activePanel: 'issue',
+        selectedIssueId: null,
+        isLoading: false,
+      }));
+      return normalizedMock;
+    }
+
+    try {
+      // API expects: { orgName, repoName, issueId, issueStatus, issuePriority, title, body, assigneeIds }
+      // Ensure Enums are UpperCase
+      const createPayload = {
+        orgName: issueData.orgName,
+        repoName: issueData.repoName,
+        issueId: issueData.issueId,
+        issueStatus: (issueData.issueStatus || 'OPEN').toUpperCase(),
+        issuePriority: (issueData.issuePriority || 'MEDIUM').toUpperCase(),
+        title: issueData.title,
+        body: issueData.body,
+        assigneeIds: issueData.assigneeIds
+      };
+
+      const response = await loungeApi.createIssue(projectId, createPayload);
+
+      // 백엔드 Stream/List 응답 처리
+      const resultData = Array.isArray(response.data) ? response.data[0] : response.data;
+      const normalizedIssue = normalizeIssue(resultData);
+
       set((state) => ({
         issues: [normalizedIssue, ...state.issues],
         activePanel: 'issue',
         selectedIssueId: null,
+        isLoading: false,
       }));
       return normalizedIssue;
     } catch (error) {
       console.error('이슈 생성 실패:', error);
+      set({ error: error.message, isLoading: false });
       throw error;
     }
   },

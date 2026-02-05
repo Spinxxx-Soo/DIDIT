@@ -9,6 +9,7 @@ import com.didit.server.data.entity.UserEntity;
 import com.didit.server.data.entity.UserGithubAuthEntity;
 import com.didit.server.data.entity.enums.IssuePriority;
 import com.didit.server.data.entity.enums.IssueStatus;
+import com.didit.server.data.entity.enums.ProjectUserStatus;
 import com.didit.server.data.external.github.GithubService;
 import com.didit.server.data.repository.*;
 import com.didit.server.share.result.Result;
@@ -415,7 +416,7 @@ class IssueServiceImplTest {
         long projectId = 100L;
 
         // 멤버십 확인 통과
-        given(projectUserRepository.existsByProject_IdAndUser_Id(projectId, userId)).willReturn(true);
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
         // 유저 존재 확인 통과
         given(userRepository.findById(userId)).willReturn(Optional.of(UserEntity.builder().id(userId).build()));
 
@@ -442,7 +443,7 @@ class IssueServiceImplTest {
         long projectId = 100L;
 
         // 멤버십 확인 실패
-        given(projectUserRepository.existsByProject_IdAndUser_Id(projectId, userId)).willReturn(false);
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE)).willReturn(false);
 
         // When
         Result<List<IssueEntity>> result = issueService.GetAllIssues(userId, projectId);
@@ -463,7 +464,7 @@ class IssueServiceImplTest {
         long userId = 99L;
         long projectId = 100L;
 
-        given(projectUserRepository.existsByProject_IdAndUser_Id(projectId, userId)).willReturn(true);
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
         given(userRepository.findById(userId)).willReturn(Optional.empty());
 
         // When
@@ -482,7 +483,7 @@ class IssueServiceImplTest {
         long userId = 1L;
         long projectId = 100L;
 
-        given(projectUserRepository.existsByProject_IdAndUser_Id(projectId, userId)).willReturn(true);
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
         given(userRepository.findById(userId)).willReturn(Optional.of(UserEntity.builder().build()));
 
         // DB 에러 시뮬레이션

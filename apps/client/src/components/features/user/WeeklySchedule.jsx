@@ -8,12 +8,14 @@ import { Input } from '@/components/common/Input/Input';
 import { toast } from '@/store/useToastStore';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { meetingApi } from '@/api/meeting';
+import { ScheduleDetailModal } from './ScheduleDetailModal';
 
 const WeeklySchedule = () => {
   const { projectId } = useParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [schedules, setSchedules] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [newSchedule, setNewSchedule] = useState({
     title: '',
     startDate: '',
@@ -43,9 +45,12 @@ const WeeklySchedule = () => {
       const mappedSchedules = (response.data || []).map(item => ({
         id: item.id || Math.random(),
         title: item.title,
-        startDate: item.startedAt ? item.startedAt.split('T')[0] : '', // start -> startedAt
-        endDate: item.endedAt ? item.endedAt.split('T')[0] : '',       // end -> endedAt
-        type: item.mode === 'CHAT' ? 'meeting' : 'planning', // 명세에 type 없으므로 임의 매핑 (필요 시 수정)
+        startDate: item.startedAt ? item.startedAt.split('T')[0] : '',
+        endDate: item.endedAt ? item.endedAt.split('T')[0] : '',
+        // [추가됨] 중복 검사를 위해 원본 시간 데이터(ISO String)도 저장
+        rawStartedAt: item.startedAt,
+        rawEndedAt: item.endedAt,
+        type: item.mode === 'CHAT' ? 'meeting' : 'planning',
       }));
 
       setSchedules(mappedSchedules);
@@ -61,9 +66,9 @@ const WeeklySchedule = () => {
   const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
 
-  const getScheduleForDay = (date) => {
+  const getSchedulesForDay = (date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return schedules.find(s => s.startDate <= dateStr && dateStr <= s.endDate);
+    return schedules.filter(s => s.startDate <= dateStr && dateStr <= s.endDate);
   };
 
   const handleOpenModal = (dateStr = '') => {
@@ -116,6 +121,23 @@ const WeeklySchedule = () => {
 
     if (startDateTime >= endDateTime) {
       toast.warning('종료 시간은 시작 시간보다 이후여야 합니다.');
+      return;
+    }
+
+    // [추가됨] 일정 중복 검사
+    const hasOverlap = schedules.some(existing => {
+      // 본인이 아닌 다른 일정들과 비교 (수정 기능이 추가될 경우를 대비해 id 비교 추가 가능하나 현재는 생성만 있으므로 생략)
+      if (!existing.rawStartedAt || !existing.rawEndedAt) return false;
+
+      const existingStart = new Date(existing.rawStartedAt);
+      const existingEnd = new Date(existing.rawEndedAt);
+
+      // 교차 여부 확인: (일정A 시작 < 일정B 종료) && (일정A 종료 > 일정B 시작)
+      return startDateTime < existingEnd && endDateTime > existingStart;
+    });
+
+    if (hasOverlap) {
+      toast.warning('해당 시간에 이미 다른 일정이 존재합니다.');
       return;
     }
 
@@ -185,7 +207,7 @@ const WeeklySchedule = () => {
       {/* 달력 그리드 */}
       <div className="grid grid-cols-7 gap-2">
         {weekDays.map((day, index) => {
-          const schedule = getScheduleForDay(day);
+          const daySchedules = getSchedulesForDay(day);
           const isToday = isSameDay(day, new Date());
           const isSunday = day.getDay() === 0;
           const isSaturday = day.getDay() === 6;
@@ -194,7 +216,7 @@ const WeeklySchedule = () => {
           return (
             <div
               key={day.toString()}
-              onClick={() => !schedule && handleOpenModal(dayStr)}
+              onClick={() => handleOpenModal(dayStr)}
               className={`
                 relative p-3 rounded-[var(--radius-xl)] border min-h-[100px] cursor-pointer transition-all duration-200 group animate-fade-up
                 ${isToday
@@ -204,6 +226,7 @@ const WeeklySchedule = () => {
               `}
               style={{ animationDelay: `${index * 30}ms` }}
             >
+
               <div className={`
                 text-sm font-medium mb-2
                 ${isSunday ? 'text-red-500' : isSaturday ? 'text-blue-500' : 'text-[var(--text-secondary)]'}
@@ -220,16 +243,27 @@ const WeeklySchedule = () => {
                 </span>
               </div>
 
-              {schedule && (
-                <div className={`
-                  text-xs px-2 py-1.5 rounded-[var(--radius-md)] font-medium truncate border
-                  ${getTypeStyle(schedule.type)}
-                `}>
-                  {schedule.title}
-                </div>
-              )}
+              {/* [변경됨] 하나의 날짜에 여러 일정이 있을 수 있으므로 배열(daySchedules)을 순회하며 모두 표시합니다. */}
+              {/* [추가됨] max-h-[140px] overflow-y-auto: 일정이 많아지면 스크롤하여 볼 수 있게 함 (약 5개 정도 높이) */}
+              <div className="flex flex-col gap-1 max-h-[140px] overflow-y-auto custom-scrollbar pr-1">
+                {daySchedules.map((schedule) => (
+                  <div
+                    key={schedule.id}
+                    onClick={(e) => {
+                      e.stopPropagation(); // 부모의 날짜 클릭 이벤트(생성 모달)가 발생하지 않도록 중단
+                      setSelectedSchedule(schedule); // [추가됨] 클릭 시 상세 정보를 보기 위해 선택된 일정을 상태에 저장
+                    }}
+                    className={`
+                        text-xs px-2 py-1.5 rounded-[var(--radius-md)] font-medium truncate border cursor-pointer hover:opacity-80 flex-shrink-0
+                        ${getTypeStyle(schedule.type)}
+                      `}
+                  >
+                    {schedule.title}
+                  </div>
+                ))}
+              </div>
 
-              {!schedule && (
+              {daySchedules.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   <Plus size={16} className="text-[var(--text-tertiary)]" />
                 </div>
@@ -288,6 +322,13 @@ const WeeklySchedule = () => {
 
         </div>
       </Modal>
+
+      {/* 일정 상세 모달 */}
+      <ScheduleDetailModal
+        isOpen={!!selectedSchedule}
+        onClose={() => setSelectedSchedule(null)}
+        schedule={selectedSchedule}
+      />
     </div>
   );
 };

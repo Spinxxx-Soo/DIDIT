@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, X, AlertCircle, CheckCircle2, Clock, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, X, AlertCircle, CheckCircle2, Clock, Trash2, Sparkles, Github } from 'lucide-react';
 import { IconButton } from '@/components/common/Button/IconButton';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
@@ -40,9 +40,11 @@ const IssueDetailPanel = () => {
     closeSidebar,
     setActivePanel,
     getIssueById,
-    addIssue,
+    analyzeIssueContent,
+    registerIssue,
     updateIssue,
-    deleteIssue
+    deleteIssue,
+    isLoading
   } = useLoungeStore();
 
   const { currentProject, fetchParticipants } = useProjectStore();
@@ -65,6 +67,34 @@ const IssueDetailPanel = () => {
   });
   const [assigneeInput, setAssigneeInput] = useState('');
 
+  // AI 분석 상태 관리
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzedData, setAnalyzedData] = useState(null); // { issueId, priority, status }
+  const eventSourceRef = useRef(null);
+
+  // SSE 연결 정리 함수
+  const cleanupSSE = () => {
+    if (eventSourceRef.current) {
+      console.log('[SSE] AI 분석 SSE 연결 종료');
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+  };
+
+  // 컴포넌트 언마운트 또는 모드 변경 시 SSE 정리
+  useEffect(() => {
+    return () => {
+      cleanupSSE();
+    };
+  }, []);
+
+  // 생성 모드가 아닐 때 SSE 정리
+  useEffect(() => {
+    if (!isCreateMode) {
+      cleanupSSE();
+    }
+  }, [isCreateMode]);
+
   useEffect(() => {
     if (isCreateMode) {
       setFormData({
@@ -74,6 +104,7 @@ const IssueDetailPanel = () => {
         priority: 'medium',
         assignees: []
       });
+      setAnalyzedData(null);
       setIsEditing(true);
     } else {
       const found = getIssueById(selectedIssueId);
@@ -88,13 +119,106 @@ const IssueDetailPanel = () => {
           assignees: []
         });
       }
+      setAnalyzedData(null);
       setIsEditing(false);
     }
   }, [selectedIssueId, isCreateMode, getIssueById]);
 
+  // SSE 연결 함수
+  const connectSSE = (projectId, issueId) => {
+    // 기존 연결 정리
+    cleanupSSE();
+
+    const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.did-it.xyz';
+    const es = new EventSource(`${baseUrl}/api/v1/projects/${projectId}/stream`, {
+      withCredentials: true
+    });
+
+    eventSourceRef.current = es;
+
+    es.onopen = () => {
+      console.log('[SSE] AI 분석 SSE 연결 성공');
+    };
+
+    // AI 분석 결과 이벤트 리스너
+    es.addEventListener('ai_analysis_result', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('[SSE] AI 분석 결과 수신:', data);
+
+        // 현재 분석 중인 이슈의 결과인지 확인
+        if (data.issueId === issueId || data.issueId === String(issueId)) {
+          const priority = data.priority?.toLowerCase() || 'medium';
+
+          setAnalyzedData(prev => ({
+            ...prev,
+            priority: data.priority,
+            score: data.score
+          }));
+
+          setFormData(prev => ({ ...prev, priority }));
+          setIsAnalyzing(false);
+
+          alert(`🤖 AI 분석 완료! 우선순위가 '${data.priority}'(으)로 추천되었습니다.`);
+
+          // 분석 완료 후 SSE 연결 종료
+          cleanupSSE();
+        }
+      } catch (err) {
+        console.error('[SSE] AI 분석 결과 파싱 오류:', err);
+      }
+    });
+
+    es.onerror = (err) => {
+      console.error('[SSE] AI 분석 SSE 연결 오류:', err);
+      cleanupSSE();
+    };
+
+    return es;
+  };
+
+  // AI 분석 핸들러
+  const handleAnalyze = async () => {
+    if (!formData.title.trim() || !formData.body.trim()) {
+      alert('분석을 위해 제목과 내용을 모두 입력해주세요.');
+      return;
+    }
+    if (!currentProject?.id) {
+      alert('프로젝트 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      setIsAnalyzing(true);
+      // 담당자 ID 변환
+      const assigneeIds = formData.assignees
+        .map(name => participants.find(p => p.name === name || p.nickname === name)?.id)
+        .filter(id => id);
+
+      // API 호출하여 분석 요청 (issueId 획득)
+      const result = await analyzeIssueContent(currentProject.id, {
+        title: formData.title,
+        body: formData.body,
+        status: formData.status.toUpperCase(),
+        assigneeIds
+      });
+
+      // issueId를 저장하고 SSE 연결
+      if (result.issueId) {
+        setAnalyzedData(result);
+        // SSE 연결하여 실제 AI 분석 결과 대기
+        connectSSE(currentProject.id, result.issueId);
+      } else {
+        throw new Error('issueId가 반환되지 않았습니다.');
+      }
+    } catch (error) {
+      console.error('AI 분석 요청 실패:', error);
+      alert('AI 분석에 실패했습니다.');
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleSave = async () => {
-    console.log("현재 프로젝트 데이터:", currentProject);
-    console.log("저장소 전체 이름:", currentProject?.repoFullName);
     if (!formData.title.trim()) {
       alert('제목을 입력해주세요.');
       return;
@@ -106,36 +230,42 @@ const IssueDetailPanel = () => {
         return;
       }
 
+      // AI 분석 수행 여부 확인
+      if (!analyzedData) {
+        if (confirm('AI 분석을 진행하지 않았습니다. 분석을 먼저 실행하시겠습니까?\n(취소를 누르면 현재 설정대로 등록을 시도하지만, 정상 동작하지 않을 수 있습니다.)')) {
+          await handleAnalyze();
+          return;
+        }
+        alert('이슈 등록을 위해 AI 분석 단계가 필요합니다. 분석 버튼을 먼저 눌러주세요.');
+        return;
+      }
+
       // 저장소 정보 파싱
       const rawUrl = currentProject.repoFullName || '';
-
-      // "https://github.com/" 문자열을 지워서 "pjtDidit/server"만 남깁니다.
       const cleanPath = rawUrl.replace(/^https?:\/\/github\.com\//, '');
       const parts = cleanPath.split('/');
 
-      // 2. 유효성 검사 (조직명과 레포명이 둘 다 있어야 함)
       if (parts.length < 2 || !parts[0] || !parts[1]) {
-        alert('GitHub 저장소 주소가 올바르지 않습니다. (예: https://github.com/유저명/레포명)');
+        alert('GitHub 저장소 주소가 올바르지 않습니다.');
         return;
       }
 
       const orgName = parts[0];
       const repoName = parts[1];
 
-      // 3. 담당자 매핑 (기존 로직)
       const assigneeIds = formData.assignees
         .map(name => participants.find(p => p.name === name || p.nickname === name)?.id)
         .filter(id => id);
 
       try {
-        await addIssue(currentProject.id, {
+        await registerIssue(currentProject.id, {
           title: formData.title,
           body: formData.body,
           orgName,
           repoName,
-          issueId: 0,
+          issueId: analyzedData.issueId, // 분석된 ID 사용
           issueStatus: formData.status.toUpperCase(),
-          issuePriority: formData.priority.toUpperCase(),
+          issuePriority: formData.priority.toUpperCase(), // AI가 추천하고 사용자가 수정한 Priority 사용
           assigneeIds,
         });
         alert(`✅ 새 이슈가 등록되었습니다!`);
@@ -190,6 +320,50 @@ const IssueDetailPanel = () => {
       assignees: formData.assignees.filter(a => a !== name)
     });
   };
+
+  // GitHub 저장소 연동 여부 확인
+  const isGithubConnected = !!currentProject?.repoFullName;
+
+  // GitHub 미연동 시 안내 화면 표시
+  if (!isGithubConnected) {
+    return (
+      <div className="flex flex-col h-full bg-white">
+        {/* 헤더 */}
+        <div className="h-14 flex items-center justify-between px-4 border-b border-[var(--border-default)] flex-shrink-0">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <IconButton
+              variant="ghost"
+              size="sm"
+              icon={<ArrowLeft size={18} />}
+              onClick={() => setActivePanel('issue')}
+              title="목록으로 돌아가기"
+            />
+            <h2 className="font-bold text-base truncate">이슈</h2>
+          </div>
+          <IconButton
+            variant="ghost"
+            size="sm"
+            icon={<X size={18} />}
+            onClick={closeSidebar}
+            title="닫기"
+          />
+        </div>
+
+        {/* GitHub 연동 안내 */}
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-[var(--bg-input)] flex items-center justify-center mb-4">
+            <Github size={32} className="text-[var(--text-tertiary)]" />
+          </div>
+          <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+            GitHub 저장소 연동이 필요합니다
+          </h3>
+          <p className="text-sm text-[var(--text-tertiary)] max-w-[240px]">
+            상단 GNB에서 GitHub 저장소를 연결하면 이슈를 생성하고 관리할 수 있습니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -289,6 +463,35 @@ const IssueDetailPanel = () => {
             )}
           </div>
         </div>
+
+        {/* AI 분석 알림 (생성 모드일 때만 표시) */}
+        {isCreateMode && (
+          <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-blue-700 flex items-center gap-1.5">
+                <Sparkles size={14} className="fill-blue-700" />
+                AI 우선순위 분석
+              </span>
+              {analyzedData ? (
+                <span className="text-xs text-green-600 font-bold">
+                  분석 완료! (추천: {analyzedData.priority})
+                </span>
+              ) : (
+                <Button
+                  size="xs"
+                  variant="secondary"
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing || !formData.title || !formData.body}
+                >
+                  {isAnalyzing ? '분석 중...' : '지금 분석하기'}
+                </Button>
+              )}
+            </div>
+            <p className="text-[11px] text-blue-600/80 leading-relaxed">
+              제목과 내용을 작성하고 분석 버튼을 누르면 AI가 적절한 우선순위를 추천해줍니다.
+            </p>
+          </div>
+        )}
 
         <Divider />
 
@@ -405,18 +608,12 @@ const IssueDetailPanel = () => {
           {isCreateMode ? (
             <>
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-              >
-                취소
-              </Button>
-              <Button
                 variant="primary"
                 size="sm"
                 onClick={handleSave}
+                disabled={isLoading || isAnalyzing}
               >
-                등록하기
+                {isLoading ? '저장 중...' : (isCreateMode ? '등록하기' : '저장하기')}
               </Button>
             </>
           ) : (
@@ -430,6 +627,7 @@ const IssueDetailPanel = () => {
                     if (found) setFormData(found);
                     setIsEditing(false);
                   }}
+                  disabled={isLoading}
                 >
                   취소
                 </Button>
@@ -437,8 +635,9 @@ const IssueDetailPanel = () => {
                   variant="primary"
                   size="sm"
                   onClick={handleSave}
+                  disabled={isLoading}
                 >
-                  저장하기
+                  {isLoading ? '저장 중...' : '저장하기'}
                 </Button>
               </>
             ) : (

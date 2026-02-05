@@ -1,1 +1,4 @@
-apps/server/docs/*.md
+# IntelliJ IDEA
+.idea/
+*.iml
+apps/server/docker-compose.yml

@@ -43,10 +43,17 @@ export const projectApi = {
 
   /**
    * GitHub 저장소 검증
-   * @param {string} repo - "organization/repository" 형식
+   * @param {number} projectId - 프로젝트 ID
+   * @param {string} orgName - GitHub 조직명
+   * @param {string} repoName - 저장소명
    * @returns {Promise}
    */
-  validateGithubRepo: (repo) => api.get(`/api/v1/github/validate`, { params: { repo } }),
+  validateGithubRepo: (projectId, orgName, repoName) => {
+    if (!projectId) {
+      return Promise.reject(new Error('projectId가 필요합니다'));
+    }
+    return api.post(`/api/v1/projects/${projectId}/github/validate`, { orgName, repoName });
+  },
 
   // ------------------------------------------------------------------
   // 초대 관리
@@ -141,11 +148,12 @@ export const projectApi = {
   /**
    * 프로젝트 저장소 업데이트
    * @param {number} projectId
+   * @param {number} repoId - GitHub 저장소 ID (validate 응답에서 받음)
    * @param {string} repoFullName - organization/repository 형식
    * @returns {Promise}
    */
-  updateProjectRepo: (projectId, repoFullName) =>
-    api.patch(`/api/v1/projects/${projectId}`, { githubUrl: repoFullName }),
+  updateProjectRepo: (projectId, repoId, repoFullName) =>
+    api.patch(`/api/v1/projects/${projectId}`, { repoId, repoFullName }),
 
   /**
    * 프로젝트 이름 수정
@@ -154,7 +162,7 @@ export const projectApi = {
    * @returns {Promise}
    */
   updateProjectName: (projectId, name) =>
-    api.patch(`/api/v1/projects/${projectId}`, { projectName: name }),
+    api.patch(`/api/v1/projects/${projectId}/name`, { name }),
 
   /**
  * 프로젝트 삭제 (팀장이 혼자일 때)

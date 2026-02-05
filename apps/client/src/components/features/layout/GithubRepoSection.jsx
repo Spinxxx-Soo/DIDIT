@@ -31,6 +31,7 @@ export function GithubRepoSection({
   const [repoInput, setRepoInput] = useState('');
   const [githubStatus, setGithubStatus] = useState(GITHUB_STATUS.IDLE);
   const [repoError, setRepoError] = useState('');
+  const [validatedRepoId, setValidatedRepoId] = useState(null);
 
   /**
    * 입력값 변경 핸들러
@@ -52,6 +53,12 @@ export function GithubRepoSection({
       return;
     }
 
+    // projectId 유효성 검증
+    if (!projectId) {
+      setRepoError('프로젝트 정보를 불러올 수 없습니다');
+      return;
+    }
+
     // 형식 체크 (organization/repository)
     const repoPattern = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/;
     if (!repoPattern.test(repoInput.trim())) {
@@ -63,10 +70,12 @@ export function GithubRepoSection({
     setRepoError('');
 
     try {
-      const result = await onValidateRepo(repoInput.trim());
+      const result = await onValidateRepo(projectId, repoInput.trim());
 
       if (result.success) {
         setGithubStatus(GITHUB_STATUS.SUCCESS);
+        // 검증 성공 시 repoId 저장
+        setValidatedRepoId(result.data?.repoId || result.data?.id);
       } else {
         setGithubStatus(GITHUB_STATUS.ERROR);
         setRepoError(result.error || '유효한 저장소가 아닙니다');
@@ -83,12 +92,13 @@ export function GithubRepoSection({
   const handleConnect = async () => {
     if (githubStatus !== GITHUB_STATUS.SUCCESS) return;
 
-    const result = await onUpdateRepo(projectId, repoInput.trim());
+    const result = await onUpdateRepo(projectId, validatedRepoId, repoInput.trim());
 
     if (result.success) {
       setIsEditing(false);
       setRepoInput('');
       setGithubStatus(GITHUB_STATUS.IDLE);
+      setValidatedRepoId(null);
     } else {
       setRepoError(result.error || '저장소 연결에 실패했습니다');
     }
@@ -102,6 +112,7 @@ export function GithubRepoSection({
     setRepoInput('');
     setGithubStatus(GITHUB_STATUS.IDLE);
     setRepoError('');
+    setValidatedRepoId(null);
   };
 
   // 저장소가 연결된 경우 - 주소 표시

@@ -196,4 +196,123 @@ public interface ProjectService {
      * - <500>: 데이터베이스 조회 중 예외 발생 시 ServerError(ProjectDetail) 반환
      */
     Result<ProjectEntity> FindProjectById(long projectId);
+
+    /**
+     * Action: 프로젝트를 논리 삭제(Soft Delete)함
+     * Input:
+     * - long projectId: 삭제 대상 프로젝트 ID
+     * - long userId: 삭제를 시도하는 사용자 ID
+     * Success:
+     * - ok(): 프로젝트 삭제 완료 (deleted_at 업데이트)
+     * Auth/Permission:
+     * - 프로젝트 소유자(Owner)인 경우에만 삭제 가능 (403)
+     * Persistence:
+     * - 엔티티의 @SQLDelete 설정에 따라 DB에서는 물리 삭제가 아닌 deleted_at 필드가 현재 시간으로 업데이트됨
+     * - 이후 모든 조회 쿼리에서 @SQLRestriction("deleted_at IS NULL")에 의해 제외됨
+     * Failures:
+     * - <403>: 소유자가 아닌 유저가 삭제를 시도할 경우 ForbiddenError 반환
+     * - <404>: 존재하지 않는 프로젝트 ID이거나 이미 삭제된 프로젝트인 경우 NotFoundError 반환
+     * - <500>: 데이터베이스 처리 중 시스템 오류 발생 시 ServerError 반환
+     */
+    Result DeleteProject(long projectId, long userId);
+
+    /**
+     * Action: 사용자가 프로젝트 참여 멤버 목록에서 스스로 탈퇴하며, 탈퇴 이력을 남김
+     * Input:
+     * - long projectId: 탈퇴할 프로젝트 ID
+     * - long userId: 탈퇴를 시도하는 사용자 ID
+     * Success:
+     * - ok(): 탈퇴 처리 완료 (status = 'LEFT', left_at 업데이트)
+     * Auth/Permission:
+     * - 프로젝트의 현재 멤버여야 함 (404)
+     * - 프로젝트 소유자(Owner)는 탈퇴할 수 없음 (403)
+     * Persistence:
+     * - project_users 테이블에서 해당 행을 삭제하지 않고 status 필드를 'LEFT'로 변경하여 이력을 유지함
+     * - @SQLRestriction("status != 'LEFT'") 설정 시, 탈퇴한 유저는 향후 멤버십 검증에서 자동으로 제외됨
+     * Failures:
+     * - <403>: 소유자가 탈퇴를 시도할 경우 ForbiddenError 반환
+     * - <404>: 프로젝트가 없거나 해당 프로젝트의 멤버가 아닌 경우 NotFoundError 반환
+     * - <409>: 이미 탈퇴 상태인 유저가 중복 탈퇴를 시도할 경우 ConflictError 반환
+     * - <500>: 시스템 내부 오류 발생 시 ServerError 반환
+     */
+    Result LeaveProject(long projectId, long userId);
+
+    /**
+     * Action: 검증된 GitHub 저장소 정보를 프로젝트 엔티티에 최종 반영함
+     * Input:
+     * - long projectId: 업데이트할 프로젝트 ID
+     * - long userId: 수정을 시도하는 사용자 ID (소유자 권한 확인용)
+     * - long repoId: GitHub에서 제공하는 고유 저장소 번호
+     * - String repoFullName: GitHub 저장소 전체 이름 (예: owner/repo)
+     * Success:
+     * - ok(): 프로젝트 엔티티의 저장소 정보 업데이트 및 DB 반영 완료
+     * Auth/Permission:
+     * - 프로젝트의 소유자(Owner)인 경우에만 수정 가능 (403)
+     * Persistence:
+     * - _ProjectRepository를 통해 해당 프로젝트의 repoId 및 repoFullName 필드를 영구 저장
+     * Failures:
+     * - <403>: 수정을 시도하는 유저가 프로젝트 소유자가 아닌 경우 ForbiddenError
+     * - <404>: 존재하지 않는 프로젝트 ID인 경우 NotFoundError
+     * - <500>: DB 저장 과정에서 제약 조건 위반 또는 시스템 오류 발생 시 ServerError
+     */
+    Result<Void> updateProjectRepo(long projectId, long userId, long repoId, String repoFullName);
+
+    /**
+     * Action: 프로젝트의 소유권(Owner)을 다른 멤버에게 위임하며, 관련 권한(Role)을 조정함
+     * Input:
+     * - long projectId: 대상 프로젝트 ID
+     * - long userId: 현재 소유자(Owner) ID (위임을 시도하는 주체)
+     * - long newOwnerId: 새 소유자가 될 멤버의 ID
+     * Success:
+     * - ok(): 소유권 이전 완료. 기존 Owner는 MEMBER로, 신규 Owner는 ADMIN으로 역할이 변경됨
+     * Auth/Permission:
+     * - 현재 프로젝트의 실소유자(Owner)만 수행 가능 (403)
+     * - 위임 대상자는 현재 프로젝트에 소속된 활성(ACTIVE) 멤버여야 함 (404)
+     * Persistence:
+     * - projects 테이블의 owner_id 필드 업데이트
+     * - project_users 테이블의 기존/신규 소유자 role 컬럼 업데이트
+     * Failures:
+     * - <403>: 요청자가 프로젝트 소유자가 아닌 경우 ForbiddenError
+     * - <404>: 프로젝트가 없거나 위임 대상자가 활성 멤버가 아닌 경우 NotFoundError
+     * - <500>: 데이터베이스 트랜잭션 처리 중 오류 발생 시 ServerError
+     */
+    Result<Void> transferOwnership(long projectId, long currentOwnerId, long newOwnerId);
+
+    /**
+     * Action: 프로젝트의 이름을 변경함
+     * Input:
+     * - long projectId: 수정할 프로젝트 ID
+     * - long userId: 수정을 요청한 사용자 ID (소유자 권한 확인용)
+     * - String name: 변경할 새 프로젝트 이름
+     * Success:
+     * - ok(): 프로젝트 이름 업데이트 완료
+     * Auth/Permission:
+     * - 프로젝트의 실소유자(Owner)만 이름을 수정할 수 있음 (403)
+     * Persistence:
+     * - projects 테이블의 name 컬럼을 업데이트함
+     * Failures:
+     * - <403>: 요청자가 프로젝트 소유자가 아닌 경우 ForbiddenError
+     * - <404>: 존재하지 않는 프로젝트 ID인 경우 NotFoundError
+     */
+    Result<Void> updateProjectName(long projectId, long userId, String name);
+
+    /**
+     * Action: 프로젝트 소유자가 특정 참여자를 프로젝트에서 강제로 퇴장(추방)시킴
+     * Input:
+     * - long projectId: 대상 프로젝트 ID
+     * - long userId: 강제 퇴장시킬 대상 유저 ID
+     * - long ownerId: 요청을 수행하는 방장 ID
+     * Success:
+     * - ok(): 대상 유저의 상태를 LEFT로 변경하고 퇴장 시간을 기록함
+     * Auth/Permission:
+     * - 오직 프로젝트 Owner만 수행 가능함 (403)
+     * - 방장은 보안 및 시스템 관리상 본인을 스스로 강퇴할 수 없음 (403)
+     * Persistence:
+     * - project_users 테이블에서 해당 유저의 status를 'LEFT'로, left_at을 현재 시간으로 업데이트함
+     * Failures:
+     * - <403>: 권한이 없거나 본인 강퇴 시도 시 ForbiddenError
+     * - <404>: 프로젝트가 없거나 대상 유저가 해당 프로젝트의 활성(ACTIVE) 멤버가 아닌 경우 NotFoundError
+     * - <500>: 데이터베이스 처리 중 예외 발생 시 ServerError
+     */
+    Result<Void> removeParticipant(long projectId, long userId, long ownerId);
 }

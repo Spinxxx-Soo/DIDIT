@@ -41,7 +41,7 @@ const STATUS_CONFIG = {
 
 const RightSidebar = ({ activePanel, onClose, channelId }) => {
   const { projectId } = useParams();
-  const { openIssueDetail, openCreateIssue, issues, fetchIssues } = useLoungeStore();
+  const { openIssueDetail, openCreateIssue, issues, fetchIssues, openIssueMode } = useLoungeStore();
   const { user } = useAuthStore();
   const { fetchParticipants } = useProjectStore();
   const [memberMap, setMemberMap] = useState({});
@@ -83,6 +83,11 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
   // 이슈 목록 불러오기 + 실시간 동기화 (polling + visibility)
   useEffect(() => {
     if (!isIssueMode || !projectId) return;
+
+    // 프로젝트가 변경되면 상세 뷰를 닫고 목록으로 초기화
+    if (activePanel === 'issue_detail') {
+      openIssueMode(); // 목록 뷰로 리셋
+    }
 
     // 1. 패널 열릴 때 즉시 fetch
     fetchIssues(projectId);
