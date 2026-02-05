@@ -193,7 +193,9 @@ public class IssueServiceImpl implements IssueService {
 
     @Override
     @Transactional
-    public Result<Void> updateIssue(long projectId, long userId, long issueId, String title, String body, List<Long> assigneeIds) {
+    public Result<Void> updateIssue(long projectId, long userId, long issueId,
+                                    String title, String body, List<Long> assigneeIds,
+                                    IssueStatus issueStatus, IssuePriority issuePriority) {
         try {
             var issue = issueRepository.findById(issueId);
             if(issue.isEmpty()){
@@ -222,12 +224,15 @@ public class IssueServiceImpl implements IssueService {
 
                 var gitResult = githubService.updateIssue(auth.getAccessToken(),
                         entity.getProject().getRepoFullName(),
-                        entity.getIssueNo(), title, body, assigneeLogins);
+                        entity.getIssueNo(), title, body, assigneeLogins,
+                        issueStatus);
                 if (gitResult.isFailure()) return gitResult;
             }
 
             entity.setTitle(title);
             entity.setBody(body);
+            entity.setStatus(issueStatus);
+            entity.setPriority(issuePriority);
 
             entity.getAssignees().clear();
             if (assigneeIds != null) {

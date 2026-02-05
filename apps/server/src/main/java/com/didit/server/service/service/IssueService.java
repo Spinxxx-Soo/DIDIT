@@ -112,7 +112,7 @@ public interface IssueService {
      * - <403>: 작성자가 아니거나 유효한 GitHub 인증 정보가 없는 경우 ForbiddenError 반환
      * - <500>: GitHub API 통신 장애 또는 시스템 내부 오류 발생 시 ServerError 반환
      */
-    Result<Void> updateIssue(long projectId, long userId, long issueId, String title, String body, List<Long> assigneeIds);
+    Result<Void> updateIssue(long projectId, long userId, long issueId, String title, String body, List<Long> assigneeIds, IssueStatus issueStatus, IssuePriority issuePriority);
 
     /**
      * Action: 로컬 DB에서 이슈를 삭제하고, GitHub 저장소의 해당 이슈를 'CLOSED' 상태로 변경함

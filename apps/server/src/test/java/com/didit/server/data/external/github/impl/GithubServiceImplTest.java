@@ -4,6 +4,7 @@ import com.didit.server.api.response.GithubRepoResponse;
 import com.didit.server.data.entity.ProjectEntity;
 import com.didit.server.data.entity.UserEntity;
 import com.didit.server.data.entity.UserGithubAuthEntity;
+import com.didit.server.data.entity.enums.IssueStatus;
 import com.didit.server.data.external.github.GithubService;
 import com.didit.server.data.repository.ProjectRepository;
 import com.didit.server.data.repository.ProjectUserRepository;
@@ -241,9 +242,10 @@ class GithubServiceImplTest {
             String newTitle = "Updated Title";
             String newBody = "Updated Body";
             List<String> assigneeLogins = List.of("user1");
+            IssueStatus issueStatus = IssueStatus.OPEN;
 
             // When
-            Result<Void> result = githubService.updateIssue(token, repoFullName, issueNo, newTitle, newBody, assigneeLogins);
+            Result<Void> result = githubService.updateIssue(token, repoFullName, issueNo, newTitle, newBody, assigneeLogins, issueStatus);
 
             // Then
             assertThat(result.isSuccess()).isTrue();
@@ -265,7 +267,7 @@ class GithubServiceImplTest {
             given(ghRepository.getIssue(anyInt())).willThrow(new IOException("Issue not found"));
         })) {
             // When
-            Result<Void> result = githubService.updateIssue("token", "org/repo", 999, "T", "B", null);
+            Result<Void> result = githubService.updateIssue("token", "org/repo", 999, "T", "B", null, IssueStatus.OPEN);
 
             // Then
             assertThat(result.isFailure()).isTrue();

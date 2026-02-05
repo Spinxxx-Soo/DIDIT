@@ -93,7 +93,7 @@ public class IssueController {
                                          @PathVariable long issueId,
                                          @AuthenticationPrincipal CustomOAuth2User user,
                                          @RequestBody UpdateIssueRequest req) {
-        var result = issueService.updateIssue(projectId, user.getId(), issueId, req.title(), req.body(), req.assigneeIds());
+        var result = issueService.updateIssue(projectId, user.getId(), issueId, req.title(), req.body(), req.assigneeIds(), req.issueStatus(), req.issuePriority());
         if (result.isFailure()) {
             var err = result.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());

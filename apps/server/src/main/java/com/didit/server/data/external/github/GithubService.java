@@ -1,6 +1,8 @@
 package com.didit.server.data.external.github;
 
 import com.didit.server.api.response.GithubRepoResponse;
+import com.didit.server.data.entity.enums.IssuePriority;
+import com.didit.server.data.entity.enums.IssueStatus;
 import com.didit.server.share.result.Result;
 import org.kohsuke.github.GHIssue;
 
@@ -63,7 +65,7 @@ public interface GithubService {
      * Failures:
      * - <500>: GitHub API 호출 실패, 권한 부족 또는 네트워크 오류 시 ServerError 반환
      */
-    Result<Void> updateIssue(String accessToken, String repoFullName, int issueNo, String title, String body, List<String> assigneeLogins);
+    Result<Void> updateIssue(String accessToken, String repoFullName, int issueNo, String title, String body, List<String> assigneeLogins, IssueStatus issueStatus);
 
     /**
      * Action: GitHub 저장소의 특정 이슈 상태를 'CLOSED'로 변경함
