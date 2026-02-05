@@ -113,7 +113,7 @@ export function MyPage() {
         </div>
       </section>
 
-      {/* 최근 접속한 프로젝트 */}
+      {/* 최근 프로젝트 */}
       <section className="space-y-4 animate-fade-up" style={{ animationDelay: '100ms' }}>
         <div className="flex items-center justify-between">
           <h2 className="text-title text-[var(--text-bright)]">

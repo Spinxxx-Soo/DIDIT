@@ -1,7 +1,9 @@
 package com.didit.server.api.config;
 
+import com.didit.server.api.redis.MediaSummaryGeneratedListener;
 import com.didit.server.api.redis.RedisSortListener;
 import com.didit.server.api.redis.RedisSubscribeListener;
+import com.didit.server.api.redis.key.MediaSummaryRedisKeys;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -53,10 +55,19 @@ public class RedisConfig {
     }
 
     @Bean
+    public MessageListenerAdapter mediaSummaryGeneratedAdapter(MediaSummaryGeneratedListener subscriber) {
+        var adapter = new MessageListenerAdapter(subscriber, "onMessage");
+        adapter.setSerializer(new StringRedisSerializer());
+        adapter.afterPropertiesSet();
+        return adapter;
+    }
+
+    @Bean
     public RedisMessageListenerContainer redisMessageListenerContainer(
             RedisConnectionFactory cf,
             MessageListenerAdapter issuePriorityResultAdapter,
-            MessageListenerAdapter issuePrioritySortAdapter
+            MessageListenerAdapter issuePrioritySortAdapter,
+            MessageListenerAdapter mediaSummaryGeneratedAdapter
     ) {
         var container = new RedisMessageListenerContainer();
         container.setConnectionFactory(cf);
@@ -67,6 +78,8 @@ public class RedisConfig {
         container.addMessageListener(issuePrioritySortAdapter,
                 new ChannelTopic("issue:priority:sort_result_topic"));
 
+        container.addMessageListener(mediaSummaryGeneratedAdapter,
+                new ChannelTopic(MediaSummaryRedisKeys.MEDIA_SUMMARY_GENERATED_SUB));
         return container;
     }
 }

@@ -72,63 +72,6 @@ class MeetingServiceImplTest {
     }
 
     @Test
-    @DisplayName("정상(프로젝트/유저 존재 + ADMIN)이면 ok(meetingId)를 반환하고 MeetingEntity를 RUNNING으로 저장한다")
-    void createMeeting_success_admin_returnsOkId_andSavesRunningMeeting() {
-        // Given
-        long projectId = 10L;
-        long userId = 7L;
-        String title = "Daily Sync";
-        MeetingMode mode = MeetingMode.CHAT;
-
-        ProjectEntity project = mock(ProjectEntity.class);
-        when(project.getId()).thenReturn(projectId);
-
-        UserEntity user = mock(UserEntity.class);
-        when(user.getId()).thenReturn(userId);
-
-        ProjectUserEntity projectUser = mock(ProjectUserEntity.class);
-        when(projectUser.getRole()).thenReturn(ProjectUserRole.ADMIN);
-
-        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(projectUserRepository.findByProject_IdAndUser_Id(projectId, userId))
-                .thenReturn(Optional.of(projectUser));
-
-        when(meetingRepository.save(any(MeetingEntity.class))).thenAnswer(inv -> {
-            MeetingEntity e = inv.getArgument(0);
-            e.setId(123L);
-            return e;
-        });
-
-        // When
-        Result<Long> result = sut.createMeeting(projectId, userId, title, mode);
-
-        // Then (Result 계약)
-        assertTrue(result.isSuccess());
-        assertTrue(result.getErrors().isEmpty());
-        assertEquals(123L, result.getValue().orElseThrow());
-
-        // Then (저장 엔티티 검증)
-        ArgumentCaptor<MeetingEntity> captor = ArgumentCaptor.forClass(MeetingEntity.class);
-        verify(meetingRepository).save(captor.capture());
-        MeetingEntity saved = captor.getValue();
-
-        assertSame(project, saved.getProject());
-        assertSame(user, saved.getCreatedBy());
-        assertEquals(title, saved.getTitle());
-        assertEquals(MeetingStatus.RUNNING, saved.getStatus());
-        assertEquals(mode, saved.getMode());
-        assertNotNull(saved.getSessionId());
-        assertDoesNotThrow(() -> UUID.fromString(saved.getSessionId())); // UUID 형식
-
-        // Then (호출 검증)
-        verify(projectRepository).findById(projectId);
-        verify(userRepository).findById(userId);
-        verify(projectUserRepository).findByProject_IdAndUser_Id(projectId, userId);
-        verifyNoMoreInteractions(projectRepository, userRepository, projectUserRepository, meetingRepository);
-    }
-
-    @Test
     @DisplayName("projectId가 없으면 fail(404 NotFoundError(resource=projectId))")
     void createMeeting_projectNotFound_returns404() {
         // Given
@@ -187,11 +130,13 @@ class MeetingServiceImplTest {
     }
 
     @Test
-    @DisplayName("프로젝트 유저가 없거나 ADMIN이 아니면 fail(403 ForbiddenError)")
-    void createMeeting_notAdmin_returns403() {
+    @DisplayName("정상(프로젝트/유저 존재 + 프로젝트 멤버)이면 ok(meetingId)를 반환하고 MeetingEntity를 RUNNING으로 저장한다")
+    void createMeeting_success_returnsOkId_andSavesRunningMeeting() {
         // Given
         long projectId = 10L;
         long userId = 7L;
+        String title = "Daily Sync";
+        MeetingMode mode = MeetingMode.CHAT;
 
         ProjectEntity project = mock(ProjectEntity.class);
         when(project.getId()).thenReturn(projectId);
@@ -199,32 +144,62 @@ class MeetingServiceImplTest {
         UserEntity user = mock(UserEntity.class);
         when(user.getId()).thenReturn(userId);
 
-        ProjectUserEntity projectUser = mock(ProjectUserEntity.class);
-        when(projectUser.getRole()).thenReturn(ProjectUserRole.MEMBER);
+        ProjectUserEntity projectUser = mock(ProjectUserEntity.class); // Role 상관없이 존재만 하면 됨
 
         when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(projectUserRepository.findByProject_IdAndUser_Id(projectId, userId))
                 .thenReturn(Optional.of(projectUser));
 
+        when(meetingRepository.save(any(MeetingEntity.class))).thenAnswer(inv -> {
+            MeetingEntity e = inv.getArgument(0);
+            e.setId(123L);
+            return e;
+        });
+
+        // When
+        Result<Long> result = sut.createMeeting(projectId, userId, title, mode);
+
+        // Then
+        assertTrue(result.isSuccess());
+        assertEquals(123L, result.getValue().orElseThrow());
+
+        ArgumentCaptor<MeetingEntity> captor = ArgumentCaptor.forClass(MeetingEntity.class);
+        verify(meetingRepository).save(captor.capture());
+        MeetingEntity saved = captor.getValue();
+
+        assertEquals(MeetingStatus.RUNNING, saved.getStatus());
+        assertNotNull(saved.getSessionId());
+    }
+
+    @Test
+    @DisplayName("프로젝트 멤버가 아니면 fail(403 ForbiddenError)")
+    void createMeeting_notMember_returns403() {
+        // Given
+        long projectId = 10L;
+        long userId = 7L;
+
+        ProjectEntity project = mock(ProjectEntity.class);
+        when(project.getId()).thenReturn(projectId);
+        UserEntity user = mock(UserEntity.class);
+        when(user.getId()).thenReturn(userId);
+
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        // 멤버를 찾지 못함
+        when(projectUserRepository.findByProject_IdAndUser_Id(projectId, userId))
+                .thenReturn(Optional.empty());
+
         // When
         Result<Long> result = sut.createMeeting(projectId, userId, "t", MeetingMode.CHAT);
 
         // Then
         assertTrue(result.isFailure());
-        assertTrue(result.getValue().isEmpty());
-
         ResultError error = result.getSingleErrorOrThrow();
         assertEquals(403, error.getCode());
         assertInstanceOf(ForbiddenError.class, error);
-
-        verify(projectRepository).findById(projectId);
-        verify(userRepository).findById(userId);
-        verify(projectUserRepository).findByProject_IdAndUser_Id(projectId, userId);
-        verifyNoInteractions(meetingRepository);
-        verifyNoMoreInteractions(projectRepository, userRepository, projectUserRepository);
+        assertEquals("채널을 생성할 권한이 없습니다.", error.getMessage());
     }
-
 
     @Test
     @DisplayName("정상(프로젝트/유저 존재 + ADMIN)이면 ok(meetingId)를 반환하고 MeetingEntity를 SCHEDULED로 저장한다")

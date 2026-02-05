@@ -4,12 +4,9 @@ import com.didit.server.api.scheduling.RecordingStopSchedulerService;
 import com.didit.server.data.entity.MeetingEntity;
 import com.didit.server.data.entity.MeetingRecordEntity;
 import com.didit.server.service.command.UpdateRecordingCommand;
-import com.didit.server.service.service.MeetingMediaRecordingService;
-import com.didit.server.service.service.MeetingUserService;
+import com.didit.server.service.service.*;
 import com.didit.server.share.TimeUtils;
 import com.didit.server.share.event.*;
-import com.didit.server.service.service.MeetingService;
-import com.didit.server.service.service.UserService;
 import com.didit.server.share.result.ResultError;
 import com.didit.server.share.result.impl.NotFoundError;
 import lombok.RequiredArgsConstructor;
@@ -26,13 +23,12 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
     private final MeetingService meetingService;
     private final MeetingUserService meetingUserService;
     private final MeetingMediaRecordingService meetingMediaRecordingService;
+    private final MeetingSummaryService meetingSummaryService;
     private final RecordingStopSchedulerService recordingStopSchedulerService;
 
-    private void pubErrorEvent(long channelId, ResultError error)
-    {
+    private void pubErrorEvent(long channelId, ResultError error) {
         publisher.publishEvent(new MediaErrorEvent(channelId, error.getResponse()));
     }
-
 
 
     @Override
@@ -53,14 +49,14 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         log.info("[OV] participantJoined sessionId={} connId={} clientData={}",
                 e.sessionId(), e.connectionId(), e.clientData());
         var findMeetingResult = meetingService.findBySessionId(e.sessionId());
-        if(findMeetingResult.isFailure()) {
+        if (findMeetingResult.isFailure()) {
             log.error("[OV] onParticipantJoined - Meeting Entity를 찾을수 없습니다 : {}", e.sessionId());
             return;
         }
         var meetingEntity = findMeetingResult.getOrThrow();
 
         var findMeetingUserResult = meetingUserService.findMeetingUserByToken(e.connectionId());
-        if (findMeetingUserResult.isFailure()){
+        if (findMeetingUserResult.isFailure()) {
             log.error("[OV] onParticipantJoined - Meeting User Entity를 찾을수 없습니다 : {}", e.connectionId());
             pubErrorEvent(meetingEntity.getId(), new NotFoundError("connectionId", e.connectionId()));
             return;
@@ -68,7 +64,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         var userId = findMeetingUserResult.getOrThrow().getUser().getId();
 
         var findUserResult = userService.findUserById(userId);
-        if (findUserResult.isFailure()){
+        if (findUserResult.isFailure()) {
             log.error("[OV] onParticipantJoined - User Entity를 찾을수 없습니다 : {}", userId);
             pubErrorEvent(meetingEntity.getId(), new NotFoundError("userId", userId));
             return;
@@ -81,7 +77,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
                 e.sessionId(),
                 e.connectionId(),
                 userEntity
-                );
+        );
         publisher.publishEvent(event);
     }
 
@@ -90,14 +86,14 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         log.info("[OV] participantLeft sessionId={} connId={} reason={} duration={}",
                 e.sessionId(), e.connectionId(), e.reason(), e.duration());
         var findMeetingResult = meetingService.findBySessionId(e.sessionId());
-        if(findMeetingResult.isSuccess()) {
+        if (findMeetingResult.isSuccess()) {
             log.error("[OV] onParticipantLeft - Meeting Entity를 찾을수 없습니다 : {}", e.sessionId());
             return;
         }
         var meetingEntity = findMeetingResult.getOrThrow();
 
         var findMeetingUserResult = meetingUserService.findMeetingUserByToken(e.connectionId());
-        if (findMeetingUserResult.isFailure()){
+        if (findMeetingUserResult.isFailure()) {
             log.error("[OV] onParticipantLeft - Meeting User Entity를 찾을수 없습니다 : {}", e.connectionId());
             pubErrorEvent(meetingEntity.getId(), new NotFoundError("connectionId", e.connectionId()));
             return;
@@ -105,7 +101,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         var userId = findMeetingUserResult.getOrThrow().getUser().getId();
 
         var findUserResult = userService.findUserById(userId);
-        if (findUserResult.isFailure()){
+        if (findUserResult.isFailure()) {
             log.error("[OV] onParticipantLeft - User Entity를 찾을수 없습니다 : {}", userId);
             pubErrorEvent(meetingEntity.getId(), new NotFoundError("userId", userId));
             return;
@@ -127,14 +123,14 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         log.info("[OV] webrtcConnectionCreated sessionId={} connId={} streamId={} dir={} from={}",
                 e.sessionId(), e.connectionId(), e.streamId(), e.connection(), e.receivingFrom());
         var findMeetingResult = meetingService.findBySessionId(e.sessionId());
-        if(findMeetingResult.isFailure()) {
+        if (findMeetingResult.isFailure()) {
             log.error("[OV] onWebrtcConnectionCreated - Meeting Entity를 찾을수 없습니다 : {}", e.sessionId());
             return;
         }
         var meetingEntity = findMeetingResult.getOrThrow();
 
         var findMeetingUserResult = meetingUserService.findMeetingUserByToken(e.connectionId());
-        if (findMeetingUserResult.isFailure()){
+        if (findMeetingUserResult.isFailure()) {
             log.error("[OV] onWebrtcConnectionCreated - Meeting User Entity를 찾을수 없습니다 : {}", e.connectionId());
             pubErrorEvent(meetingEntity.getId(), new NotFoundError("connectionId", e.connectionId()));
             return;
@@ -143,7 +139,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         var entity = findMeetingUserResult.getOrThrow();
 
         var result = meetingUserService.JoinMeeting(entity.getToken());
-        if(result.isFailure()){
+        if (result.isFailure()) {
             pubErrorEvent(meetingEntity.getId(), result.getSingleErrorOrThrow());
         }
     }
@@ -153,14 +149,14 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         log.info("[OV] webrtcConnectionDestroyed sessionId={} connId={} streamId={} reason={} duration={}",
                 e.sessionId(), e.connectionId(), e.streamId(), e.reason(), e.duration());
         var findMeetingResult = meetingService.findBySessionId(e.sessionId());
-        if(findMeetingResult.isFailure()) {
+        if (findMeetingResult.isFailure()) {
             log.error("[OV] onWebrtcConnectionDestroyed - Meeting Entity를 찾을수 없습니다 : {}", e.sessionId());
             return;
         }
         var meetingEntity = findMeetingResult.getOrThrow();
 
         var findMeetingUserResult = meetingUserService.findMeetingUserByToken(e.connectionId());
-        if (findMeetingUserResult.isFailure()){
+        if (findMeetingUserResult.isFailure()) {
             log.error("[OV] onWebrtcConnectionDestroyed - Meeting User Entity를 찾을수 없습니다 : {}", e.connectionId());
             pubErrorEvent(meetingEntity.getId(), new NotFoundError("connectionId", e.connectionId()));
             return;
@@ -169,7 +165,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         var entity = findMeetingUserResult.getOrThrow();
 
         var result = meetingUserService.leftMeeting(entity.getToken());
-        if(result.isFailure()){
+        if (result.isFailure()) {
             pubErrorEvent(meetingEntity.getId(), result.getSingleErrorOrThrow());
             return;
         }
@@ -181,19 +177,19 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
                 e.sessionId(), e.id(), e.status(), e.reason(), e.size(), e.duration());
         // TODO: 녹화 상태 반영 (started/stopped/ready/failed)
         var findMeetingResult = meetingService.findBySessionId(e.sessionId());
-        if(findMeetingResult.isFailure()) {
+        if (findMeetingResult.isFailure()) {
             log.error("[OV] onRecordingStatusChanged - Meeting Entity를 찾을수 없습니다 : {}", e.sessionId());
             return;
         }
         var meetingEntity = findMeetingResult.getOrThrow();
 
         var findRecordingResult = meetingMediaRecordingService.findMeetingRecordBySessionId(e.id());
-        if(findRecordingResult.isFailure()) {
+        if (findRecordingResult.isFailure()) {
             log.error("[OV] onRecordingStatusChanged - Recording Entity를 찾을수 없습니다 : {}", e.id());
             pubErrorEvent(meetingEntity.getId(), findRecordingResult.getSingleErrorOrThrow());
             return;
         }
-        var recordEntity =  findRecordingResult.getOrThrow();
+        var recordEntity = findRecordingResult.getOrThrow();
 
         switch (e.status()) {
             case "started" -> {
@@ -217,7 +213,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
     private void onRecordingStarted(RecordingStatusChangedEvent e, MeetingEntity meetingEntity, MeetingRecordEntity recordEntity) {
         var cmd = new UpdateRecordingCommand(TimeUtils.toLocalDateTime(e.timestamp()), null);
         var updateResult = meetingMediaRecordingService.UpdateRecording(recordEntity.getId(), cmd);
-        if(updateResult.isFailure()){
+        if (updateResult.isFailure()) {
             log.error("[OV] onRecordingStarted - 실패 : {}, {}", e.sessionId(), cmd);
             pubErrorEvent(meetingEntity.getId(), updateResult.getSingleErrorOrThrow());
             return;
@@ -230,13 +226,29 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
     private void onRecordingStopped(RecordingStatusChangedEvent e, MeetingEntity meetingEntity, MeetingRecordEntity recordEntity) {
         var cmd = new UpdateRecordingCommand(null, TimeUtils.toLocalDateTime(e.timestamp()));
         var updateResult = meetingMediaRecordingService.UpdateRecording(recordEntity.getId(), cmd);
-        if(updateResult.isFailure()){
+        if (updateResult.isFailure()) {
             log.error("[OV] onRecordingStopped - 실패 : {}, {}", e.sessionId(), cmd);
             pubErrorEvent(meetingEntity.getId(), updateResult.getSingleErrorOrThrow());
             return;
         }
 
+        var findDownloadUrlResult = meetingMediaRecordingService.findDownloadURL(recordEntity.getId());
+        if (findDownloadUrlResult.isFailure()) {
+            log.error("[OV] onRecordingStopped - 다운로드 찾기 실패 : {}", recordEntity.getId());
+            pubErrorEvent(meetingEntity.getId(), findDownloadUrlResult.getSingleErrorOrThrow());
+            return;
+        }
+
+        var createSummaryResult = meetingSummaryService.CreateSummary(meetingEntity.getProject().getId(), meetingEntity.getId());
+        if (createSummaryResult.isFailure()) {
+            log.error("[OV] onRecordingStopped - summary 생성 실패 : {}", meetingEntity.getId());
+            pubErrorEvent(meetingEntity.getId(), createSummaryResult.getSingleErrorOrThrow());
+            return;
+        }
+
+        var pushEvent = new MediaSummaryDownloadUrlPushEvent(createSummaryResult.getOrThrow(), findDownloadUrlResult.getOrThrow());
         var event = new MediaRecordingStopEvent(meetingEntity.getId(), e.timestamp(), e.sessionId());
+        publisher.publishEvent(pushEvent);
         publisher.publishEvent(event);
     }
 

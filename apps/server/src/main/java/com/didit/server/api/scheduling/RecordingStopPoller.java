@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.List;
 
-import static com.didit.server.api.redis.RecordingStopKeys.STOP_SCHEDULED_ZSET;
+import static com.didit.server.api.redis.key.RecordingStopKeys.STOP_SCHEDULED_ZSET;
 
 
 @Slf4j

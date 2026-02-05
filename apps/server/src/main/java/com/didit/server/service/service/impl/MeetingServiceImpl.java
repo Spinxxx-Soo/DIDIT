@@ -46,7 +46,7 @@ public class MeetingServiceImpl implements MeetingService {
             }
 
             var projectUser = projectUserRepository.findByProject_IdAndUser_Id(project.get().getId(), user.get().getId());
-            if (projectUser.isEmpty() || projectUser.get().getRole() != ProjectUserRole.ADMIN){
+            if (projectUser.isEmpty()){
                 return Result.fail(new ForbiddenError("채널을 생성할 권한이 없습니다."));
             }
 
