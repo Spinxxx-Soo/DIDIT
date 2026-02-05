@@ -51,28 +51,42 @@ const MeetingMinutesList = ({ projectId, onItemClick }) => {
                         <p className="text-xs">저장된 회의록이 없습니다.</p>
                     </div>
                 ) : (
-                    minutesList.map((item) => (
-                        <div
-                            key={item.id}
-                            onClick={() => onItemClick(item.id)}
-                            className="group p-3 bg-white border border-[var(--border-default)] rounded-lg hover:shadow-sm hover:border-blue-300 cursor-pointer transition-all duration-200"
-                        >
-                            <div className="flex justify-between items-start mb-1">
-                                <h3 className="font-semibold text-sm text-[var(--text-primary)] group-hover:text-blue-600 transition-colors line-clamp-1">
-                                    {item.title}
-                                </h3>
-                            </div>
+                    minutesList.map((item) => {
+                        // summaryMd에서 미리보기 텍스트 추출
+                        let preview = '';
+                        let aiTitle = '';
+                        try {
+                            const parsed = JSON.parse(item.summaryMd || '{}');
+                            const points = parsed.discussion_points || [];
+                            preview = points.join(', ');
+                            aiTitle = parsed.title || '';
+                        } catch {
+                            preview = item.summaryMd || '';
+                        }
 
-                            <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-tertiary)] mb-2">
-                                <Calendar size={10} />
-                                <span>{new Date(item.date).toLocaleDateString()}</span>
-                            </div>
+                        return (
+                            <div
+                                key={item.id}
+                                onClick={() => onItemClick(item)}
+                                className="group p-3 bg-white border border-[var(--border-default)] rounded-lg hover:shadow-sm hover:border-blue-300 cursor-pointer transition-all duration-200"
+                            >
+                                <div className="flex justify-between items-start mb-1">
+                                    <h3 className="font-semibold text-sm text-[var(--text-primary)] group-hover:text-blue-600 transition-colors line-clamp-1">
+                                        {aiTitle || item.title}
+                                    </h3>
+                                </div>
 
-                            <p className="text-xs text-[var(--text-secondary)] line-clamp-2 leading-relaxed">
-                                {item.summaryPreview}
-                            </p>
-                        </div>
-                    ))
+                                <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-tertiary)] mb-2">
+                                    <Calendar size={10} />
+                                    <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                                </div>
+
+                                <p className="text-xs text-[var(--text-secondary)] line-clamp-2 leading-relaxed">
+                                    {preview}
+                                </p>
+                            </div>
+                        );
+                    })
                 )}
             </div>
         </div>

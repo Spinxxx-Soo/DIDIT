@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, X, AlertCircle, CheckCircle2, Clock, Trash2, Sparkles, Github, Check } from 'lucide-react';
 import { IconButton } from '@/components/common/Button/IconButton';
+import { Card } from '@/components/common/Card/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Badge } from '@/components/common/Badge';
@@ -200,6 +201,23 @@ const IssueDetailPanel = () => {
     return es;
   };
 
+  // 임시 이슈 정리 함수 (분석만 하고 나가는 경우)
+  const cleanupDraft = async () => {
+    if (isCreateMode && analyzedData?.issueId) {
+      console.log('Clearing draft issue:', analyzedData.issueId);
+      try {
+        await deleteIssue(currentProject.id, analyzedData.issueId);
+      } catch (e) {
+        console.warn('Draft cleanup warning:', e);
+      }
+    }
+  };
+
+  const handleClose = async () => {
+    await cleanupDraft();
+    closeSidebar();
+  };
+
   const handleAnalyze = async () => {
     if (!formData.title.trim() || !formData.body.trim()) {
       alert('분석을 위해 제목과 내용을 모두 입력해주세요.');
@@ -291,17 +309,26 @@ const IssueDetailPanel = () => {
       }
 
       try {
+        // AI 분석을 통해 이미 이슈가 생성(Draft)된 경우라도, 
+        // GitHub 연동 및 정식 등록을 위해 '생성(POST)' API인 registerIssue를 호출해야 합니다.
+        // 백엔드 createIssue 로직이 기존 issueId를 받아 승격 처리하도록 설계되어 있습니다.
         await registerIssue(currentProject.id, {
           title: formData.title,
           body: formData.body,
-          orgName,
-          repoName,
-          issueId: analyzedData.issueId,
           issueStatus: formData.status.toUpperCase(),
           issuePriority: formData.priority.toUpperCase(),
           assigneeIds: formData.assigneeIds,
+          // GitHub 연동 정보 및 기존 Draft ID
+          orgName,
+          repoName,
+          issueId: analyzedData.issueId
         });
+
         alert('✅ 새 이슈가 등록되었습니다! GitHub 저장소에도 이슈가 생성되었습니다.');
+
+        // 목록으로 이동 (패널 닫기)
+        setActivePanel('issue');
+
       } catch (e) {
         console.error('이슈 생성 실패:', e);
         // 에러 메시지 상세화
@@ -319,8 +346,9 @@ const IssueDetailPanel = () => {
         await updateIssue(currentProject.id, selectedIssueId, {
           title: formData.title,
           body: formData.body,
-          status: formData.status.toUpperCase(),
-          priority: formData.priority.toUpperCase(),
+          // 중요: 백엔드 DTO 필드명에 맞춰 수정 (status -> issueStatus, priority -> issuePriority)
+          issueStatus: formData.status.toUpperCase(),
+          issuePriority: formData.priority.toUpperCase(),
           assigneeIds: formData.assigneeIds,
         });
         alert('이슈가 수정되었습니다.');
@@ -345,13 +373,14 @@ const IssueDetailPanel = () => {
     }
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (isCreateMode && (formData.title || formData.body)) {
       if (!confirm("작성 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
     }
     if (isEditing && !isCreateMode) {
       if (!confirm("수정 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
     }
+    await cleanupDraft();
     setActivePanel('issue');
   };
 
@@ -430,7 +459,7 @@ const IssueDetailPanel = () => {
           variant="ghost"
           size="sm"
           icon={<X size={18} />}
-          onClick={closeSidebar}
+          onClick={handleClose}
           title="닫기"
         />
       </div>
@@ -511,21 +540,21 @@ const IssueDetailPanel = () => {
 
         {/* AI 분석 알림 (생성 및 수정 모드) */}
         {(isCreateMode || isEditing) && (
-          <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg flex flex-col gap-2">
+          <Card variant="bento" padding="sm" className="flex flex-col gap-3 bg-blue-50/50 border-blue-100">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-blue-700 flex items-center gap-1.5">
+              <span className="text-xs font-bold text-blue-700 flex items-center gap-1.5">
                 <Sparkles size={14} className="fill-blue-700" />
                 AI 우선순위 분석 {isCreateMode ? '(필수)' : '(추천)'}
               </span>
               {isAnalyzing ? (
                 <span className="text-xs text-blue-600 font-bold animate-pulse">
-                  AI가 내용을 분석 중입니다...
+                  분석 중...
                 </span>
               ) : (
                 <div className="flex items-center gap-2">
                   {analyzedData && (
-                    <span className="text-xs text-green-600 font-bold">
-                      분석 완료! (추천: {analyzedData.priority})
+                    <span className="text-xs text-green-600 font-bold bg-white px-2 py-0.5 rounded-full shadow-sm border border-green-100">
+                      추천: {analyzedData.priority}
                     </span>
                   )}
                   <Button
@@ -533,18 +562,19 @@ const IssueDetailPanel = () => {
                     variant="secondary"
                     onClick={handleAnalyze}
                     disabled={!formData.title || !formData.body}
+                    className="h-7 text-xs bg-white hover:bg-blue-50 border-blue-200 text-blue-700"
                   >
                     {isCreateMode ? (analyzedData ? '다시 분석하기' : '지금 분석하기') : '다시 분석하기'}
                   </Button>
                 </div>
               )}
             </div>
-            <p className="text-[11px] text-blue-600/80 leading-relaxed">
+            <p className="text-[12px] text-slate-600 leading-relaxed pl-5">
               {isCreateMode
-                ? '제목과 내용을 작성하고 분석 버튼을 눌러주세요. 인공지능이 분석을 마쳐야 이슈를 등록할 수 있습니다.'
-                : '제목이나 내용이 변경되었다면 AI 분석을 다시 실행하여 업데이트된 우선순위를 추천받아보세요.'}
+                ? '제목과 내용을 작성하고 분석 버튼을 눌러주세요. 인공지능이 중요도를 판단하여 이슈 등록을 도와드립니다.'
+                : '제목이나 내용이 변경되었다면, AI에게 다시 우선순위 판단을 요청해보세요.'}
             </p>
-          </div>
+          </Card>
         )}
 
         <Divider />

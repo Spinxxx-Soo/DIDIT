@@ -99,21 +99,22 @@ class MeetingSummaryWorker:
             self.redis.set_result(result_key, result, expire=3600)
             logger.info(f"Redis에 저장 완료 (key: {result_key}, expire: 3600초)")
             
-            # 4. Redis Pub/Sub 발행 
+            # 4. Redis Pub/Sub 발행
             # 백엔드가 기대하는 형식: {summeryId, status, summary(String)}
+            # 프론트엔드가 실제 내용을 파싱해서 필드별로 처리함
             import json
             summary_data = result.get("summary")
-            
-            # summary가 Dict인 경우 마크다운 형식으로 변환
+
+            # summary가 Dict인 경우 JSON 문자열로 변환 (프론트엔드 JSON.parse 호환)
             if isinstance(summary_data, dict):
-                summary_md = self._dict_to_markdown(summary_data)
+                summary_json = json.dumps(summary_data, ensure_ascii=False)
             else:
-                summary_md = str(summary_data) if summary_data else ""
+                summary_json = str(summary_data) if summary_data else ""
             
             pubsub_result = {
                 "summeryId": result.get("summeryId"),
                 "status": result.get("status"),
-                "summary": summary_md
+                "summary": summary_json
             }
             pubsub_message = json.dumps(pubsub_result, ensure_ascii=False)
             subscribers = self.redis.client.publish(

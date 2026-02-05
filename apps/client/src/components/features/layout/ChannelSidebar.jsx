@@ -8,7 +8,6 @@ import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
 import useMeetingStore from '@/store/useMeetingStore';
 import useOpenVidu from '@/hooks/useOpenVidu';
 import { projectApi } from '@/api/project';
-import { meetingApi } from '@/api/meeting';
 import MeetingMinutesList from '@/components/features/meeting/MeetingMinutesList';
 import DraggableSummaryWindow from '@/components/features/meeting/DraggableSummaryWindow';
 import { ManageMembersModal } from '@/components/features/project/ManageMembersModal';
@@ -132,13 +131,8 @@ const ChannelSidebar = () => {
     navigate(`/workspace/${projectId}`);
   };
 
-  const handleMinuteClick = async (id) => {
-    try {
-      const response = await meetingApi.getMeetingSummaryDetail(id);
-      setSelectedSummary(response.data);
-    } catch (error) {
-      console.error('상세 조회 실패:', error);
-    }
+  const handleMinuteClick = (summary) => {
+    setSelectedSummary(summary);
   };
 
   const handleCopyInviteLink = async () => {
@@ -403,9 +397,11 @@ const ChannelSidebar = () => {
                       </li>
                     ) : channels.length > 0 ? (
                       channels
-                        // [추가됨] 'SCHEDULED' 상태인 채널은 아직 시작되지 않은 예약 일정이므로,
-                        // 사이드바(채팅방 목록)에서는 숨기고 캘린더에서만 보이도록 필터링합니다.
-                        .filter(channel => channel.status !== 'SCHEDULED')
+                        // [변경됨] 'SCHEDULED' 상태인 채널은 시작 시간이 되었거나 지났을 때만 사이드바에 표시
+                        .filter(channel =>
+                          channel.status !== 'SCHEDULED' ||
+                          (channel.status === 'SCHEDULED' && (!channel.startedAt || new Date(channel.startedAt) <= new Date()))
+                        )
                         .map((channel) => {
                           const isVoiceChannel = channel.mode === 'VOICE';
                           const isSelected = currentChannelId === channel.id;
@@ -639,7 +635,13 @@ const ChannelSidebar = () => {
       />
 
       {selectedSummary && (
-        <DraggableSummaryWindow isOpen={!!selectedSummary} onClose={() => setSelectedSummary(null)} summary={selectedSummary} />
+        <DraggableSummaryWindow
+          isOpen={!!selectedSummary}
+          onClose={() => setSelectedSummary(null)}
+          summary={selectedSummary}
+          projectId={projectId}
+          onDelete={() => setSelectedSummary(null)}
+        />
       )}
 
       <ManageMembersModal

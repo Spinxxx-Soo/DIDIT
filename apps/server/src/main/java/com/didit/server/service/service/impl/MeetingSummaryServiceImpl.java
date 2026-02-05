@@ -79,10 +79,10 @@ public class MeetingSummaryServiceImpl implements MeetingSummaryService {
         }
 
         var entity = findResult.get();
-        if (cmd.title() != null &&!cmd.title().isEmpty() && !entity.getTitle().equals(cmd.title())){
+        if (cmd.title() != null && !cmd.title().isEmpty() && !entity.getTitle().equals(cmd.title())) {
             entity.setTitle(cmd.title());
         }
-        if (cmd.summaryMd() != null && !cmd.summaryMd().isEmpty() && !entity.getSummaryMd().equals(cmd.summaryMd())){
+        if (cmd.summaryMd() != null && !cmd.summaryMd().isEmpty() && !entity.getSummaryMd().equals(cmd.summaryMd())) {
             entity.setSummaryMd(cmd.summaryMd());
         }
         entity.setSummaryVersion(entity.getSummaryVersion() + 1);
@@ -97,7 +97,7 @@ public class MeetingSummaryServiceImpl implements MeetingSummaryService {
             return Result.fail(new NotFoundError("summaryId", summaryId));
         }
         var entity = findResult.get();
-        if (summary != null && !summary.isEmpty() && !entity.getSummaryMd().equals(summary)){
+        if (summary != null && !summary.isEmpty() && !entity.getSummaryMd().equals(summary)) {
             entity.setSummaryMd(summary);
         }
         entity.setGeneratedAt(LocalDateTime.now());

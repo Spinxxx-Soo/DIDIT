@@ -176,6 +176,7 @@ const useChatStore = create((set, get) => ({
             console.log('[SSE] media_recording_stop:', event.data);
             const meetingStore = useMeetingStore.getState();
             meetingStore.setRecording(false);
+            meetingStore.setGenerating(true);
         });
 
         // 미디어 에러 이벤트

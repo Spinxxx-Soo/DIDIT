@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import useLoungeStore from '@/store/useLoungeStore';
+import useMeetingStore from '@/store/useMeetingStore';
+import useToastStore from '@/store/useToastStore';
 
 const RECONNECT_DELAY = 3000;
 const MAX_CONNECTION_TIME = 30 * 60 * 1000; // 30분
@@ -72,6 +74,22 @@ const useProjectSSE = (projectId) => {
                 useLoungeStore.setState({ issues: reordered });
             } catch (e) {
                 console.error('[ProjectSSE] ai_sort_result 파싱 오류:', e);
+            }
+        });
+
+        // media_summary_generated: 회의록 생성 완료
+        es.addEventListener('media_summary_generated', (event) => {
+            console.log('[ProjectSSE] media_summary_generated:', event.data);
+            try {
+                const data = JSON.parse(event.data);
+                const meetingStore = useMeetingStore.getState();
+                meetingStore.setGenerating(false);
+                meetingStore.setGeneratedSummaryId(data.summeryId);
+
+                const { addToast } = useToastStore.getState();
+                addToast({ type: 'success', message: '회의록 생성이 완료되었습니다.' });
+            } catch (e) {
+                console.error('[ProjectSSE] media_summary_generated 파싱 오류:', e);
             }
         });
 
