@@ -514,40 +514,42 @@ const IssueDetailPanel = () => {
         </div>
 
         {/* AI 분석 알림 (생성 및 수정 모드) */}
-        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-blue-700 flex items-center gap-1.5">
-              <Sparkles size={14} className="fill-blue-700" />
-              AI 우선순위 분석 {isCreateMode ? '(필수)' : '(추천)'}
-            </span>
-            {isAnalyzing ? (
-              <span className="text-xs text-blue-600 font-bold animate-pulse">
-                AI가 내용을 분석 중입니다...
+        {(isCreateMode || isEditing) && (
+          <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-blue-700 flex items-center gap-1.5">
+                <Sparkles size={14} className="fill-blue-700" />
+                AI 우선순위 분석 {isCreateMode ? '(필수)' : '(추천)'}
               </span>
-            ) : (
-              <div className="flex items-center gap-2">
-                {analyzedData && (
-                  <span className="text-xs text-green-600 font-bold">
-                    분석 완료! (추천: {analyzedData.priority})
-                  </span>
-                )}
-                <Button
-                  size="xs"
-                  variant="secondary"
-                  onClick={handleAnalyze}
-                  disabled={!formData.title || !formData.body}
-                >
-                  {isCreateMode ? (analyzedData ? '다시 분석하기' : '지금 분석하기') : '다시 분석하기'}
-                </Button>
-              </div>
-            )}
+              {isAnalyzing ? (
+                <span className="text-xs text-blue-600 font-bold animate-pulse">
+                  AI가 내용을 분석 중입니다...
+                </span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {analyzedData && (
+                    <span className="text-xs text-green-600 font-bold">
+                      분석 완료! (추천: {analyzedData.priority})
+                    </span>
+                  )}
+                  <Button
+                    size="xs"
+                    variant="secondary"
+                    onClick={handleAnalyze}
+                    disabled={!formData.title || !formData.body}
+                  >
+                    {isCreateMode ? (analyzedData ? '다시 분석하기' : '지금 분석하기') : '다시 분석하기'}
+                  </Button>
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-blue-600/80 leading-relaxed">
+              {isCreateMode
+                ? '제목과 내용을 작성하고 분석 버튼을 눌러주세요. 인공지능이 분석을 마쳐야 이슈를 등록할 수 있습니다.'
+                : '제목이나 내용이 변경되었다면 AI 분석을 다시 실행하여 업데이트된 우선순위를 추천받아보세요.'}
+            </p>
           </div>
-          <p className="text-[11px] text-blue-600/80 leading-relaxed">
-            {isCreateMode
-              ? '제목과 내용을 작성하고 분석 버튼을 눌러주세요. 인공지능이 분석을 마쳐야 이슈를 등록할 수 있습니다.'
-              : '제목이나 내용이 변경되었다면 AI 분석을 다시 실행하여 업데이트된 우선순위를 추천받아보세요.'}
-          </p>
-        </div>
+        )}
 
         <Divider />
 
