@@ -302,7 +302,7 @@ const useChatStore = create((set, get) => ({
     // 5. 메시지 수정
     editMessage: async (channelId, chatId, content) => {
         try {
-            await chatApi.updateChat(channelId, chatId, { content });
+            await chatApi.updateChat(chatId, { content });
             // SSE 'chat_update' 이벤트가 상태를 업데이트합니다.
         } catch (error) {
             console.error("Message edit failed:", error);
@@ -313,7 +313,7 @@ const useChatStore = create((set, get) => ({
     // 6. 메시지 삭제
     deleteMessage: async (channelId, chatId) => {
         try {
-            await chatApi.deleteChat(channelId, chatId);
+            await chatApi.deleteChat(chatId);
             // SSE 'chat_delete' 이벤트가 상태를 업데이트합니다.
         } catch (error) {
             console.error("Message delete failed:", error);
