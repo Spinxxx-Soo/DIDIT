@@ -109,7 +109,8 @@ class MeetingSummaryService:
     # Helpers
     # ======================
     def process_with_ffmpeg(self, input_file: str, output_file: str) -> str:
-        if not input_file or not os.path.exists(input_file):
+        is_url = input_file.startswith("http://") or input_file.startswith("https://") if input_file else False
+        if not input_file or (not is_url and not os.path.exists(input_file)):
             raise FileNotFoundError(f"입력 파일이 존재하지 않습니다: {input_file}")
         if not output_file:
             raise ValueError("output_file 경로가 비어 있습니다.")
