@@ -309,27 +309,24 @@ const IssueDetailPanel = () => {
       }
 
       try {
-        // AI 분석을 통해 이미 이슈 ID가 생성된 경우, registerIssue(신규생성) 대신 updateIssue(수정)를 사용해야 함
-        // 단, 백엔드 로직상 updateIssue가 '등록'의 역할도 수행할 수 있는지 확인 필요.
-        // 이미 DB에 존재하는 이슈(분석시 생성됨)를 업데이트하여 "등록 완료" 상태로 만드는 것이므로 updateIssue가 적절함.
-        // 그리고 GitHub 연동을 위해 orgName, repoName도 함께 전달해야 함.
-
-        await updateIssue(currentProject.id, analyzedData.issueId, {
+        // AI 분석을 통해 이미 이슈가 생성(Draft)된 경우라도, 
+        // GitHub 연동 및 정식 등록을 위해 '생성(POST)' API인 registerIssue를 호출해야 합니다.
+        // 백엔드 createIssue 로직이 기존 issueId를 받아 승격 처리하도록 설계되어 있습니다.
+        await registerIssue(currentProject.id, {
           title: formData.title,
           body: formData.body,
-          // 중요: 백엔드 DTO와 일치시키기 위해 keys 변경 (status -> issueStatus, priority -> issuePriority)
           issueStatus: formData.status.toUpperCase(),
           issuePriority: formData.priority.toUpperCase(),
           assigneeIds: formData.assigneeIds,
-          // GitHub 연동 정보 추가
+          // GitHub 연동 정보 및 기존 Draft ID
           orgName,
           repoName,
+          issueId: analyzedData.issueId
         });
 
         alert('✅ 새 이슈가 등록되었습니다! GitHub 저장소에도 이슈가 생성되었습니다.');
 
-        // 목록 갱신 및 패널 닫기 (updateIssue 성공 시 store에서 처리됨)
-        // 명시적으로 목록으 이동
+        // 목록으로 이동 (패널 닫기)
         setActivePanel('issue');
 
       } catch (e) {
