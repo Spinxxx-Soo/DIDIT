@@ -85,6 +85,12 @@ public class IssueServiceImpl implements IssueService {
     }
 
     @Override
+    public Result<IssueEntity> FindById(long issueId) {
+        var findResult = issueRepository.findById(issueId);
+        return findResult.map(Result::ok).orElseGet(() -> Result.fail(new NotFoundError("issueId", issueId)));
+    }
+
+    @Override
     public Result<AiResponse> AnalyzeIssue(long projectId, long userId,
                                            String title, IssueStatus status,
                                            String body, List<Long> assigneeIds){
