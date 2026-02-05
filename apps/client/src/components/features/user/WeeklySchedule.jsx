@@ -68,7 +68,24 @@ const WeeklySchedule = () => {
 
   const getSchedulesForDay = (date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return schedules.filter(s => s.startDate <= dateStr && dateStr <= s.endDate);
+    const now = new Date();
+
+    return schedules.filter(s => {
+      // 기본 날짜 범위 체크
+      const isInDateRange = s.startDate <= dateStr && dateStr <= s.endDate;
+      if (!isInDateRange) return false;
+
+      // SCHEDULED 상태인데 시작 시간이 지났으면 캘린더에서 숨김
+      // (이미 사이드바에 채널로 표시되고 있음)
+      if (s.type === 'meeting' && s.rawStartedAt) {
+        const startTime = new Date(s.rawStartedAt);
+        if (startTime <= now) {
+          return false; // 시작 시간이 지난 예약 일정은 숨김
+        }
+      }
+
+      return true;
+    });
   };
 
   const handleOpenModal = (dateStr = '') => {
