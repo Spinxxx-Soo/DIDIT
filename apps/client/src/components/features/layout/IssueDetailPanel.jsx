@@ -292,17 +292,29 @@ const IssueDetailPanel = () => {
       }
 
       try {
-        await registerIssue(currentProject.id, {
+        // AI 분석을 통해 이미 이슈 ID가 생성된 경우, registerIssue(신규생성) 대신 updateIssue(수정)를 사용해야 함
+        // 단, 백엔드 로직상 updateIssue가 '등록'의 역할도 수행할 수 있는지 확인 필요.
+        // 이미 DB에 존재하는 이슈(분석시 생성됨)를 업데이트하여 "등록 완료" 상태로 만드는 것이므로 updateIssue가 적절함.
+        // 그리고 GitHub 연동을 위해 orgName, repoName도 함께 전달해야 함.
+
+        await updateIssue(currentProject.id, analyzedData.issueId, {
           title: formData.title,
           body: formData.body,
-          orgName,
-          repoName,
-          issueId: analyzedData.issueId,
+          // 중요: 백엔드 DTO와 일치시키기 위해 keys 변경 (status -> issueStatus, priority -> issuePriority)
           issueStatus: formData.status.toUpperCase(),
           issuePriority: formData.priority.toUpperCase(),
           assigneeIds: formData.assigneeIds,
+          // GitHub 연동 정보 추가
+          orgName,
+          repoName,
         });
+
         alert('✅ 새 이슈가 등록되었습니다! GitHub 저장소에도 이슈가 생성되었습니다.');
+
+        // 목록 갱신 및 패널 닫기 (updateIssue 성공 시 store에서 처리됨)
+        // 명시적으로 목록으 이동
+        setActivePanel('issue');
+
       } catch (e) {
         console.error('이슈 생성 실패:', e);
         // 에러 메시지 상세화
@@ -320,8 +332,9 @@ const IssueDetailPanel = () => {
         await updateIssue(currentProject.id, selectedIssueId, {
           title: formData.title,
           body: formData.body,
-          status: formData.status.toUpperCase(),
-          priority: formData.priority.toUpperCase(),
+          // 중요: 백엔드 DTO 필드명에 맞춰 수정 (status -> issueStatus, priority -> issuePriority)
+          issueStatus: formData.status.toUpperCase(),
+          issuePriority: formData.priority.toUpperCase(),
           assigneeIds: formData.assigneeIds,
         });
         alert('이슈가 수정되었습니다.');

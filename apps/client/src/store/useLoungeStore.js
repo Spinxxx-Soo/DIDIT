@@ -308,13 +308,13 @@ const useLoungeStore = create((set, get) => ({
         issues: state.issues.map((issue) =>
           issue.id === issueId
             ? {
-                ...issue,
-                title: data.title ?? issue.title,
-                body: data.body ?? issue.body,
-                status: data.status?.toLowerCase() ?? issue.status,
-                priority: data.priority?.toLowerCase() ?? issue.priority,
-                assigneeIds: data.assigneeIds ?? issue.assigneeIds,
-              }
+              ...issue,
+              title: data.title ?? issue.title,
+              body: data.body ?? issue.body,
+              status: (data.issueStatus || data.status)?.toLowerCase() ?? issue.status,
+              priority: (data.issuePriority || data.priority)?.toLowerCase() ?? issue.priority,
+              assigneeIds: data.assigneeIds ?? issue.assigneeIds,
+            }
             : issue
         ),
         isLoading: false,
