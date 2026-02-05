@@ -86,7 +86,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         log.info("[OV] participantLeft sessionId={} connId={} reason={} duration={}",
                 e.sessionId(), e.connectionId(), e.reason(), e.duration());
         var findMeetingResult = meetingService.findBySessionId(e.sessionId());
-        if (findMeetingResult.isSuccess()) {
+        if (findMeetingResult.isFailure()) {
             log.error("[OV] onParticipantLeft - Meeting Entity를 찾을수 없습니다 : {}", e.sessionId());
             return;
         }
