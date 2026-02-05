@@ -1,9 +1,7 @@
 # services/issue_priority_reorder_service.py
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from collections import defaultdict
 
-from common.redis_client import RedisClient
-from common.settings import settings
 from models.common.logger import get_logger
 from models.common.text_utils import build_issue_text
 from models.issue_priority_commit import IssuePriorityModel, PriorityLevel
@@ -14,14 +12,16 @@ logger = get_logger(__name__)
 
 class IssuePriorityReorderService:
     """
+    이슈 우선순위 재정렬 서비스 (순수 비즈니스 로직)
+    
     입력: 이미 priority(HIGH/MED/LOW or 상/중/하)가 붙은 이슈 리스트
     처리: priority 그룹 유지 + 그룹 내부는 모델 score로 재정렬
     출력: HIGH -> MED -> LOW 순으로 병합된 리스트
     """
 
     def __init__(self):
+        """모델 초기화"""
         self.model = IssuePriorityModel()
-        self.redis = RedisClient()
 
     # ---------- core pipeline ----------
 
@@ -34,24 +34,65 @@ class IssuePriorityReorderService:
             groups[p] = self._sort_group(groups[p], return_scores)
 
         return self._merge(groups)
+    
+    def reorder_with_scores(self, issues: List[Dict[str, Any]]) -> tuple[List[Dict[str, Any]], Dict[int, float]]:
+        """
+        재정렬과 함께 각 이슈의 점수 정보도 반환
+        Returns: (재정렬된 이슈 리스트, {issueId: score} 딕셔너리)
+        """
+        if not issues:
+            return [], {}
+        
+        # 점수 정보를 저장할 딕셔너리
+        score_map = {}
+        
+        groups = self._group_by_priority(issues)
+        for p in list(groups.keys()):
+            # 각 그룹의 이슈에 대해 점수 계산 및 저장
+            for issue in groups[p]:
+                issue_id = issue.get("issueId")
+                subject = issue.get("title")
+                body = issue.get("body")
+                score = self._score(subject, body)
+                if issue_id is not None:
+                    score_map[issue_id] = score
+            
+            groups[p] = self._sort_group(groups[p], return_scores=False)
+        
+        merged = self._merge(groups)
+        return merged, score_map
 
     # ---------- helpers ----------
 
     def _group_by_priority(self, issues: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
         groups = defaultdict(list)
         for issue in issues:
+            # priority가 없으면 기본값 MEDIUM 사용
             p = issue.get("priority")
-            if p:
-                groups[p].append(issue)
+            if not p:
+                p = PriorityLevel.MEDIUM
+                issue["priority"] = p
+
+            if isinstance(p, str):
+                p_upper = p.upper()
+                if p_upper == "HIGH":
+                    p = PriorityLevel.HIGH
+                elif p_upper == "MEDIUM" or p_upper == "MED":
+                    p = PriorityLevel.MEDIUM
+                elif p_upper == "LOW":
+                    p = PriorityLevel.LOW
+                else:
+                    p = PriorityLevel.MEDIUM
+                issue["priority"] = p
+            groups[p].append(issue)
         return dict(groups)
 
     def _sort_group(self, issues: List[Dict[str, Any]], return_scores: bool) -> List[Dict[str, Any]]:
         scored = []
         for it in issues:
-            subject = it.get("subject")
+            subject = it.get("title")
             body = it.get("body")
             score = self._score(subject, body)
-
             out = dict(it)
             if return_scores:
                 out["score"] = score
@@ -67,6 +108,14 @@ class IssuePriorityReorderService:
         return merged
 
     def _score(self, subject: str, body: str = "") -> float:
+        # 텍스트 유효성 검증
+        from models.common.text_utils import validate_issue_text, is_meaningless_text
+        
+        # 의미없는 텍스트는 낮은 점수 반환 (재정렬 시 뒤로 밀림)
+        if is_meaningless_text(subject) or (body and is_meaningless_text(body)):
+            logger.debug(f"의미없는 텍스트 감지 - 제목: '{subject[:20]}...', 기본 점수 반환")
+            return 0.3
+        
         text = build_issue_text(subject, body)
         score = self.model.predict_score(text)
 
@@ -85,57 +134,28 @@ class IssuePriorityReorderService:
             score += REORDER_PENALTY_SCORE  # config 값이 음수면 내려감
 
         return score
-
-    # ---------- redis entry ----------
-
-    def process_from_redis(self) -> Optional[Dict[str, Any]]:
-        task = self.redis.pop_from_queue(settings.REDIS_QUEUE_ISSUE_BATCH, timeout=1)
-        if not task:
-            return None
-
-        # Redis에서 받은 데이터 추출
-        user_id = task.get("userId")
-        project_id = task.get("projectId")
-        issues = task.get("issues") or []
-        return_scores = bool(task.get("return_scores", False))
-
-        if not user_id or not project_id:
-            logger.error("invalid task (userId/projectId 없음): %s", task)
-            return None
-
-        if not issues:
-            logger.error("invalid task(no issues): %s", task)
-            return None
-
-        # 이슈 재정렬
-        reordered_issues = self.reorder(issues, return_scores)
-
-        # 반환 형식에 맞게 변환: {"issue_id": .., "title": .., "body": ..}
-        formatted_issues = []
-        for issue in reordered_issues:
-            formatted_issue = {
-                "issue_id": issue.get("issue_id") or issue.get("id"),
-                "title": issue.get("title") or issue.get("subject"),
-                "body": issue.get("body") or ""
-            }
-            # priority가 있으면 포함
-            if "priority" in issue:
-                formatted_issue["priority"] = issue["priority"]
-            
-            formatted_issues.append(formatted_issue)
-
-        # 최종 결과 형식
-        result = {
-            "userId": user_id,
-            "projectId": project_id,
-            "issues": formatted_issues
-        }
+    
+    def reorder_issues(self, issues: List[Dict[str, Any]]) -> tuple[List[Dict[str, Any]], Dict[int, float], List[int]]:
+        """
+        이슈를 재정렬하고 결과를 반환합니다.
         
-        # 결과를 Redis에 저장
-        key = f"{settings.REDIS_RESULT_TOPIC_BATCH}"
-        self.redis.set_result(key, result, expire=3600)
-
-        return result
-
-    def close(self):
-        self.redis.close()
+        Args:
+            issues: 재정렬할 이슈 리스트
+        
+        Returns:
+            (재정렬된 이슈 리스트, {issueId: score} 딕셔너리, 재정렬된 issueId 리스트)
+        """
+        if not issues:
+            return [], {}, []
+        
+        # 이슈 재정렬 (점수 정보 포함)
+        reordered_issues, score_map = self.reorder_with_scores(issues)
+        
+        if len(reordered_issues) == 0:
+            logger.warning("재정렬 결과가 비어있습니다.")
+            return [], {}, []
+        
+        # 재정렬된 issueId 리스트 추출
+        issue_ids = [issue.get("issueId") for issue in reordered_issues if issue.get("issueId") is not None]
+        
+        return reordered_issues, score_map, issue_ids
