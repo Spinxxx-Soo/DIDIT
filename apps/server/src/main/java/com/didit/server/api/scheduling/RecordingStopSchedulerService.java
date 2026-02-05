@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 
-import static com.didit.server.api.redis.RecordingStopKeys.STOP_SCHEDULED_ZSET;
+import static com.didit.server.api.redis.key.RecordingStopKeys.STOP_SCHEDULED_ZSET;
 
 @Service
 @RequiredArgsConstructor

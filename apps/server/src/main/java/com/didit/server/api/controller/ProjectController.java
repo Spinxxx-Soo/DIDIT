@@ -1,23 +1,24 @@
 package com.didit.server.api.controller;
 
 import com.didit.server.api.request.*;
-import com.didit.server.api.response.MeetingResponse;
-import com.didit.server.api.response.ProjectRecentResponse;
-import com.didit.server.api.response.ProjectResponse;
-import com.didit.server.api.response.UserResponse;
+import com.didit.server.api.response.*;
 import com.didit.server.api.security.CustomOAuth2User;
 import com.didit.server.data.entity.ProjectEntity;
 import com.didit.server.data.entity.enums.MeetingStatus;
+import com.didit.server.data.entity.enums.ProjectUserRole;
 import com.didit.server.data.external.github.GithubService;
 import com.didit.server.service.command.AddProjectCommand;
 import com.didit.server.service.command.BookMeetingCommand;
+import com.didit.server.service.command.UpdateSummaryCommand;
 import com.didit.server.service.service.MeetingService;
+import com.didit.server.service.service.MeetingSummaryService;
 import com.didit.server.service.service.ProjectService;
 import com.didit.server.share.result.Result;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.parameters.P;
@@ -35,6 +36,7 @@ public class ProjectController {
     private final ProjectService _ProjectService;
     private final MeetingService _MeetingService;
     private final GithubService _GithubService;
+    private final MeetingSummaryService _MeetingSummaryService;
 
     //[Feature][Rooms] 방 목록 조회 + 사이드바 연동 (GET /api/v1/rooms)
     @GetMapping()
@@ -234,7 +236,7 @@ public class ProjectController {
 
         var userId = user.getId();
         var userFindResult = _ProjectService.FindProjectUser(userId, projectId);
-        if (userFindResult.isFailure()){
+        if (userFindResult.isFailure()) {
             var err = userFindResult.getSingleErrorOrThrow();
             var response = err.getResponse();
             return new ResponseEntity<>(response, response.getStatusCode());
@@ -304,7 +306,7 @@ public class ProjectController {
 
     @DeleteMapping("/{projectId}")
     public ResponseEntity<?> DeleteProject(@PathVariable long projectId,
-                                           @AuthenticationPrincipal CustomOAuth2User user){
+                                           @AuthenticationPrincipal CustomOAuth2User user) {
         long userId = user.getId();
         var deleteResult = _ProjectService.DeleteProject(projectId, userId);
         if (deleteResult.isFailure()) {
@@ -342,7 +344,7 @@ public class ProjectController {
     @PatchMapping("/{projectId}")
     public ResponseEntity<?> updateProjectRepo(@PathVariable long projectId,
                                                @AuthenticationPrincipal CustomOAuth2User user,
-                                               @RequestBody UpdateRepoRequest req){
+                                               @RequestBody UpdateRepoRequest req) {
         long userId = user.getId();
         var result = _ProjectService.updateProjectRepo(projectId, userId, req.repoId(), req.repoFullName());
         if (result.isFailure()) {
@@ -355,7 +357,7 @@ public class ProjectController {
     @PatchMapping("/{projectId}/owner")
     public ResponseEntity<?> transferOwnership(@PathVariable long projectId,
                                                @AuthenticationPrincipal CustomOAuth2User user,
-                                               @RequestBody TransferOwnerRequest req){
+                                               @RequestBody TransferOwnerRequest req) {
         long userId = user.getId();
         var result = _ProjectService.transferOwnership(projectId, userId, req.newOwnerId());
         if (result.isFailure()) {
@@ -368,7 +370,7 @@ public class ProjectController {
     @PatchMapping("/{projectId}/name")
     public ResponseEntity<?> updateProjectName(@PathVariable long projectId,
                                                @AuthenticationPrincipal CustomOAuth2User user,
-                                               @RequestBody @Valid UpdateProjectNameRequest req){
+                                               @RequestBody @Valid UpdateProjectNameRequest req) {
         long userId = user.getId();
         var result = _ProjectService.updateProjectName(projectId, userId, req.name());
         if (result.isFailure()) {
@@ -381,13 +383,95 @@ public class ProjectController {
     @DeleteMapping("/{projectId}/participants/{userId}")
     public ResponseEntity<?> removeParticipant(@PathVariable long projectId,
                                                @PathVariable long userId,
-                                               @AuthenticationPrincipal CustomOAuth2User user){
+                                               @AuthenticationPrincipal CustomOAuth2User user) {
         long ownerId = user.getId();
         var result = _ProjectService.removeParticipant(projectId, userId, ownerId);
-        if (result.isFailure()){
+        if (result.isFailure()) {
             var err = result.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{projectId}/summary")
+    public ResponseEntity<?> GetSummaries(@PathVariable long projectId,
+                                          @AuthenticationPrincipal CustomOAuth2User user) {
+        var result = _ProjectService.FindProjectUser(user.getId(), projectId);
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+
+        var findResult = _MeetingSummaryService.FindAllByProject(projectId);
+        if (findResult.isFailure()) {
+            var err = findResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+
+        var entities = findResult.getOrThrow();
+        return ResponseEntity.ok(entities.stream()
+                .map(MeetingSummaryResponse::fromEntity)
+                .toList());
+    }
+
+    @PatchMapping("/{projectId}/summary/{summaryId}")
+    public ResponseEntity<?> UpdateSummary(@PathVariable long projectId,
+                                          @PathVariable long summaryId,
+                                          @RequestBody UpdateSummaryRequest request,
+                                          @AuthenticationPrincipal CustomOAuth2User user) {
+        var result = _ProjectService.FindProjectUser(user.getId(), projectId);
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        var findSummaryResult = _MeetingSummaryService.FindById(summaryId);
+        if (findSummaryResult.isFailure()) {
+            var err = findSummaryResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        var summary = findSummaryResult.getOrThrow();
+        if (!summary.getProject().getId().equals(projectId)) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+
+        var cmd = new UpdateSummaryCommand(request.title(), request.summary());
+        var updateResult = _MeetingSummaryService.UpdateSummary(summaryId, user.getId(), cmd);
+        if (updateResult.isFailure()){
+            var err = updateResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{projectId}/summary/{summaryId}")
+    public ResponseEntity<?> DeleteSummary(@PathVariable long projectId,
+                                           @PathVariable long summaryId,
+                                           @AuthenticationPrincipal CustomOAuth2User user) {
+        var result = _ProjectService.FindProjectUser(user.getId(), projectId);
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        if (!result.getOrThrow().getRole().equals(ProjectUserRole.ADMIN)){
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+        var findSummaryResult = _MeetingSummaryService.FindById(summaryId);
+        if (findSummaryResult.isFailure()) {
+            var err = findSummaryResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        var summary = findSummaryResult.getOrThrow();
+        if (!summary.getProject().getId().equals(projectId)) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+
+        var deleteResult = _MeetingSummaryService.DeleteSummary(summaryId);
+        if (deleteResult.isFailure()){
+            var err = deleteResult.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+
         return ResponseEntity.ok().build();
     }
 }

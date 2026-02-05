@@ -1,4 +1,4 @@
-package com.didit.server.api.redis;
+package com.didit.server.api.redis.key;
 
 public final class RecordingStopKeys {
     private RecordingStopKeys() {}
