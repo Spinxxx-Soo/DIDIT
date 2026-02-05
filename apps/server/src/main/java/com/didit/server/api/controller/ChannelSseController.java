@@ -38,7 +38,7 @@ public class ChannelSseController {
     public SseEmitter subscribeProject(@PathVariable long projectId,
                                        @AuthenticationPrincipal CustomOAuth2User user){
         long userId = user.getId();
-        if (!chatService.checkMembership(projectId, userId)) {
+        if (!chatService.checkMembershipInProject(projectId, userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "프로젝트 구독 권한이 없습니다.");
         }
         String clientKey = sseHub.generateClientKey(userId);

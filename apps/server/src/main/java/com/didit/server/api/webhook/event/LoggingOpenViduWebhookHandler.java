@@ -127,7 +127,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         log.info("[OV] webrtcConnectionCreated sessionId={} connId={} streamId={} dir={} from={}",
                 e.sessionId(), e.connectionId(), e.streamId(), e.connection(), e.receivingFrom());
         var findMeetingResult = meetingService.findBySessionId(e.sessionId());
-        if(findMeetingResult.isSuccess()) {
+        if(findMeetingResult.isFailure()) {
             log.error("[OV] onWebrtcConnectionCreated - Meeting Entity를 찾을수 없습니다 : {}", e.sessionId());
             return;
         }
@@ -153,7 +153,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         log.info("[OV] webrtcConnectionDestroyed sessionId={} connId={} streamId={} reason={} duration={}",
                 e.sessionId(), e.connectionId(), e.streamId(), e.reason(), e.duration());
         var findMeetingResult = meetingService.findBySessionId(e.sessionId());
-        if(findMeetingResult.isSuccess()) {
+        if(findMeetingResult.isFailure()) {
             log.error("[OV] onWebrtcConnectionDestroyed - Meeting Entity를 찾을수 없습니다 : {}", e.sessionId());
             return;
         }

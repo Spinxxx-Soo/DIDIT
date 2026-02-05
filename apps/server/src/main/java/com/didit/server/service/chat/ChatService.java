@@ -89,4 +89,6 @@ public interface ChatService {
      * - boolean: 멤버 여부 (true/false)
      */
     boolean checkMembership(long channelId, long userId);
+
+    boolean checkMembershipInProject(long channelId, long userId);
 }
