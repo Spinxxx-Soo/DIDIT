@@ -25,6 +25,7 @@ const useAuthStore = create((set, get) => ({
       set({ user: mockUser, isAuthenticated: true });
       alert("GitHub 로그인 성공! (Mock Mode)");
     } else {
+      localStorage.removeItem('loggedOut');
       // 백엔드로 이동 -> 백엔드에서 GitHub 로그인 -> 쿠키(JSESSIONID) 설정 -> 프론트로 리다이렉트
       window.location.href = authApi.LOGIN_URL;
     }
@@ -97,6 +98,7 @@ const useAuthStore = create((set, get) => ({
       console.error('로그아웃 API 에러:', e);
     } finally {
       console.log("3. 클라이언트 상태 초기화 (여기서 GNB가 바뀌어야 함)");
+      localStorage.setItem('loggedOut', 'true');
       // 🔴 중요: 에러가 나든 말든 일단 로컬 상태는 로그아웃으로 바꿈
       set({
         user: null,
@@ -105,7 +107,7 @@ const useAuthStore = create((set, get) => ({
         isLoading: false
       });
 
-      // window.location.href = '/'; 
+      // window.location.href = '/';
     }
   },
 
@@ -113,7 +115,10 @@ const useAuthStore = create((set, get) => ({
   // [5] 새로고침 시 상태 복구
   // ------------------------------------------------------------------
   checkLoginStatus: async () => {
-    // 로컬 스토리지 토큰 확인 로직 제거
+    if (localStorage.getItem('loggedOut') === 'true') {
+      set({ user: null, isAuthenticated: false, isLoading: false });
+      return;
+    }
     // 바로 백엔드에 찔러서 세션 유효한지 확인
     await get().fetchCurrentUser();
   },
