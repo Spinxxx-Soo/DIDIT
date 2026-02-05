@@ -42,6 +42,10 @@ export function MyPage() {
   }, [fetchProjects]);
 
   const handleProjectClick = (projectId) => {
+    if (!projectId) {
+      console.error('프로젝트 ID가 없습니다:', projectId);
+      return;
+    }
     navigate(`/workspace/${projectId}`);
   };
 
