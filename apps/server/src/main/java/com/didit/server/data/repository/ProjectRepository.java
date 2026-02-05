@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ProjectRepository extends JpaRepository<ProjectEntity, Long> {
 
     boolean existsByRepoFullName(String repoFullName);
+
+    boolean existsByRepoFullNameAndIdNot(String fullName, long projectId);
 }

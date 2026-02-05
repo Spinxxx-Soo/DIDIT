@@ -8,6 +8,7 @@ import com.didit.server.data.repository.ProjectRepository;
 import com.didit.server.data.repository.UserGithubAuthRepository;
 import com.didit.server.data.repository.UserRepository;
 import com.didit.server.share.result.Result;
+import com.didit.server.share.result.impl.ConflictError;
 import com.didit.server.share.result.impl.ForbiddenError;
 import com.didit.server.share.result.impl.NotFoundError;
 import com.didit.server.share.result.impl.ServerError;
@@ -77,6 +78,10 @@ public class GithubServiceImpl implements GithubService {
             String fullName = orgName + "/" + repoName;
             try {
                 GHRepository repo = gitHub.getRepository(fullName);
+                boolean isAlreadyUsedByOther = projectRepository.existsByRepoFullNameAndIdNot(repo.getFullName(), projectId);
+                if (isAlreadyUsedByOther) {
+                    return Result.fail(new ConflictError("이미 다른 프로젝트에 등록된 깃허브 레포지토리입니다."));
+                }
                 return Result.ok(GithubRepoResponse.builder()
                         .repoId(repo.getId())
                         .repoName(repo.getFullName())

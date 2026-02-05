@@ -78,6 +78,14 @@ public class IssueServiceImpl implements IssueService {
                 return Result.fail(new NotFoundError("userId", userId));
             }
             var issueList = issueRepository.findAllByProject_Id(projectId);
+
+            List<AiSortRequest.AiIssueInfo> issueInfos = issueList.stream().map(issue -> new AiSortRequest.AiIssueInfo(
+                    issue.getId(),
+                    issue.getTitle(),
+                    issue.getBody())).toList();
+            AiSortRequest request = new AiSortRequest(userId, projectId, issueInfos);
+            String jsonPayload = objectMapper.writeValueAsString(request);
+            redisTemplate.opsForList().leftPush("queue:issue:priority:sort", jsonPayload);
             return Result.ok(issueList);
         } catch (Exception e) {
             return Result.fail(new ServerError("IssueAllList", projectId));
