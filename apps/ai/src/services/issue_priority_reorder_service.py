@@ -153,31 +153,14 @@ class IssuePriorityReorderService:
         # 이슈 재정렬 (점수 정보 포함)
         reordered_issues, score_map = self.reorder_with_scores(issues)
         
-        logger.info(f"재정렬 완료: 입력 {len(issues)}개, 출력 {len(reordered_issues)}개")
         if len(reordered_issues) == 0:
             logger.warning("재정렬 결과가 비어있습니다. 입력 데이터 확인 필요")
+            return None
 
-        # 반환 형식에 맞게 변환: {"id": .., "title": .., "body": .., "priority": ..}
-        formatted_issues = []
-        for idx, issue in enumerate(reordered_issues, 1):
-            issue_id = issue.get("issueId")
-            formatted_issue = {
-                "id": issue_id,
-                "title": issue.get("title"),
-                "body": issue.get("body") or "",
-                "priority": issue.get("priority")
-            }
-            formatted_issues.append(formatted_issue)
-            
-            # 각 이슈 상세 정보 로깅 (점수 포함)
-            score = score_map.get(issue_id, None)
-            score_str = f"{score:.4f}" if score is not None else "N/A"
-            logger.info(f"[이슈 {idx}] id={formatted_issue['id']}, title='{formatted_issue['title']}', "
-                       f"priority={formatted_issue['priority']}, score={score_str}, body_length={len(formatted_issue['body'])}")
+        # 재정렬된 issueId 리스트 추출
+        issue_ids = [issue.get("issueId") for issue in reordered_issues if issue.get("issueId") is not None]
         
-        logger.info(f"포맷팅 완료: {len(formatted_issues)}개 이슈")
-
-        # 최종 결과 형식
+        # 최종 결과 형식 (백엔드가 기대하는 형식: userId, projectId, issueIds)
         result = {
             "userId": user_id,
             "projectId": project_id,
