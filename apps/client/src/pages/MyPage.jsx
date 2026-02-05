@@ -54,6 +54,7 @@ export function MyPage() {
     const result = await createProject(submitData);
     if (result.success) {
       setIsCreateModalOpen(false);
+      await fetchProjects();  // 최신 데이터 다시 조회
     }
   };
 
