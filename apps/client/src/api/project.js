@@ -48,8 +48,12 @@ export const projectApi = {
    * @param {string} repoName - 저장소명
    * @returns {Promise}
    */
-  validateGithubRepo: (projectId, orgName, repoName) =>
-    api.post(`/api/v1/projects/${projectId}/github/validate`, { orgName, repoName }),
+  validateGithubRepo: (projectId, orgName, repoName) => {
+    if (!projectId) {
+      return Promise.reject(new Error('projectId가 필요합니다'));
+    }
+    return api.post(`/api/v1/projects/${projectId}/github/validate`, { orgName, repoName });
+  },
 
   // ------------------------------------------------------------------
   // 초대 관리
