@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, X, AlertCircle, CheckCircle2, Clock, Trash2, Sparkles, Github } from 'lucide-react';
+import { ArrowLeft, X, AlertCircle, CheckCircle2, Clock, Trash2, Sparkles, Github, Check } from 'lucide-react';
 import { IconButton } from '@/components/common/Button/IconButton';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
@@ -63,9 +63,8 @@ const IssueDetailPanel = () => {
     body: '',
     status: 'open',
     priority: 'medium',
-    assignees: []
+    assigneeIds: []
   });
-  const [assigneeInput, setAssigneeInput] = useState('');
 
   // AI 분석 상태 관리
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -112,21 +111,24 @@ const IssueDetailPanel = () => {
         body: '',
         status: 'open',
         priority: 'medium',
-        assignees: []
+        assigneeIds: []
       });
       setAnalyzedData(null);
       setIsEditing(true);
     } else {
       const found = getIssueById(selectedIssueId);
       if (found) {
-        setFormData(found);
+        setFormData({
+          ...found,
+          assigneeIds: found.assigneeIds || [],
+        });
       } else {
         setFormData({
           title: '',
           body: '',
           status: 'open',
           priority: 'medium',
-          assignees: []
+          assigneeIds: []
         });
       }
       setAnalyzedData(null);
@@ -210,20 +212,15 @@ const IssueDetailPanel = () => {
 
     try {
       setIsAnalyzing(true);
-      // 담당자 ID 변환
-      const assigneeIds = formData.assignees
-        .map(name => participants.find(p => p.name === name || p.nickname === name)?.id)
-        .filter(id => id);
 
       // API 호출하여 분석 요청 (issueId 획득)
-      // 이슈 상태가 없으면 기본값 OPEN 사용
       const statusToSend = formData.status ? formData.status.toUpperCase() : 'OPEN';
 
       const result = await analyzeIssueContent(currentProject.id, {
         title: formData.title,
         body: formData.body,
         status: statusToSend,
-        assigneeIds
+        assigneeIds: formData.assigneeIds,
       });
 
       // issueId를 저장하고 SSE 연결
@@ -293,20 +290,16 @@ const IssueDetailPanel = () => {
         return;
       }
 
-      const assigneeIds = formData.assignees
-        .map(name => participants.find(p => p.name === name || p.nickname === name)?.id)
-        .filter(id => id);
-
       try {
         await registerIssue(currentProject.id, {
           title: formData.title,
           body: formData.body,
           orgName,
           repoName,
-          issueId: analyzedData.issueId, // 분석된 ID 사용
+          issueId: analyzedData.issueId,
           issueStatus: formData.status.toUpperCase(),
-          issuePriority: formData.priority.toUpperCase(), // AI가 추천하고 사용자가 수정한 Priority 사용
-          assigneeIds,
+          issuePriority: formData.priority.toUpperCase(),
+          assigneeIds: formData.assigneeIds,
         });
         alert('✅ 새 이슈가 등록되었습니다! GitHub 저장소에도 이슈가 생성되었습니다.');
       } catch (e) {
@@ -322,22 +315,34 @@ const IssueDetailPanel = () => {
         }
       }
     } else {
-      updateIssue(selectedIssueId, {
-        title: formData.title,
-        body: formData.body,
-        status: formData.status,
-        priority: formData.priority,
-        assignees: formData.assignees,
-      });
-      alert(`✅ 이슈가 수정되었습니다!`);
-      setIsEditing(false);
+      try {
+        await updateIssue(currentProject.id, selectedIssueId, {
+          title: formData.title,
+          body: formData.body,
+          status: formData.status.toUpperCase(),
+          priority: formData.priority.toUpperCase(),
+          assigneeIds: formData.assigneeIds,
+        });
+        alert('이슈가 수정되었습니다.');
+        setIsEditing(false);
+      } catch (e) {
+        console.error('이슈 수정 실패:', e);
+        const errorMessage = e?.response?.data?.message || e?.message || '';
+        alert('이슈 수정에 실패했습니다.\n\n' + (errorMessage || '서버 오류가 발생했습니다.'));
+      }
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!confirm('정말 이 이슈를 삭제하시겠습니까?')) return;
-    deleteIssue(selectedIssueId);
-    alert('🗑️ 이슈가 삭제되었습니다.');
+    try {
+      await deleteIssue(currentProject.id, selectedIssueId);
+      alert('이슈가 삭제되었습니다.');
+    } catch (e) {
+      console.error('이슈 삭제 실패:', e);
+      const errorMessage = e?.response?.data?.message || e?.message || '';
+      alert('이슈 삭제에 실패했습니다.\n\n' + (errorMessage || '서버 오류가 발생했습니다.'));
+    }
   };
 
   const handleBack = () => {
@@ -350,25 +355,16 @@ const IssueDetailPanel = () => {
     setActivePanel('issue');
   };
 
-  const handleAddAssignee = () => {
-    if (!assigneeInput.trim()) return;
-    if (formData.assignees.includes(assigneeInput.trim())) {
-      alert('이미 추가된 담당자입니다.');
-      return;
-    }
-    setFormData({
-      ...formData,
-      assignees: [...formData.assignees, assigneeInput.trim()]
-    });
-    setAssigneeInput('');
+  const handleToggleAssignee = (participantId) => {
+    setFormData((prev) => ({
+      ...prev,
+      assigneeIds: prev.assigneeIds.includes(participantId)
+        ? prev.assigneeIds.filter((id) => id !== participantId)
+        : [...prev.assigneeIds, participantId],
+    }));
   };
 
-  const handleRemoveAssignee = (name) => {
-    setFormData({
-      ...formData,
-      assignees: formData.assignees.filter(a => a !== name)
-    });
-  };
+  const getParticipantName = (p) => p.name || p.githubLogin || 'Unknown';
 
   // GitHub 저장소 연동 여부 확인
   const isGithubConnected = !!currentProject?.repoFullName;
@@ -514,37 +510,42 @@ const IssueDetailPanel = () => {
         </div>
 
         {/* AI 분석 알림 (생성 및 수정 모드) */}
-        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-blue-700 flex items-center gap-1.5">
-              <Sparkles size={14} className="fill-blue-700" />
-              AI 우선순위 분석 {isCreateMode ? '(필수)' : '(추천)'}
-            </span>
-            {isAnalyzing ? (
-              <span className="text-xs text-blue-600 font-bold animate-pulse">
-                AI가 내용을 분석 중입니다...
+        {(isCreateMode || isEditing) && (
+          <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-blue-700 flex items-center gap-1.5">
+                <Sparkles size={14} className="fill-blue-700" />
+                AI 우선순위 분석 {isCreateMode ? '(필수)' : '(추천)'}
               </span>
-            ) : analyzedData ? (
-              <span className="text-xs text-green-600 font-bold">
-                분석 완료! (추천: {analyzedData.priority})
-              </span>
-            ) : (
-              <Button
-                size="xs"
-                variant="secondary"
-                onClick={handleAnalyze}
-                disabled={!formData.title || !formData.body}
-              >
-                {isCreateMode ? '지금 분석하기' : '다시 분석하기'}
-              </Button>
-            )}
+              {isAnalyzing ? (
+                <span className="text-xs text-blue-600 font-bold animate-pulse">
+                  AI가 내용을 분석 중입니다...
+                </span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {analyzedData && (
+                    <span className="text-xs text-green-600 font-bold">
+                      분석 완료! (추천: {analyzedData.priority})
+                    </span>
+                  )}
+                  <Button
+                    size="xs"
+                    variant="secondary"
+                    onClick={handleAnalyze}
+                    disabled={!formData.title || !formData.body}
+                  >
+                    {isCreateMode ? (analyzedData ? '다시 분석하기' : '지금 분석하기') : '다시 분석하기'}
+                  </Button>
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-blue-600/80 leading-relaxed">
+              {isCreateMode
+                ? '제목과 내용을 작성하고 분석 버튼을 눌러주세요. 인공지능이 분석을 마쳐야 이슈를 등록할 수 있습니다.'
+                : '제목이나 내용이 변경되었다면 AI 분석을 다시 실행하여 업데이트된 우선순위를 추천받아보세요.'}
+            </p>
           </div>
-          <p className="text-[11px] text-blue-600/80 leading-relaxed">
-            {isCreateMode
-              ? '제목과 내용을 작성하고 분석 버튼을 눌러주세요. 인공지능이 분석을 마쳐야 이슈를 등록할 수 있습니다.'
-              : '제목이나 내용이 변경되었다면 AI 분석을 다시 실행하여 업데이트된 우선순위를 추천받아보세요.'}
-          </p>
-        </div>
+        )}
 
         <Divider />
 
@@ -555,62 +556,50 @@ const IssueDetailPanel = () => {
           </label>
 
           {isEditing ? (
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="이름 입력 후 Enter"
-                  value={assigneeInput}
-                  onChange={(e) => setAssigneeInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddAssignee();
-                    }
-                  }}
-                  size="sm"
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleAddAssignee}
-                >
-                  추가
-                </Button>
-              </div>
-
-              {formData.assignees.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {formData.assignees.map((name, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-2 pl-3 pr-2 py-1.5 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-full text-sm"
+            <div className="flex flex-col gap-1">
+              {participants.length > 0 ? (
+                participants.map((p) => {
+                  const isSelected = formData.assigneeIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleToggleAssignee(p.id)}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-[var(--radius-md)] text-sm transition-colors text-left
+                        ${isSelected
+                          ? 'bg-[var(--color-green-primary)]/10 border border-[var(--color-green-primary)]/30'
+                          : 'bg-[var(--bg-input)] border border-transparent hover:border-[var(--border-default)]'
+                        }`}
                     >
-                      <Avatar name={name} size="xs" />
-                      <span className="text-[var(--text-primary)]">{name}</span>
-                      <button
-                        onClick={() => handleRemoveAssignee(name)}
-                        className="text-[var(--text-tertiary)] hover:text-[var(--color-error)] transition-colors"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                      <Avatar src={p.avatarUrl} name={getParticipantName(p)} size="xs" />
+                      <span className="flex-1 text-[var(--text-primary)] truncate">
+                        {getParticipantName(p)}
+                      </span>
+                      {isSelected && <Check size={16} className="text-[var(--color-green-primary)] flex-shrink-0" />}
+                    </button>
+                  );
+                })
+              ) : (
+                <span className="text-sm text-[var(--text-tertiary)]">프로젝트에 참여자가 없습니다.</span>
               )}
             </div>
           ) : (
             <div>
-              {formData.assignees.length > 0 ? (
+              {formData.assigneeIds.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {formData.assignees.map((name, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-input)] rounded-full text-sm"
-                    >
-                      <Avatar name={name} size="xs" />
-                      <span className="text-[var(--text-primary)]">{name}</span>
-                    </div>
-                  ))}
+                  {formData.assigneeIds.map((id) => {
+                    const p = participants.find((pt) => pt.id === id);
+                    const name = p ? getParticipantName(p) : `#${id}`;
+                    return (
+                      <div
+                        key={id}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-input)] rounded-full text-sm"
+                      >
+                        <Avatar src={p?.avatarUrl} name={name} size="xs" />
+                        <span className="text-[var(--text-primary)]">{name}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <span className="text-sm text-[var(--text-tertiary)]">담당자 없음</span>

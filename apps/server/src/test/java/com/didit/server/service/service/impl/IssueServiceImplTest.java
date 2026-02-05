@@ -507,6 +507,8 @@ class IssueServiceImplTest {
         String newTitle = "수정된 제목";
         String newBody = "수정된 내용";
         List<Long> assigneeIds = List.of(20L);
+        IssueStatus issueStatus = IssueStatus.OPEN;
+        IssuePriority issuePriority = IssuePriority.MEDIUM;
 
         UserEntity author = UserEntity.builder().id(userId).githubLogin("author").build();
         ProjectEntity project = ProjectEntity.builder().id(projectId).repoFullName("org/repo").build();
@@ -530,17 +532,17 @@ class IssueServiceImplTest {
         given(userRepository.findById(20L)).willReturn(Optional.of(assignee));
 
         // GitHub 서비스 성공 모킹
-        given(githubService.updateIssue(anyString(), anyString(), anyInt(), anyString(), anyString(), anyList()))
+        given(githubService.updateIssue(anyString(), anyString(), anyInt(), anyString(), anyString(), anyList(), any()))
                 .willReturn(Result.ok());
 
         // When
-        Result<Void> result = issueService.updateIssue(projectId, userId, issueId, newTitle, newBody, assigneeIds);
+        Result<Void> result = issueService.updateIssue(projectId, userId, issueId, newTitle, newBody, assigneeIds, issueStatus, issuePriority);
 
         // Then
         assertThat(result.isSuccess()).isTrue();
         assertThat(entity.getTitle()).isEqualTo(newTitle);
         assertThat(entity.getBody()).isEqualTo(newBody);
-        verify(githubService).updateIssue(eq("token"), eq("org/repo"), eq(1), eq(newTitle), eq(newBody), anyList());
+        verify(githubService).updateIssue(eq("token"), eq("org/repo"), eq(1), eq(newTitle), eq(newBody), anyList(), eq(issueStatus));
     }
 
     @Test
@@ -557,7 +559,7 @@ class IssueServiceImplTest {
         given(issueRepository.findById(issueId)).willReturn(Optional.of(entity));
 
         // When
-        Result<Void> result = issueService.updateIssue(mismatchProjectId, 10L, issueId, "T", "B", null);
+        Result<Void> result = issueService.updateIssue(mismatchProjectId, 10L, issueId, "T", "B", null, IssueStatus.OPEN, IssuePriority.MEDIUM);
 
         // Then
         assertThat(result.isFailure()).isTrue();
@@ -585,11 +587,11 @@ class IssueServiceImplTest {
         given(issueRepository.findById(issueId)).willReturn(Optional.of(entity));
         given(userGithubAuthRepository.findById(userId)).willReturn(Optional.of(UserGithubAuthEntity.builder().accessToken("t").build()));
 
-        lenient().when(githubService.updateIssue(any(), any(), anyInt(), any(), any(), any()))
+        lenient().when(githubService.updateIssue(any(), any(), anyInt(), any(), any(), any(), any()))
                 .thenReturn(Result.fail(new ServerError("GitHubAPI", "Error")));
 
         // When
-        Result<Void> result = issueService.updateIssue(projectId, userId, issueId, "T", "B", null);
+        Result<Void> result = issueService.updateIssue(projectId, userId, issueId, "T", "B", null, IssueStatus.OPEN, IssuePriority.MEDIUM);
 
         // Then
         assertThat(result.isFailure()).isTrue();

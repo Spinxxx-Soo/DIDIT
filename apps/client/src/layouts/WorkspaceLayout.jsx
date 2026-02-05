@@ -90,22 +90,19 @@ const WorkspaceLayout = () => {
         </aside>
 
         {/* 2열: 채널 사이드바 */}
-        {/* 2열: 채널 사이드바 - 이슈/이슈상세 모드일 때는 숨김 */}
-        {activePanel !== 'issue' && activePanel !== 'issue_detail' && (
-          <aside
-            className="
-              w-[260px] 
-              flex-shrink-0 
-              flex 
-              flex-col
-              bg-[var(--bg-sidebar)]
-              border-r 
-              border-[var(--border-default)]
-            "
-          >
-            <ChannelSidebar key={projectId} />
-          </aside>
-        )}
+        <aside
+          className="
+            w-[260px] 
+            flex-shrink-0 
+            flex 
+            flex-col
+            bg-[var(--bg-sidebar)]
+            border-r 
+            border-[var(--border-default)]
+          "
+        >
+          <ChannelSidebar key={projectId} />
+        </aside>
 
         {/* 메인 콘텐츠 */}
         <main

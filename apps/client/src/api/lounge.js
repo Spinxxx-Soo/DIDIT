@@ -50,6 +50,21 @@ export const loungeApi = {
     analyzeIssue: (projectId, data) => api.post(`/api/v1/projects/${projectId}/issue/analyze`, data),
 
     /**
+     * 이슈 수정
+     * @param {number} projectId
+     * @param {number} issueId
+     * @param {Object} data - { title, body, status, priority, assigneeIds }
+     */
+    updateIssue: (projectId, issueId, data) => api.patch(`/api/v1/projects/${projectId}/issues/${issueId}`, data),
+
+    /**
+     * 이슈 삭제
+     * @param {number} projectId
+     * @param {number} issueId
+     */
+    deleteIssue: (projectId, issueId) => api.delete(`/api/v1/projects/${projectId}/issues/${issueId}`),
+
+    /**
      * 최근 회의록 조회 (최대 4개) (Mock)
      */
     getRecentMinutes: (projectId) => {

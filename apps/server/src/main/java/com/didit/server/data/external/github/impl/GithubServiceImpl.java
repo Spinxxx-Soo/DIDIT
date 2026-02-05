@@ -1,11 +1,14 @@
 package com.didit.server.data.external.github.impl;
 
 import com.didit.server.api.response.GithubRepoResponse;
+import com.didit.server.data.entity.enums.IssuePriority;
+import com.didit.server.data.entity.enums.IssueStatus;
 import com.didit.server.data.external.github.GithubService;
 import com.didit.server.data.repository.ProjectRepository;
 import com.didit.server.data.repository.UserGithubAuthRepository;
 import com.didit.server.data.repository.UserRepository;
 import com.didit.server.share.result.Result;
+import com.didit.server.share.result.impl.ConflictError;
 import com.didit.server.share.result.impl.ForbiddenError;
 import com.didit.server.share.result.impl.NotFoundError;
 import com.didit.server.share.result.impl.ServerError;
@@ -75,6 +78,10 @@ public class GithubServiceImpl implements GithubService {
             String fullName = orgName + "/" + repoName;
             try {
                 GHRepository repo = gitHub.getRepository(fullName);
+                boolean isAlreadyUsedByOther = projectRepository.existsByRepoFullNameAndIdNot(repo.getFullName(), projectId);
+                if (isAlreadyUsedByOther) {
+                    return Result.fail(new ConflictError("이미 다른 프로젝트에 등록된 깃허브 레포지토리입니다."));
+                }
                 return Result.ok(GithubRepoResponse.builder()
                         .repoId(repo.getId())
                         .repoName(repo.getFullName())
@@ -89,7 +96,8 @@ public class GithubServiceImpl implements GithubService {
 
     @Override
     public Result<Void> updateIssue(String accessToken, String repoFullName, int issueNo,
-                                    String title, String body, List<String> assigneeLogins) {
+                                    String title, String body, List<String> assigneeLogins,
+                                    IssueStatus issueStatus) {
         try {
             GitHub gitHub = new GitHubBuilder().withOAuthToken(accessToken).build();
             GHRepository repository = gitHub.getRepository(repoFullName);
@@ -105,6 +113,12 @@ public class GithubServiceImpl implements GithubService {
 
             issue.setTitle(title);
             issue.setBody(body);
+
+            if (issueStatus == IssueStatus.CLOSED) {
+                issue.close();
+            } else if (issueStatus == IssueStatus.OPEN) {
+                issue.reopen();
+            }
 
             return Result.ok();
         } catch (IOException e) {

@@ -16,6 +16,10 @@ const normalizeIssue = (issue) => ({
     if (typeof a === 'string') return a;
     return a.name || a.nickname;
   }).filter(Boolean) || [],
+  assigneeIds: issue.assignees?.map((a) => {
+    if (typeof a === 'object' && a.id) return a.id;
+    return null;
+  }).filter(Boolean) || [],
   author: issue.author?.name || issue.author?.nickname || '',
   createdAt: issue.createdAt,
   updatedAt: issue.updatedAt,
@@ -283,21 +287,72 @@ const useLoungeStore = create((set, get) => ({
     }
   },
 
-  updateIssue: (issueId, updatedData) => {
-    // 실제 API 연동은 생략하고 Optimistic UI만 적용하거나 추후 구현
-    set((state) => ({
-      issues: state.issues.map((issue) =>
-        issue.id === issueId ? { ...issue, ...updatedData } : issue
-      ),
-    }));
+  updateIssue: async (projectId, issueId, data) => {
+    set({ isLoading: true, error: null });
+
+    if (IS_MOCK) {
+      await new Promise((r) => setTimeout(r, 300));
+      set((state) => ({
+        issues: state.issues.map((issue) =>
+          issue.id === issueId ? { ...issue, ...data } : issue
+        ),
+        isLoading: false,
+      }));
+      return;
+    }
+
+    try {
+      await loungeApi.updateIssue(projectId, issueId, data);
+      // 성공 시 로컬 상태도 업데이트
+      set((state) => ({
+        issues: state.issues.map((issue) =>
+          issue.id === issueId
+            ? {
+                ...issue,
+                title: data.title ?? issue.title,
+                body: data.body ?? issue.body,
+                status: data.status?.toLowerCase() ?? issue.status,
+                priority: data.priority?.toLowerCase() ?? issue.priority,
+                assigneeIds: data.assigneeIds ?? issue.assigneeIds,
+              }
+            : issue
+        ),
+        isLoading: false,
+      }));
+    } catch (error) {
+      console.error('이슈 수정 실패:', error);
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
   },
 
-  deleteIssue: (issueId) => {
-    set((state) => ({
-      issues: state.issues.filter((issue) => issue.id !== issueId),
-      activePanel: 'issue',
-      selectedIssueId: null,
-    }));
+  deleteIssue: async (projectId, issueId) => {
+    set({ isLoading: true, error: null });
+
+    if (IS_MOCK) {
+      await new Promise((r) => setTimeout(r, 300));
+      set((state) => ({
+        issues: state.issues.filter((issue) => issue.id !== issueId),
+        activePanel: 'issue',
+        selectedIssueId: null,
+        isLoading: false,
+      }));
+      return;
+    }
+
+    try {
+      await loungeApi.deleteIssue(projectId, issueId);
+      set((state) => ({
+        issues: state.issues.filter((issue) => issue.id !== issueId),
+        activePanel: 'issue',
+        selectedIssueId: null,
+        isLoading: false,
+      }));
+    } catch (error) {
+      console.error('이슈 삭제 실패:', error);
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
   },
 
   getIssueById: (issueId) => {
