@@ -1,6 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
 import useLoungeStore from '@/store/useLoungeStore';
-import useChatStore from '@/store/useChatStore';
 
 const RECONNECT_DELAY = 3000;
 const MAX_CONNECTION_TIME = 30 * 60 * 1000; // 30분
@@ -8,50 +7,17 @@ const MAX_CONNECTION_TIME = 30 * 60 * 1000; // 30분
 /**
  * 프로젝트 진입 시 SSE 연결을 관리하는 커스텀 훅
  *
- * 2개의 EventSource를 관리:
- * 1. /api/v1/projects/{projectId}/stream → ai_sort_result
- * 2. /api/v1/channels/{projectId}/stream → chat_update, chat_delete (백엔드 워크어라운드)
+ * /api/v1/projects/{projectId}/stream → ai_sort_result, ping
  */
 const useProjectSSE = (projectId) => {
     const projectESRef = useRef(null);
-    const chatWorkaroundESRef = useRef(null);
-
     const reconnectTimerRef = useRef(null);
-    const chatReconnectTimerRef = useRef(null);
     const connectionTimerRef = useRef(null);
-    const chatConnectionTimerRef = useRef(null);
 
     const isMock = import.meta.env.VITE_USE_MOCK === 'true';
     const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.did-it.xyz';
 
-    // 모든 타이머 정리
-    const clearAllTimers = useCallback(() => {
-        [reconnectTimerRef, chatReconnectTimerRef, connectionTimerRef, chatConnectionTimerRef].forEach(ref => {
-            if (ref.current) {
-                clearTimeout(ref.current);
-                ref.current = null;
-            }
-        });
-    }, []);
-
-    // 모든 연결 정리
-    const disconnectAll = useCallback(() => {
-        clearAllTimers();
-        [projectESRef, chatWorkaroundESRef].forEach(ref => {
-            if (ref.current) {
-                ref.current.close();
-                ref.current = null;
-            }
-        });
-    }, [clearAllTimers]);
-
-    // --- Connection A: 프로젝트 스트림 ---
-    const connectProjectStream = useCallback(() => {
-        if (!projectId || isMock) return;
-
-        if (projectESRef.current) {
-            projectESRef.current.close();
-        }
+    const disconnect = useCallback(() => {
         if (reconnectTimerRef.current) {
             clearTimeout(reconnectTimerRef.current);
             reconnectTimerRef.current = null;
@@ -60,6 +26,17 @@ const useProjectSSE = (projectId) => {
             clearTimeout(connectionTimerRef.current);
             connectionTimerRef.current = null;
         }
+        if (projectESRef.current) {
+            projectESRef.current.close();
+            projectESRef.current = null;
+        }
+    }, []);
+
+    const connectProjectStream = useCallback(() => {
+        if (!projectId || isMock) return;
+
+        // 기존 연결 정리
+        disconnect();
 
         const es = new EventSource(
             `${baseUrl}/api/v1/projects/${projectId}/stream`,
@@ -119,94 +96,18 @@ const useProjectSSE = (projectId) => {
             projectESRef.current = null;
             connectProjectStream();
         }, MAX_CONNECTION_TIME);
-    }, [projectId, baseUrl, isMock]);
-
-    // --- Connection B: chat_update/delete 워크어라운드 ---
-    const connectChatWorkaroundStream = useCallback(() => {
-        if (!projectId || isMock) return;
-
-        if (chatWorkaroundESRef.current) {
-            chatWorkaroundESRef.current.close();
-        }
-        if (chatReconnectTimerRef.current) {
-            clearTimeout(chatReconnectTimerRef.current);
-            chatReconnectTimerRef.current = null;
-        }
-        if (chatConnectionTimerRef.current) {
-            clearTimeout(chatConnectionTimerRef.current);
-            chatConnectionTimerRef.current = null;
-        }
-
-        const es = new EventSource(
-            `${baseUrl}/api/v1/channels/${projectId}/stream`,
-            { withCredentials: true }
-        );
-        chatWorkaroundESRef.current = es;
-
-        es.onopen = () => {
-            console.log('[ProjectSSE] chat 워크어라운드 스트림 연결 성공');
-        };
-
-        // chat_update (projectId를 channelId로 사용하는 백엔드 이슈 대응)
-        es.addEventListener('chat_update', (event) => {
-            console.log('[ProjectSSE] chat_update (workaround):', event.data);
-            try {
-                const updatedData = JSON.parse(event.data);
-                useChatStore.setState(state => ({
-                    messages: state.messages.map(m =>
-                        m.id === updatedData.chatId
-                            ? { ...m, content: updatedData.content }
-                            : m
-                    )
-                }));
-            } catch (e) { console.error('[ProjectSSE] chat_update 파싱 오류:', e); }
-        });
-
-        // chat_delete (projectId를 channelId로 사용하는 백엔드 이슈 대응)
-        es.addEventListener('chat_delete', (event) => {
-            console.log('[ProjectSSE] chat_delete (workaround):', event.data);
-            try {
-                const deletedData = JSON.parse(event.data);
-                useChatStore.setState(state => ({
-                    messages: state.messages.filter(m => m.id !== deletedData.chatId)
-                }));
-            } catch (e) { console.error('[ProjectSSE] chat_delete 파싱 오류:', e); }
-        });
-
-        es.addEventListener('ping', () => {
-            // keep-alive, no action
-        });
-
-        es.onerror = () => {
-            console.error('[ProjectSSE] chat 워크어라운드 스트림 연결 오류');
-            es.close();
-            chatWorkaroundESRef.current = null;
-
-            chatReconnectTimerRef.current = setTimeout(() => {
-                connectChatWorkaroundStream();
-            }, RECONNECT_DELAY);
-        };
-
-        // 30분 타임아웃 재연결
-        chatConnectionTimerRef.current = setTimeout(() => {
-            console.log('[ProjectSSE] chat 워크어라운드 30분 타임아웃, 재연결...');
-            es.close();
-            chatWorkaroundESRef.current = null;
-            connectChatWorkaroundStream();
-        }, MAX_CONNECTION_TIME);
-    }, [projectId, baseUrl, isMock]);
+    }, [projectId, baseUrl, isMock, disconnect]);
 
     // 라이프사이클 관리
     useEffect(() => {
         connectProjectStream();
-        connectChatWorkaroundStream();
 
         return () => {
-            disconnectAll();
+            disconnect();
         };
-    }, [connectProjectStream, connectChatWorkaroundStream, disconnectAll]);
+    }, [connectProjectStream, disconnect]);
 
-    return { disconnectAll };
+    return { disconnect };
 };
 
 export default useProjectSSE;
