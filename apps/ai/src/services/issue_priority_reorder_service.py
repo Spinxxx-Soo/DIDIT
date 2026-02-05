@@ -1,6 +1,7 @@
 # services/issue_priority_reorder_service.py
 from typing import List, Dict, Any, Optional
 from collections import defaultdict
+import json
 
 from common.redis_client import RedisClient
 from common.settings import settings
@@ -135,16 +136,20 @@ class IssuePriorityReorderService:
         if len(reordered_issues) == 0:
             logger.warning("재정렬 결과가 비어있습니다. 입력 데이터 확인 필요")
 
-        # 반환 형식에 맞게 변환: {"issue_id": .., "title": .., "body": ..}
+        # 반환 형식에 맞게 변환: {"id": .., "title": .., "body": .., "priority": ..}
         formatted_issues = []
-        for issue in reordered_issues:
+        for idx, issue in enumerate(reordered_issues, 1):
             formatted_issue = {
                 "id": issue.get("issueId"),
                 "title": issue.get("title"),
-                "body": issue.get("body"),
+                "body": issue.get("body") or "",
                 "priority": issue.get("priority")
             }
             formatted_issues.append(formatted_issue)
+            
+            # 각 이슈 상세 정보 로깅
+            logger.info(f"[이슈 {idx}] id={formatted_issue['id']}, title='{formatted_issue['title']}', "
+                       f"priority={formatted_issue['priority']}, body_length={len(formatted_issue['body'])}")
         
         logger.info(f"포맷팅 완료: {len(formatted_issues)}개 이슈")
 
@@ -155,9 +160,32 @@ class IssuePriorityReorderService:
             "issues": formatted_issues
         }
         
+        # 최종 result 값 상세 확인 로깅
+        logger.info("=" * 80)
+        logger.info("📤 백엔드로 전송할 최종 Result 값")
+        logger.info("=" * 80)
+        logger.info(f"userId: {result['userId']}")
+        logger.info(f"projectId: {result['projectId']}")
+        logger.info(f"issues 개수: {len(result['issues'])}")
+        logger.info("-" * 80)
+        logger.info("이슈 목록 상세:")
+        for idx, issue in enumerate(result['issues'], 1):
+            logger.info(f"  [{idx}] id={issue.get('id')}, title='{issue.get('title')}', "
+                       f"priority={issue.get('priority')}, body='{issue.get('body', '')[:50]}...'")
+        logger.info("-" * 80)
+        logger.info("전체 Result JSON:")
+        try:
+            result_json = json.dumps(result, ensure_ascii=False, indent=2)
+            logger.info(f"\n{result_json}")
+        except Exception as e:
+            logger.warning(f"JSON 직렬화 실패: {e}")
+            logger.info(f"Result 객체: {result}")
+        logger.info("=" * 80)
+        
         # 결과를 Redis에 저장
         key = f"{settings.REDIS_RESULT_TOPIC_BATCH}"
         self.redis.set_result(key, result, expire=3600)
+        logger.info(f"✅ Redis에 저장 완료 (key: {key}, expire: 3600초)")
 
         return result
 
