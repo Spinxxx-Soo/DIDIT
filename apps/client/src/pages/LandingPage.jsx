@@ -208,7 +208,7 @@ const LandingPage = () => {
                             </div>
                             <h3>AI 회의록 자동 생성</h3>
                             <p>
-                                회의가 끝나면 AI가 자동으로 핸심 내용을 정리하고,<br />
+                                회의가 끝나면 AI가 자동으로 핵심 내용을 정리하고,<br />
                                 액션 아이템과 담당자를 배정해드립니다.
                             </p>
                         </div>
@@ -253,15 +253,30 @@ const LandingPage = () => {
                             팀원들의 일정을 한눈에 확인하고 효율적으로 관리하세요.
                         </p>
                         <div className="calendar-preview">
-                            <div className="calendar-grid">
-                                {[22, 23, 24, 25, 26, 27, 28].map((day) => (
-                                    <div
-                                        key={day}
-                                        className={`calendar-day ${day === 24 ? 'active' : ''} ${day === 25 || day === 26 ? 'has-event' : ''}`}
-                                    >
-                                        {day}
-                                    </div>
-                                ))}
+                            <div className="calendar-preview-expanded">
+                                <div className="calendar-header">
+                                    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                                </div>
+                                <div className="calendar-grid">
+                                    {['22', '23', '24', '25', '26', '27', '28'].map((day, i) => (
+                                        <div
+                                            key={day}
+                                            className={`calendar-day ${day === '24' ? 'active' : ''}`}
+                                        >
+                                            <span className="day-number">{day}</span>
+                                            {/* Dummy Events */}
+                                            {day === '23' && <div className="event-bar event-purple"></div>}
+                                            {day === '24' && (
+                                                <>
+                                                    <div className="event-bar event-blue"></div>
+                                                    <div className="event-bar event-green"></div>
+                                                </>
+                                            )}
+                                            {day === '25' && <div className="event-bar event-blue"></div>}
+                                            {day === '27' && <div className="event-bar event-orange"></div>}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
