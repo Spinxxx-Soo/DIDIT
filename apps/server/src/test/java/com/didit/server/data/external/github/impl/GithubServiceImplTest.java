@@ -219,4 +219,97 @@ class GithubServiceImplTest {
         assertThat(result.isFailure()).isTrue();
         assertThat(result.getSingleErrorOrThrow()).isInstanceOf(NotFoundError.class);
     }
+
+    @Test
+    @DisplayName("GitHub 이슈 수정 성공 - 제목, 본문 및 담당자 리스트 업데이트")
+    void updateIssue_success() throws IOException {
+        try (MockedConstruction<GitHubBuilder> ignored = mockConstruction(GitHubBuilder.class, (mock, context) -> {
+            given(mock.withOAuthToken(anyString())).willReturn(mock);
+            GitHub mockGitHub = mock(GitHub.class);
+            given(mock.build()).willReturn(mockGitHub);
+
+            given(mockGitHub.getRepository(anyString())).willReturn(ghRepository);
+            given(ghRepository.getIssue(anyInt())).willReturn(ghIssue);
+
+            GHUser mockUser = mock(GHUser.class);
+            given(mockGitHub.getUser(anyString())).willReturn(mockUser);
+        })) {
+            // Given
+            String token = "access_token";
+            String repoFullName = "org/repo";
+            int issueNo = 1;
+            String newTitle = "Updated Title";
+            String newBody = "Updated Body";
+            List<String> assigneeLogins = List.of("user1");
+
+            // When
+            Result<Void> result = githubService.updateIssue(token, repoFullName, issueNo, newTitle, newBody, assigneeLogins);
+
+            // Then
+            assertThat(result.isSuccess()).isTrue();
+            verify(ghIssue).setTitle(newTitle);
+            verify(ghIssue).setBody(newBody);
+            verify(ghIssue).setAssignees(anyList());
+        }
+    }
+
+    @Test
+    @DisplayName("GitHub 이슈 수정 실패 - 존재하지 않는 이슈 번호일 경우 IOException 발생")
+    void updateIssue_fail_notFound() throws IOException {
+        try (MockedConstruction<GitHubBuilder> ignored = mockConstruction(GitHubBuilder.class, (mock, context) -> {
+            given(mock.withOAuthToken(anyString())).willReturn(mock);
+            GitHub mockGitHub = mock(GitHub.class);
+            given(mock.build()).willReturn(mockGitHub);
+            given(mockGitHub.getRepository(anyString())).willReturn(ghRepository);
+
+            given(ghRepository.getIssue(anyInt())).willThrow(new IOException("Issue not found"));
+        })) {
+            // When
+            Result<Void> result = githubService.updateIssue("token", "org/repo", 999, "T", "B", null);
+
+            // Then
+            assertThat(result.isFailure()).isTrue();
+            assertThat(result.getSingleErrorOrThrow().getMessage()).contains("이슈 수정 중 오류");
+        }
+    }
+
+    @Test
+    @DisplayName("GitHub 이슈 닫기 성공 - issue.close() 호출 확인")
+    void closeIssue_success() throws IOException {
+        try (MockedConstruction<GitHubBuilder> ignored = mockConstruction(GitHubBuilder.class, (mock, context) -> {
+            given(mock.withOAuthToken(anyString())).willReturn(mock);
+            GitHub mockGitHub = mock(GitHub.class);
+            given(mock.build()).willReturn(mockGitHub);
+            given(mockGitHub.getRepository(anyString())).willReturn(ghRepository);
+            given(ghRepository.getIssue(anyInt())).willReturn(ghIssue);
+        })) {
+            // When
+            Result<Void> result = githubService.closeIssue("token", "org/repo", 1);
+
+            // Then
+            assertThat(result.isSuccess()).isTrue();
+            verify(ghIssue, times(1)).close();
+        }
+    }
+
+    @Test
+    @DisplayName("GitHub 이슈 닫기 실패 - 권한 부족 또는 API 에러 시 ServerError 반환")
+    void closeIssue_fail_apiError() throws IOException {
+        try (MockedConstruction<GitHubBuilder> ignored = mockConstruction(GitHubBuilder.class, (mock, context) -> {
+            given(mock.withOAuthToken(anyString())).willReturn(mock);
+            GitHub mockGitHub = mock(GitHub.class);
+            given(mock.build()).willReturn(mockGitHub);
+            given(mockGitHub.getRepository(anyString())).willReturn(ghRepository);
+            given(ghRepository.getIssue(anyInt())).willReturn(ghIssue);
+
+            doThrow(new IOException("Forbidden")).when(ghIssue).close();
+        })) {
+            // When
+            Result<Void> result = githubService.closeIssue("token", "org/repo", 1);
+
+            // Then
+            assertThat(result.isFailure()).isTrue();
+            assertThat(result.getSingleErrorOrThrow().getMessage()).contains("이슈 닫기 중 오류");
+        }
+    }
 }

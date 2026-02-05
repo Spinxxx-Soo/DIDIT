@@ -46,4 +46,37 @@ public interface GithubService {
      * @throws IOException GitHub API 통신 중 예외 발생 시
      */
     Result<GithubRepoResponse> validateGithubRepo(long projectId, long userId, String orgName, String repoName) throws IOException;
+
+    /**
+     * Action: GitHub 저장소에 등록된 특정 이슈의 제목, 본문 및 담당자를 수정함
+     * Input:
+     * - String accessToken: GitHub OAuth2 액세스 토큰
+     * - String repoFullName: 대상 레포지토리 풀네임 (예: "owner/repo")
+     * - int issueNo: 수정할 GitHub 이슈 번호
+     * - String title: 새로운 이슈 제목
+     * - String body: 새로운 이슈 본문
+     * - List<String> assigneeLogins: 할당할 담당자들의 GitHub 로그인 아이디 리스트
+     * Success:
+     * - ok(): GitHub API를 통한 이슈 정보 갱신 성공
+     * Auth/Permission:
+     * - 제공된 토큰이 해당 레포지토리에 대한 'Write' 권한을 가지고 있어야 함
+     * Failures:
+     * - <500>: GitHub API 호출 실패, 권한 부족 또는 네트워크 오류 시 ServerError 반환
+     */
+    Result<Void> updateIssue(String accessToken, String repoFullName, int issueNo, String title, String body, List<String> assigneeLogins);
+
+    /**
+     * Action: GitHub 저장소의 특정 이슈 상태를 'CLOSED'로 변경함
+     * Input:
+     * - String accessToken: GitHub OAuth2 액세스 토큰
+     * - String repoFullName: 대상 레포지토리 풀네임 (예: "owner/repo")
+     * - int issueNo: 닫을 GitHub 이슈 번호
+     * Success:
+     * - ok(): GitHub 이슈 상태 변경 성공
+     * Auth/Permission:
+     * - 해당 이슈를 닫을 수 있는 권한(작성자 또는 레포지토리 관리자)이 있는 토큰 필요
+     * Failures:
+     * - <500>: GitHub API 호출 실패 또는 권한 부족 시 ServerError 반환
+     */
+    Result<Void> closeIssue(String accessToken, String repoFullName, int issueNo);
 }
