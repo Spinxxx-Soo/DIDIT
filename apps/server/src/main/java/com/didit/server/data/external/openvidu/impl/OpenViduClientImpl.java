@@ -4,6 +4,7 @@ import com.didit.server.data.entity.MeetingEntity;
 import com.didit.server.data.entity.UserEntity;
 import com.didit.server.data.external.openvidu.OpenViduClient;
 import com.didit.server.data.external.openvidu.dto.OpenViduConnectionRef;
+import com.didit.server.data.external.openvidu.dto.OpenViduRecordingRef;
 import com.didit.server.data.external.openvidu.dto.OpenViduSessionRef;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.impl.ServerError;
@@ -137,4 +138,57 @@ public class OpenViduClientImpl implements OpenViduClient {
             return Result.fail(new ServerError("exception", ex));
         }
     }
+
+    @Override
+    public Result<OpenViduRecordingRef> startRecording(String sessionId, String recordName) {
+        var session = openVidu.getActiveSession(sessionId);
+        if(session == null){
+            log.error("오픈비두 세션 녹화중 세션을 찾을수가 없음.");
+            return Result.fail(new ServerError("세션을 찾을수가 없음", sessionId));
+        }
+
+        var propertiesBuilder = new RecordingProperties.Builder();
+        propertiesBuilder.hasAudio(true);
+        propertiesBuilder.hasVideo(false);
+        propertiesBuilder.name(recordName);
+        propertiesBuilder.outputMode(Recording.OutputMode.COMPOSED_QUICK_START);
+        var properties = propertiesBuilder.build();
+        Recording recording;
+        try {
+            recording = openVidu.startRecording(sessionId, properties);
+        }catch (Exception ex) {
+            log.error("오픈비두 세션 녹화시작중 예외 발생.", ex);
+            return Result.fail(new ServerError("exception", ex));
+        }
+
+        return Result.ok(new OpenViduRecordingRef(recording));
+    }
+
+    @Override
+    public Result<OpenViduRecordingRef> stopRecording(String recordingId) {
+        Recording recording;
+        try {
+            recording = openVidu.stopRecording(recordingId);
+        }catch (Exception ex) {
+            log.error("[OV] stopRecording 예외 발생.", ex);
+            return Result.fail(new ServerError("exception", ex));
+        }
+
+        return Result.ok(new OpenViduRecordingRef(recording));
+    }
+
+    @Override
+    public Result<OpenViduRecordingRef> findRecording(String recordingId) {
+        Recording recording;
+        try {
+            recording = openVidu.getRecording(recordingId);
+        }catch (Exception ex) {
+            log.error("[OV] findRecording 예외 발생.", ex);
+            return Result.fail(new ServerError("exception", ex));
+        }
+
+        return Result.ok(new OpenViduRecordingRef(recording));
+    }
+
+
 }

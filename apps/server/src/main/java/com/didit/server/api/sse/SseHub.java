@@ -1,5 +1,6 @@
 package com.didit.server.api.sse;
 
+import com.didit.server.api.sse.payload.ChannelEventPayload;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
@@ -59,6 +60,10 @@ public class SseHub {
                 remove(channelId, entry.getKey());
             }
         }
+    }
+
+    public void broadcast(ChannelEventPayload payload) {
+        broadcast(payload.getChannelId(), payload.getEventName(), payload.getEventId(), payload);
     }
 
     public void broadcastInProject(long projectId, String eventName, String eventId, Object payload) {

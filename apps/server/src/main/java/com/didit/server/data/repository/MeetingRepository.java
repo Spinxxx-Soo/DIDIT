@@ -27,4 +27,7 @@ public interface MeetingRepository extends JpaRepository<MeetingEntity, Long> {
 
     List<MeetingEntity> findByProjectIdAndStartedAtBetweenOrderByIdDesc(
             long projectId, LocalDateTime start, LocalDateTime end);
+
+    // 단건 조회(보통 sessionId는 유니크로 쓰는 경우가 많음)
+    Optional<MeetingEntity> findBySessionId(String sessionId);
 }

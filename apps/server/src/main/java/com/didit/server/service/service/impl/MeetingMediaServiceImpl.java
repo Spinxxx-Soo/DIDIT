@@ -4,9 +4,11 @@ import com.didit.server.data.entity.MeetingUserEntity;
 import com.didit.server.data.entity.UserEntity;
 import com.didit.server.data.external.openvidu.OpenViduClient;
 import com.didit.server.data.external.openvidu.dto.OpenViduConnectionRef;
+import com.didit.server.data.repository.MeetingRecordRepository;
 import com.didit.server.data.repository.MeetingRepository;
 import com.didit.server.data.repository.MeetingUserRepository;
 import com.didit.server.data.repository.UserRepository;
+import com.didit.server.service.result.MediaCreateConnectionResult;
 import com.didit.server.service.service.MeetingMediaService;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.impl.ConflictError;
@@ -48,7 +50,7 @@ public class MeetingMediaServiceImpl implements MeetingMediaService {
     }
 
     @Override
-    public Result<String> createConnection(Long meetingId, Long userId) {
+    public Result<MediaCreateConnectionResult> createConnection(Long meetingId, Long userId) {
         var meeting = meetingRepository.findById(meetingId);
         if (meeting.isEmpty()) {
             return Result.fail(new NotFoundError("meetingId", meetingId));
@@ -76,7 +78,9 @@ public class MeetingMediaServiceImpl implements MeetingMediaService {
         if (result.isFailure()) {
             return Result.fail(result.getErrors());
         }
-        return Result.ok(result.getOrThrow().getToken());
+        var ref = result.getOrThrow();
+        var res = new MediaCreateConnectionResult(ref.getConnectionId(), ref.getToken());
+        return Result.ok(res);
     }
 
     @Override
@@ -133,7 +137,8 @@ public class MeetingMediaServiceImpl implements MeetingMediaService {
             return Result.fail(findResult.getErrors());
         }
 
-        var targetConn = findResult.getOrThrow().stream().filter(x -> x.getToken().equals(meetingUserEntity.getToken())).findFirst();
+        var targetConn = findResult.getOrThrow().stream()
+                .filter(x -> x.getConnectionId().equals(meetingUserEntity.getToken())).findFirst();
         if (targetConn.isEmpty()) {
             return Result.fail(new ConflictError("연결되어있지 않은 커넥션"));
         }
@@ -164,7 +169,7 @@ public class MeetingMediaServiceImpl implements MeetingMediaService {
         if (result.isFailure()) {
             return Result.fail(result.getErrors());
         }
-        var ids = result.getOrThrow().stream().map(OpenViduConnectionRef::getToken).toList();
+        var ids = result.getOrThrow().stream().map(OpenViduConnectionRef::getConnectionId).toList();
         var findResult = meetingUserRepository.findAllByTokenInFetchUser(ids);
         return Result.ok(findResult.stream().map(MeetingUserEntity::getUser).distinct().toList());
     }

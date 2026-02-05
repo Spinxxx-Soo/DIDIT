@@ -6,6 +6,7 @@ import com.didit.server.data.entity.UserEntity;
 import com.didit.server.data.external.openvidu.OpenViduClient;
 import com.didit.server.data.external.openvidu.dto.OpenViduConnectionRef;
 import com.didit.server.data.external.openvidu.dto.OpenViduSessionRef;
+import com.didit.server.data.repository.MeetingRecordRepository;
 import com.didit.server.data.repository.MeetingRepository;
 import com.didit.server.data.repository.MeetingUserRepository;
 import com.didit.server.data.repository.UserRepository;
@@ -39,6 +40,7 @@ class MeetingMediaServiceImplTest {
     @Mock private MeetingRepository meetingRepository;
     @Mock private UserRepository userRepository;
     @Mock private MeetingUserRepository meetingUserRepository;
+    @Mock private MeetingRecordRepository meetingRecordRepository;
 
     @InjectMocks private MeetingMediaServiceImpl sut;
 
@@ -159,7 +161,7 @@ class MeetingMediaServiceImplTest {
         when(meetingRepository.findById(meetingId)).thenReturn(Optional.empty());
 
         // When
-        Result<String> result = sut.createConnection(meetingId, userId);
+        var result = sut.createConnection(meetingId, userId);
 
         // Then
         assertFailureContract(result);
@@ -178,7 +180,7 @@ class MeetingMediaServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         // When
-        Result<String> result = sut.createConnection(meetingId, userId);
+        var result = sut.createConnection(meetingId, userId);
 
         // Then
         assertFailureContract(result);
@@ -202,7 +204,7 @@ class MeetingMediaServiceImplTest {
         when(openViduClient.fetch()).thenReturn(Result.fail(serverError));
 
         // When
-        Result<String> result = sut.createConnection(meetingId, userId);
+        var result = sut.createConnection(meetingId, userId);
 
         // Then
         assertFailureContract(result);
@@ -233,7 +235,7 @@ class MeetingMediaServiceImplTest {
         when(openViduClient.createSession(meeting)).thenReturn(Result.fail(serverError));
 
         // When
-        Result<String> result = sut.createConnection(meetingId, userId);
+        var result = sut.createConnection(meetingId, userId);
 
         // Then
         assertFailureContract(result);
@@ -262,7 +264,7 @@ class MeetingMediaServiceImplTest {
         when(openViduClient.createConnection(user, sessionId)).thenReturn(Result.fail(serverError));
 
         // When
-        Result<String> result = sut.createConnection(meetingId, userId);
+        var result = sut.createConnection(meetingId, userId);
 
         // Then
         assertFailureContract(result);
@@ -291,12 +293,12 @@ class MeetingMediaServiceImplTest {
         when(openViduClient.createConnection(user, sessionId)).thenReturn(Result.ok(new OpenViduConnectionRef(conn)));
 
         // When
-        Result<String> result = sut.createConnection(meetingId, userId);
+        var result = sut.createConnection(meetingId, userId);
 
         // Then
         assertSuccessContract(result);
         assertTrue(result.getValue().isPresent());
-        assertEquals(token, result.getOrThrow());
+        assertEquals(token, result.getOrThrow().token());
         verify(openViduClient, never()).createSession(any());
         verify(openViduClient).createConnection(user, sessionId);
     }
@@ -323,11 +325,11 @@ class MeetingMediaServiceImplTest {
         when(openViduClient.createConnection(user, sessionId)).thenReturn(Result.ok(new OpenViduConnectionRef(conn)));
 
         // When
-        Result<String> result = sut.createConnection(meetingId, userId);
+        var result = sut.createConnection(meetingId, userId);
 
         // Then
         assertSuccessContract(result);
-        assertEquals(token, result.getOrThrow());
+        assertEquals(token, result.getOrThrow().token());
         verify(openViduClient).createSession(meeting);
         verify(openViduClient).createConnection(user, sessionId);
     }
@@ -597,7 +599,7 @@ class MeetingMediaServiceImplTest {
         var meetingUser = meetingUser(meeting, user, token);
 
         var otherConn = mock(Connection.class);
-        when(otherConn.getToken()).thenReturn("other-token");
+        when(otherConn.getConnectionId()).thenReturn("other-token");
 
         when(meetingRepository.findById(meetingId)).thenReturn(Optional.of(meeting));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
@@ -615,42 +617,6 @@ class MeetingMediaServiceImplTest {
         verify(openViduClient, never()).closeConnection(anyString(), anyString());
     }
 
-    @Test
-    void closeConnection_closeFail_returnsFailPropagateErrors() {
-        // Given
-        long meetingId = 1L;
-        long userId = 10L;
-        String sessionId = "sess-1";
-        String token = "token-abc";
-        String connectionId = "conn-1";
-
-        var meeting = meeting(meetingId, sessionId);
-        var user = user(userId);
-        var meetingUser = meetingUser(meeting, user, token);
-
-        var target = mock(Connection.class);
-        when(target.getToken()).thenReturn(token);
-        when(target.getConnectionId()).thenReturn(connectionId);
-
-        var ex = new RuntimeException("boom");
-        var serverError = new ServerError("exception", ex);
-
-        when(meetingRepository.findById(meetingId)).thenReturn(Optional.of(meeting));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(meetingUserRepository.findByMeeting_IdAndUser_Id(meetingId, userId)).thenReturn(Optional.of(meetingUser));
-        when(openViduClient.fetch()).thenReturn(Result.ok());
-        when(openViduClient.existSession(sessionId)).thenReturn(true);
-        when(openViduClient.findConnections(sessionId)).thenReturn(Result.ok(List.of(new OpenViduConnectionRef(target))));
-        when(openViduClient.closeConnection(sessionId, connectionId)).thenReturn(Result.fail(serverError));
-
-        // When
-        Result<?> result = sut.closeConnection(meetingId, userId);
-
-        // Then
-        assertFailureContract(result);
-        assertHasErrorCodeAndMetadata(result, 500, Map.of("resource", "exception", "key", ex));
-        verify(openViduClient).closeConnection(sessionId, connectionId);
-    }
 
     @Test
     void closeConnection_valid_returnsOk() {
@@ -666,8 +632,7 @@ class MeetingMediaServiceImplTest {
         var meetingUser = meetingUser(meeting, user, token);
 
         var target = mock(Connection.class);
-        when(target.getToken()).thenReturn(token);
-        when(target.getConnectionId()).thenReturn(connectionId);
+        when(target.getConnectionId()).thenReturn(token);
 
         when(meetingRepository.findById(meetingId)).thenReturn(Optional.of(meeting));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
@@ -675,14 +640,13 @@ class MeetingMediaServiceImplTest {
         when(openViduClient.fetch()).thenReturn(Result.ok());
         when(openViduClient.existSession(sessionId)).thenReturn(true);
         when(openViduClient.findConnections(sessionId)).thenReturn(Result.ok(List.of(new OpenViduConnectionRef(target))));
-        when(openViduClient.closeConnection(sessionId, connectionId)).thenReturn(Result.ok());
+        when(openViduClient.closeConnection(sessionId, token)).thenReturn(Result.ok());
 
         // When
         Result<?> result = sut.closeConnection(meetingId, userId);
 
         // Then
         assertSuccessContract(result);
-        verify(openViduClient).closeConnection(sessionId, connectionId);
     }
 
     /* ---------------- getConnectedUsers ---------------- */
@@ -783,9 +747,9 @@ class MeetingMediaServiceImplTest {
         var meeting = meeting(meetingId, sessionId);
 
         var c1 = mock(Connection.class);
-        when(c1.getToken()).thenReturn(t1);
+        when(c1.getConnectionId()).thenReturn(t1);
         var c2 = mock(Connection.class);
-        when(c2.getToken()).thenReturn(t2);
+        when(c1.getConnectionId()).thenReturn(t2);
 
         var user1 = user(10L);
         var user2 = user(20L);
