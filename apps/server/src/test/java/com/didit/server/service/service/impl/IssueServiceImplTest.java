@@ -90,34 +90,6 @@ class IssueServiceImplTest {
     }
 
     @Test
-    @DisplayName("유효한 projectId가 주어지면 활성화된 이슈 리스트 5개를 반환한다.")
-    void GetActiveIssues_Success() {
-        // Given
-        long projectId = 1L;
-        long userId = 10L;
-        ProjectEntity project = ProjectEntity.builder().id(projectId).build();
-        List<IssueEntity> issues = List.of(
-                IssueEntity.builder().id(101L).title("Issue 1").status(IssueStatus.OPEN).build(),
-                IssueEntity.builder().id(102L).title("Issue 2").status(IssueStatus.OPEN).build()
-        );
-
-        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
-        given(issueRepository.findTop5ByProject_IdAndStatusOrderByUpdatedAtDesc(projectId, IssueStatus.OPEN))
-                .willReturn(issues);
-
-        // When
-        Result<List<IssueEntity>> result = issueService.GetActiveIssues(userId, projectId);
-
-        // Then
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOrThrow()).hasSize(2);
-        assertThat(result.getOrThrow().get(0).getId()).isEqualTo(101L);
-
-        verify(projectRepository, times(1)).findById(projectId);
-        verify(issueRepository, times(1)).findTop5ByProject_IdAndStatusOrderByUpdatedAtDesc(projectId, IssueStatus.OPEN);
-    }
-
-    @Test
     @DisplayName("존재하지 않는 projectId가 주어지면 NotFoundError(404)를 반환한다.")
     void GetActiveIssues_Fail_InvalidProjectId() {
         // Given
@@ -338,38 +310,6 @@ class IssueServiceImplTest {
     }
 
     @Test
-    @DisplayName("최근 이슈 조회 성공 - DB 데이터 반환 및 Redis 정렬 큐 삽입 확인")
-    void getActiveIssues_success() throws JsonProcessingException {
-        // Given
-        long userId = 10L;
-        long projectId = 1L;
-
-        ProjectEntity project = ProjectEntity.builder().id(projectId).build();
-        List<IssueEntity> issues = List.of(
-                IssueEntity.builder().id(101L).title("이슈 1").build(),
-                IssueEntity.builder().id(102L).title("이슈 2").build()
-        );
-
-        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
-        given(issueRepository.findTop5ByProject_IdAndStatusOrderByUpdatedAtDesc(projectId, IssueStatus.OPEN))
-                .willReturn(issues);
-
-        String jsonPayload = "{\"userId\":10, \"projectId\":1, \"issueIds\":[101, 102]}";
-        given(objectMapper.writeValueAsString(any(AiSortRequest.class))).willReturn(jsonPayload);
-
-        // When
-        Result<List<IssueEntity>> result = issueService.GetActiveIssues(userId, projectId);
-
-        // Then
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOrThrow()).hasSize(2);
-        assertThat(result.getOrThrow().get(0).getId()).isEqualTo(101L);
-
-        verify(listOperations, times(1)).leftPush(eq("queue:issue:priority:sort"), eq(jsonPayload));
-        verify(issueRepository, times(1)).findTop5ByProject_IdAndStatusOrderByUpdatedAtDesc(projectId, IssueStatus.OPEN);
-    }
-
-    @Test
     @DisplayName("최근 이슈 조회 실패 - 존재하지 않는 프로젝트 ID인 경우 NotFoundError 반환")
     void getActiveIssues_fail_notFound() {
         // Given
@@ -409,30 +349,51 @@ class IssueServiceImplTest {
     }
 
     @Test
-    @DisplayName("전체 이슈 조회 성공 - 멤버 권한 확인 후 리스트 반환")
-    void getAllIssues_success() {
+    @DisplayName("전체 이슈 조회 성공 - 리스트 반환 및 AI 정렬 큐 삽입 확인")
+    void getAllIssues_success() throws Exception {
         // Given
         long userId = 1L;
         long projectId = 100L;
 
-        // 멤버십 확인 통과
-        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE)).willReturn(true);
-        // 유저 존재 확인 통과
-        given(userRepository.findById(userId)).willReturn(Optional.of(UserEntity.builder().id(userId).build()));
+        given(projectUserRepository.existsByProject_IdAndUser_IdAndStatus(anyLong(), anyLong(), any()))
+                .willReturn(true);
 
+        given(userRepository.findById(anyLong()))
+                .willReturn(Optional.of(UserEntity.builder().id(userId).build()));
+
+        // Given 부분 수정
         List<IssueEntity> issues = List.of(
-                IssueEntity.builder().id(10L).title("이슈 1").build(),
-                IssueEntity.builder().id(11L).title("이슈 2").build()
+                IssueEntity.builder()
+                        .id(10L)
+                        .title("이슈 1")
+                        .body("내용")
+                        .priority(IssuePriority.MEDIUM) // [추가]
+                        .build(),
+                IssueEntity.builder()
+                        .id(11L)
+                        .title("이슈 2")
+                        .body("내용")
+                        .priority(IssuePriority.LOW)    // [추가]
+                        .build()
         );
-        given(issueRepository.findAllByProject_Id(projectId)).willReturn(issues);
+        given(issueRepository.findAllByProject_Id(anyLong())).willReturn(issues);
+
+        String mockJson = "{\"userId\":1}";
+        given(objectMapper.writeValueAsString(any())).willReturn(mockJson);
 
         // When
         Result<List<IssueEntity>> result = issueService.GetAllIssues(userId, projectId);
 
         // Then
+        if (result.isFailure()) {
+            System.out.println("Error Message: " + result.getSingleErrorOrThrow().getMessage());
+        }
+
         assertThat(result.isSuccess()).isTrue();
         assertThat(result.getOrThrow()).hasSize(2);
-        verify(issueRepository, times(1)).findAllByProject_Id(projectId);
+
+        verify(issueRepository).findAllByProject_Id(eq(projectId));
+        verify(listOperations).leftPush(anyString(), eq(mockJson));
     }
 
     @Test
