@@ -8,7 +8,9 @@ const useStt = () => {
     const {
         isRecording,
         setRecording,
-        meetingId
+        currentChannelId,
+        recordId,
+        setRecordId
     } = useMeetingStore();
 
     const [remainingTime, setRemainingTime] = useState(RECORDING_LIMIT_SECONDS);
@@ -40,43 +42,44 @@ const useStt = () => {
 
     // 녹화 시작
     const startRecording = useCallback(async () => {
-        if (!meetingId) return;
+        if (!currentChannelId) return;
         try {
             setError(null);
-            await meetingApi.startRecording(meetingId);
+            const response = await meetingApi.startRecording(currentChannelId);
+            setRecordId(response.data);
             setRecording(true);
             setRemainingTime(RECORDING_LIMIT_SECONDS);
         } catch (err) {
             console.error('녹화 시작 실패:', err);
             setError('녹화를 시작할 수 없습니다.');
         }
-    }, [meetingId, setRecording]);
+    }, [currentChannelId, setRecording, setRecordId]);
 
     // 녹화 종료 및 요약 생성 트리거
     const stopRecording = useCallback(async () => {
-        if (!meetingId) return;
+        if (!currentChannelId || !recordId) return;
         try {
-            await meetingApi.stopRecording(meetingId);
+            await meetingApi.stopRecording(currentChannelId, recordId);
             setRecording(false);
+            setRecordId(null);
 
             // 요약 생성 시작
             setIsGenerating(true);
             try {
-                const response = await meetingApi.createSummary(meetingId);
+                const response = await meetingApi.createSummary(currentChannelId);
                 setGeneratedSummary(response.data);
             } catch (err) {
                 console.error('요약 생성 실패:', err);
                 setError('요약 생성에 실패했습니다.');
             } finally {
                 setIsGenerating(false);
-                // 모달 열기 로직은 컴포넌트 레벨에서 generatedSummary 상태를 감지하여 처리
             }
 
         } catch (err) {
             console.error('녹화 종료 실패:', err);
             setError('녹화를 종료할 수 없습니다.');
         }
-    }, [meetingId, setRecording]);
+    }, [currentChannelId, recordId, setRecording, setRecordId]);
 
     // 시간 포맷팅 헬퍼
     const formatTime = (seconds) => {

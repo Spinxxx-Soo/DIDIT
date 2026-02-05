@@ -80,17 +80,22 @@ export const meetingApi = {
     api.get(`/api/v1/channels/${channelId}/webrtc/users`),
 
   // --- [AI 요약 및 녹음] ---
-  // 회의 녹음 시작 (Mock)
-  startRecording: (meetingId) => {
-    console.log(`[Mock] Recording started for meeting ${meetingId}`);
-    return Promise.resolve({ data: { status: 'RECORDING_STARTED' } });
-  },
+  /**
+   * 회의 녹음 시작
+   * @param {number} channelId
+   * @returns {Promise<number>} recording id
+   */
+  startRecording: (channelId) =>
+    api.post(`/api/v1/channels/${channelId}/recording/start`),
 
-  // 회의 녹음 종료 (Mock)
-  stopRecording: (meetingId) => {
-    console.log(`[Mock] Recording stopped for meeting ${meetingId}`);
-    return Promise.resolve({ data: { status: 'RECORDING_STOPPED' } });
-  },
+  /**
+   * 회의 녹음 종료
+   * @param {number} channelId
+   * @param {number} recordId
+   * @returns {Promise}
+   */
+  stopRecording: (channelId, recordId) =>
+    api.post(`/api/v1/channels/${channelId}/recording/stop/${recordId}`),
 
   // 회의 요약 생성 요청 (Mock)
   createSummary: (meetingId) => {
