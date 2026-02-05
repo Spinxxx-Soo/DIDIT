@@ -84,6 +84,11 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
   useEffect(() => {
     if (!isIssueMode || !projectId) return;
 
+    // 프로젝트가 변경되면 상세 뷰를 닫고 목록으로 초기화
+    if (activePanel === 'issue_detail') {
+      openIssueMode(); // 목록 뷰로 리셋
+    }
+
     // 1. 패널 열릴 때 즉시 fetch
     fetchIssues(projectId);
 
