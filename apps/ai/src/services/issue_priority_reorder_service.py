@@ -35,6 +35,33 @@ class IssuePriorityReorderService:
             groups[p] = self._sort_group(groups[p], return_scores)
 
         return self._merge(groups)
+    
+    def reorder_with_scores(self, issues: List[Dict[str, Any]]) -> tuple[List[Dict[str, Any]], Dict[int, float]]:
+        """
+        재정렬과 함께 각 이슈의 점수 정보도 반환
+        Returns: (재정렬된 이슈 리스트, {issueId: score} 딕셔너리)
+        """
+        if not issues:
+            return [], {}
+        
+        # 점수 정보를 저장할 딕셔너리
+        score_map = {}
+        
+        groups = self._group_by_priority(issues)
+        for p in list(groups.keys()):
+            # 각 그룹의 이슈에 대해 점수 계산 및 저장
+            for issue in groups[p]:
+                issue_id = issue.get("issueId")
+                subject = issue.get("title")
+                body = issue.get("body")
+                score = self._score(subject, body)
+                if issue_id is not None:
+                    score_map[issue_id] = score
+            
+            groups[p] = self._sort_group(groups[p], return_scores=False)
+        
+        merged = self._merge(groups)
+        return merged, score_map
 
     # ---------- helpers ----------
 
@@ -67,18 +94,12 @@ class IssuePriorityReorderService:
             subject = it.get("title")
             body = it.get("body")
             score = self._score(subject, body)
-
-            # 점수 로그 출력
-            logger.info(f"이슈 점수 계산 - 제목: '{subject}', 점수: {score:.4f}")
-
             out = dict(it)
             if return_scores:
                 out["score"] = score
             scored.append((score, out))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        titles_with_scores = [f"{s[1].get('title', 'N/A')}: {s[0]:.4f}" for s in scored]
-        logger.info(f"그룹 내 정렬 완료: {len(scored)}개 이슈 (점수 순: {titles_with_scores})")
         return [x[1] for x in scored]
 
     def _merge(self, groups: Dict[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
@@ -129,8 +150,8 @@ class IssuePriorityReorderService:
             logger.error("invalid task(no issues): %s", issues)
             return None
 
-        # 이슈 재정렬
-        reordered_issues = self.reorder(issues, return_scores)
+        # 이슈 재정렬 (점수 정보 포함)
+        reordered_issues, score_map = self.reorder_with_scores(issues)
         
         logger.info(f"재정렬 완료: 입력 {len(issues)}개, 출력 {len(reordered_issues)}개")
         if len(reordered_issues) == 0:
@@ -139,17 +160,20 @@ class IssuePriorityReorderService:
         # 반환 형식에 맞게 변환: {"id": .., "title": .., "body": .., "priority": ..}
         formatted_issues = []
         for idx, issue in enumerate(reordered_issues, 1):
+            issue_id = issue.get("issueId")
             formatted_issue = {
-                "id": issue.get("issueId"),
+                "id": issue_id,
                 "title": issue.get("title"),
                 "body": issue.get("body") or "",
                 "priority": issue.get("priority")
             }
             formatted_issues.append(formatted_issue)
             
-            # 각 이슈 상세 정보 로깅
+            # 각 이슈 상세 정보 로깅 (점수 포함)
+            score = score_map.get(issue_id, None)
+            score_str = f"{score:.4f}" if score is not None else "N/A"
             logger.info(f"[이슈 {idx}] id={formatted_issue['id']}, title='{formatted_issue['title']}', "
-                       f"priority={formatted_issue['priority']}, body_length={len(formatted_issue['body'])}")
+                       f"priority={formatted_issue['priority']}, score={score_str}, body_length={len(formatted_issue['body'])}")
         
         logger.info(f"포맷팅 완료: {len(formatted_issues)}개 이슈")
 
@@ -160,7 +184,7 @@ class IssuePriorityReorderService:
             "issues": formatted_issues
         }
         
-        # 최종 result 값 상세 확인 로깅
+        # 최종 result 값 상세 확인 로깅 (점수 정보 포함)
         logger.info("=" * 80)
         logger.info("📤 백엔드로 전송할 최종 Result 값")
         logger.info("=" * 80)
@@ -168,10 +192,14 @@ class IssuePriorityReorderService:
         logger.info(f"projectId: {result['projectId']}")
         logger.info(f"issues 개수: {len(result['issues'])}")
         logger.info("-" * 80)
-        logger.info("이슈 목록 상세:")
+        logger.info("이슈 목록 상세 (점수 포함):")
         for idx, issue in enumerate(result['issues'], 1):
-            logger.info(f"  [{idx}] id={issue.get('id')}, title='{issue.get('title')}', "
-                       f"priority={issue.get('priority')}, body='{issue.get('body', '')[:50]}...'")
+            issue_id = issue.get('id')
+            score = score_map.get(issue_id, None)
+            score_str = f"{score:.4f}" if score is not None else "N/A"
+            logger.info(f"  [{idx}] id={issue_id}, title='{issue.get('title')}', "
+                       f"priority={issue.get('priority')}, score={score_str}, "
+                       f"body='{issue.get('body', '')[:50]}...'")
         logger.info("-" * 80)
         logger.info("전체 Result JSON:")
         try:
