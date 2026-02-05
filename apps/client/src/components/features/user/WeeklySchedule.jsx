@@ -328,6 +328,7 @@ const WeeklySchedule = () => {
         isOpen={!!selectedSchedule}
         onClose={() => setSelectedSchedule(null)}
         schedule={selectedSchedule}
+        onUpdate={fetchSchedules}
       />
     </div>
   );

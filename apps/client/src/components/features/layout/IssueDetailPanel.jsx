@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, X, AlertCircle, CheckCircle2, Clock, Trash2, Sparkles, Github, Check } from 'lucide-react';
 import { IconButton } from '@/components/common/Button/IconButton';
+import { Card } from '@/components/common/Card/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Badge } from '@/components/common/Badge';
@@ -511,21 +512,21 @@ const IssueDetailPanel = () => {
 
         {/* AI 분석 알림 (생성 및 수정 모드) */}
         {(isCreateMode || isEditing) && (
-          <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg flex flex-col gap-2">
+          <Card variant="bento" padding="sm" className="flex flex-col gap-3 bg-blue-50/50 border-blue-100">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-blue-700 flex items-center gap-1.5">
+              <span className="text-xs font-bold text-blue-700 flex items-center gap-1.5">
                 <Sparkles size={14} className="fill-blue-700" />
                 AI 우선순위 분석 {isCreateMode ? '(필수)' : '(추천)'}
               </span>
               {isAnalyzing ? (
                 <span className="text-xs text-blue-600 font-bold animate-pulse">
-                  AI가 내용을 분석 중입니다...
+                  분석 중...
                 </span>
               ) : (
                 <div className="flex items-center gap-2">
                   {analyzedData && (
-                    <span className="text-xs text-green-600 font-bold">
-                      분석 완료! (추천: {analyzedData.priority})
+                    <span className="text-xs text-green-600 font-bold bg-white px-2 py-0.5 rounded-full shadow-sm border border-green-100">
+                      추천: {analyzedData.priority}
                     </span>
                   )}
                   <Button
@@ -533,18 +534,19 @@ const IssueDetailPanel = () => {
                     variant="secondary"
                     onClick={handleAnalyze}
                     disabled={!formData.title || !formData.body}
+                    className="h-7 text-xs bg-white hover:bg-blue-50 border-blue-200 text-blue-700"
                   >
                     {isCreateMode ? (analyzedData ? '다시 분석하기' : '지금 분석하기') : '다시 분석하기'}
                   </Button>
                 </div>
               )}
             </div>
-            <p className="text-[11px] text-blue-600/80 leading-relaxed">
+            <p className="text-[12px] text-slate-600 leading-relaxed pl-5">
               {isCreateMode
-                ? '제목과 내용을 작성하고 분석 버튼을 눌러주세요. 인공지능이 분석을 마쳐야 이슈를 등록할 수 있습니다.'
-                : '제목이나 내용이 변경되었다면 AI 분석을 다시 실행하여 업데이트된 우선순위를 추천받아보세요.'}
+                ? '제목과 내용을 작성하고 분석 버튼을 눌러주세요. 인공지능이 중요도를 판단하여 이슈 등록을 도와드립니다.'
+                : '제목이나 내용이 변경되었다면, AI에게 다시 우선순위 판단을 요청해보세요.'}
             </p>
-          </div>
+          </Card>
         )}
 
         <Divider />

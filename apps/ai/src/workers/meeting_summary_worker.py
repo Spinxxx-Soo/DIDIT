@@ -32,6 +32,41 @@ class MeetingSummaryWorker:
         logger.info("종료 신호 수신, 워커 종료 중...")
         self.running = False
     
+    def _dict_to_markdown(self, summary_dict: dict) -> str:
+        """
+        요약 딕셔너리를 마크다운 형식으로 변환합니다.
+        
+        Args:
+            summary_dict: {"title": str, "discussion_points": list, "action_items": list}
+        
+        Returns:
+            마크다운 형식 문자열
+        """
+        lines = []
+        
+        # 제목
+        title = summary_dict.get("title", "")
+        if title:
+            lines.append(f"# {title}\n")
+        
+        # 논의 사항
+        discussion_points = summary_dict.get("discussion_points", [])
+        if discussion_points:
+            lines.append("## 논의 사항\n")
+            for point in discussion_points:
+                lines.append(f"- {point}")
+            lines.append("")
+        
+        # Action Items
+        action_items = summary_dict.get("action_items", [])
+        if action_items:
+            lines.append("## Action Items\n")
+            for item in action_items:
+                lines.append(f"- [ ] {item}")
+            lines.append("")
+        
+        return "\n".join(lines).strip()
+    
     def _process_summary_queue(self) -> bool:
         """queue:meeting:summary 큐에서 작업을 처리합니다.
         
@@ -59,14 +94,38 @@ class MeetingSummaryWorker:
                 logger.error("회의 요약 처리 실패: meeting_file=%s", meeting_file)
                 return False
             
-            # 3. 결과를 Redis에 저장
-            result_key = f"{settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY}:{result.get('meetingId')}"
+            # 3. 결과를 Redis에 저장 (백업용)
+            result_key = f"{settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY}:{result.get('summeryId')}"
             self.redis.set_result(result_key, result, expire=3600)
+            logger.info(f"Redis에 저장 완료 (key: {result_key}, expire: 3600초)")
+            
+            # 4. Redis Pub/Sub 발행 
+            # 백엔드가 기대하는 형식: {summeryId, status, summary(String)}
+            import json
+            summary_data = result.get("summary")
+            
+            # summary가 Dict인 경우 마크다운 형식으로 변환
+            if isinstance(summary_data, dict):
+                summary_md = self._dict_to_markdown(summary_data)
+            else:
+                summary_md = str(summary_data) if summary_data else ""
+            
+            pubsub_result = {
+                "summeryId": result.get("summeryId"),
+                "status": result.get("status"),
+                "summary": summary_md
+            }
+            pubsub_message = json.dumps(pubsub_result, ensure_ascii=False)
+            subscribers = self.redis.client.publish(
+                settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY,
+                pubsub_message
+            )
             
             logger.info(
-                "회의 요약 작업 완료: meetingId=%s, status=%s",
-                result.get("meetingId"),
-                result.get("status")
+                "회의 요약 작업 완료: summeryId=%s, status=%s, subscribers=%d",
+                result.get("summeryId"),
+                result.get("status"),
+                subscribers
             )
             return True
             

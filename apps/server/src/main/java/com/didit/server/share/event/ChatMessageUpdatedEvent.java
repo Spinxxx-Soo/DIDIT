@@ -1,10 +1,10 @@
-package com.didit.server.service.chat.event;
+package com.didit.server.share.event;
 
 import java.time.LocalDateTime;
 
 public record ChatMessageUpdatedEvent (
+        Long channelId,
         Long chatId,
-        Long projectId,
         String content,
         LocalDateTime editedAt
 ) { }

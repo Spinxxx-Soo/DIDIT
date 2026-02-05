@@ -8,9 +8,9 @@ import com.didit.server.data.repository.MeetingRepository;
 import com.didit.server.data.repository.ProjectRepository;
 import com.didit.server.data.repository.ProjectUserRepository;
 import com.didit.server.service.chat.ChatService;
-import com.didit.server.service.chat.event.ChatMessageCreatedEvent;
-import com.didit.server.service.chat.event.ChatMessageDeletedEvent;
-import com.didit.server.service.chat.event.ChatMessageUpdatedEvent;
+import com.didit.server.share.event.ChatMessageCreatedEvent;
+import com.didit.server.share.event.ChatMessageDeletedEvent;
+import com.didit.server.share.event.ChatMessageUpdatedEvent;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.impl.BadRequestError;
 import com.didit.server.share.result.impl.ForbiddenError;
@@ -34,7 +34,6 @@ public class ChatServiceImpl implements ChatService {
 
     private final ApplicationEventPublisher publisher;
     private final ProjectUserRepository projectUserRepository;
-    private final ProjectRepository projectRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final MeetingRepository meetingRepository;
 
@@ -45,14 +44,13 @@ public class ChatServiceImpl implements ChatService {
             return Result.fail(new BadRequestError("content", "채팅 내용이 비어있습니다."));
         }
 
-        Long projectId = channelId;
-        Long meetingId = null;
-
-        var meeting = meetingRepository.findById(channelId);
-        if (meeting.isPresent()) {
-            projectId = meeting.get().getProject().getId();
-            meetingId = channelId;
+        var findMeetingResult = meetingRepository.findById(channelId);
+        if(findMeetingResult.isEmpty()){
+            return Result.fail(new NotFoundError("channelId", channelId));
         }
+
+        var meeting = findMeetingResult.get();
+        var projectId = meeting.getProject().getId();
 
         boolean isMember = projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE);
         if (!isMember) {
@@ -61,56 +59,43 @@ public class ChatServiceImpl implements ChatService {
 
         ChatEntity chatEntity = ChatEntity.builder()
                 .projectId(projectId)
-                .meetingId(meetingId)
+                .meetingId(meeting.getId())
                 .userId(userId)
                 .message(content)
                 .messageType(MessageType.TEXT)
                 .build();
-        chatMessageRepository.save(chatEntity);
 
-        long broadcastId = (meetingId != null) ? meetingId : projectId;
+        chatMessageRepository.saveAndFlush(chatEntity);
 
-        String eventId = UUID.randomUUID().toString();
 
         publisher.publishEvent(new ChatMessageCreatedEvent(
-                eventId,
-                broadcastId,
+                meeting.getId(),
                 userId,
                 content,
                 Instant.now().toEpochMilli()
         ));
+
         return Result.ok();
     }
 
     @Override
     public Result<List<ChatEntity>> getMessage(long channelId, long userId, Long lastId, Pageable pageable){
         try {
-            Long projectId = channelId;
-            Long meetingId = null;
-
-            var meeting = meetingRepository.findById(channelId);
-            if (meeting.isPresent()) {
-                projectId = meeting.get().getProject().getId();
-                meetingId = channelId;
+            var findMeetingResult = meetingRepository.findById(channelId);
+            if(findMeetingResult.isEmpty()){
+                return Result.fail(new NotFoundError("channelId", channelId));
             }
+
+            var meeting = findMeetingResult.get();
+            var projectId = meeting.getProject().getId();
 
             boolean isMember = projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE);
             if (!isMember) {
                 return Result.fail(new ForbiddenError("해당 채널의 채팅을 볼 권한이 없습니다."));
             }
 
-            if (!projectRepository.existsById(projectId)) {
-                return Result.fail(new NotFoundError("projectId", projectId));
-            }
-
-            Slice<ChatEntity> slice;
-            if (meetingId != null) {
-                slice = chatMessageRepository.getMeetingMessages(meetingId, lastId, pageable);
-            } else {
-                slice = chatMessageRepository.getProjectMessages(projectId, lastId, pageable);
-            }
-
-            return Result.ok(slice.stream().toList());
+            var findChatResult = chatMessageRepository.getMeetingMessages(meeting.getId(), lastId, pageable);
+            return Result.ok(findChatResult.stream().toList());
         } catch (Exception e) {
             return Result.fail(new ServerError("ChatList", channelId));
         }
@@ -134,10 +119,11 @@ public class ChatServiceImpl implements ChatService {
 
             chat.setMessage(content);
             chat.setEditedAt(LocalDateTime.now());
+            chatMessageRepository.saveAndFlush(chat);
 
             publisher.publishEvent(new ChatMessageUpdatedEvent(
+                    chat.getMeetingId(),
                     chat.getId(),
-                    chat.getProjectId(),
                     chat.getMessage(),
                     chat.getEditedAt()
             ));
@@ -160,9 +146,11 @@ public class ChatServiceImpl implements ChatService {
                 return Result.fail(new ForbiddenError("자신의 메시지만 삭제할 수 있습니다."));
             }
             chat.setDeletedAt(LocalDateTime.now());
+            chatMessageRepository.delete(chat);
+            chatMessageRepository.flush();
 
             publisher.publishEvent(new ChatMessageDeletedEvent(
-                    chat.getProjectId(),
+                    chat.getMeetingId(),
                     chat.getId(),
                     chat.getMessage()
             ));

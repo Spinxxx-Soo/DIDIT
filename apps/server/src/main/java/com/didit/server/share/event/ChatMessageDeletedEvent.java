@@ -1,7 +1,7 @@
-package com.didit.server.service.chat.event;
+package com.didit.server.share.event;
 
 public record ChatMessageDeletedEvent(
-        long projectId,
+        long channelId,
         Long chatId,
         String content
 ) { }

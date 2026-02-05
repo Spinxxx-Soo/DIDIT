@@ -1,7 +1,6 @@
-package com.didit.server.service.chat.event;
+package com.didit.server.share.event;
 
 public record ChatMessageCreatedEvent(
-        String eventId,
         long channelId,
         long userId,
         String content,
