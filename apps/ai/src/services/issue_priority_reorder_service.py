@@ -164,26 +164,23 @@ class IssuePriorityReorderService:
         result = {
             "userId": user_id,
             "projectId": project_id,
-            "issues": formatted_issues
+            "issueIds": issue_ids
         }
         
-        # 최종 result 값 상세 확인 로깅 (점수 정보 포함)
+        # 최종 result 값 상세 확인 로깅
         logger.info("=" * 80)
         logger.info("📤 백엔드로 전송할 최종 Result 값")
-        logger.info("=" * 80)
-        logger.info(f"userId: {result['userId']}")
-        logger.info(f"projectId: {result['projectId']}")
-        logger.info(f"issues 개수: {len(result['issues'])}")
-        logger.info("-" * 80)
-        logger.info("이슈 목록 상세 (점수 포함):")
-        for idx, issue in enumerate(result['issues'], 1):
-            issue_id = issue.get('id')
+        logger.info("재정렬된 이슈 ID 목록 (점수 순):")
+        for idx, issue_id in enumerate(issue_ids, 1):
+            # 원본 이슈 정보 찾기
+            original_issue = next((iss for iss in reordered_issues if iss.get("issueId") == issue_id), None)
             score = score_map.get(issue_id, None)
             score_str = f"{score:.4f}" if score is not None else "N/A"
-            logger.info(f"  [{idx}] id={issue_id}, title='{issue.get('title')}', "
-                       f"priority={issue.get('priority')}, score={score_str}, "
-                       f"body='{issue.get('body', '')[:50]}...'")
+            title = original_issue.get("title", "N/A") if original_issue else "N/A"
+            priority = original_issue.get("priority", "N/A") if original_issue else "N/A"
+            logger.info(f"  [{idx}] id={issue_id}, title='{title}', priority={priority}, score={score_str}")
         logger.info("-" * 80)
+        logger.info(f"재정렬된 ID 리스트: {issue_ids}")
         logger.info("전체 Result JSON:")
         try:
             result_json = json.dumps(result, ensure_ascii=False, indent=2)
@@ -193,10 +190,19 @@ class IssuePriorityReorderService:
             logger.info(f"Result 객체: {result}")
         logger.info("=" * 80)
         
-        # 결과를 Redis에 저장
+        # 결과를 Redis에 저장 (백업용)
         key = f"{settings.REDIS_RESULT_TOPIC_BATCH}"
         self.redis.set_result(key, result, expire=3600)
         logger.info(f"✅ Redis에 저장 완료 (key: {key}, expire: 3600초)")
+        
+        # Redis Pub/Sub으로 발행 (백엔드가 구독 중)
+        # label_service와 동일한 방식으로 publish 사용
+        pubsub_message = json.dumps(result, ensure_ascii=False)
+        subscribers = self.redis.client.publish(
+            settings.REDIS_RESULT_TOPIC_BATCH,
+            pubsub_message
+        )
+        logger.info(f"✅ Redis Pub/Sub 발행 완료 (channel: {settings.REDIS_RESULT_TOPIC_BATCH}, subscribers: {subscribers})")
 
         return result
 

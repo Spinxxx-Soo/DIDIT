@@ -60,14 +60,13 @@ class IssuePriorityWorker:
             작업이 처리되었으면 True, 없으면 False
         """
         try:
-            
             result = self.reorder_service.process_from_redis()
             if result:
                 logger.info(
-                    "재정렬 작업 완료: userId=%s, projectId=%s, issues_count=%d",
+                    "재정렬 작업 완료: userId=%s, projectId=%s, issueIds_count=%d",
                     result.get("userId"),
                     result.get("projectId"),
-                    len(result.get("issues", []))
+                    len(result.get("issueIds", []))
                 )
                 return True
             return False
