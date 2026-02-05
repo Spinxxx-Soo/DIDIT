@@ -47,7 +47,11 @@ public class SecurityConfig {
                             session.invalidate();
                         })
                         .logoutSuccessHandler((request, response, authentication) ->
-                                response.sendRedirect("https://did-it.xyz")) //랜딩페이지로
+//                                response.sendRedirect("https://did-it.xyz")) //랜딩페이지로
+                                {
+                                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_OK);
+                                    response.getWriter().flush();
+                                })
                         .deleteCookies("JSESSIONID")
                         .logoutSuccessUrl("/")
                 );
