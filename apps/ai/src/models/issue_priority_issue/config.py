@@ -140,4 +140,4 @@ BNB_CONFIG = BitsAndBytesConfig(
 )
 
 # 파인튜닝된 무게추 사용
-USE_LORA = False  # True → False로 변경
+USE_LORA = True
