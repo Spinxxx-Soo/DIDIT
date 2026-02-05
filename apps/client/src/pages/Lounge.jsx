@@ -62,6 +62,7 @@ const NAV_ITEMS = [
 
 const Lounge = () => {
   const { currentProject } = useProjectStore();
+  const { activePanel } = useLoungeStore();
   const isGithubConnected = !!currentProject?.repoFullName;
 
   const sectionRefs = {
@@ -92,7 +93,7 @@ const Lounge = () => {
           border border-white/50
           shadow-lg
           transition-transform duration-500 ease-in-out
-          ${(useLoungeStore(state => state.activePanel) === 'issue' || useLoungeStore(state => state.activePanel) === 'issue_detail') ? 'translate-x-[200%]' : 'translate-x-0'}
+          ${(activePanel === 'issue' || activePanel === 'issue_detail') ? 'translate-x-[200%]' : 'translate-x-0'}
         `}
       >
         {NAV_ITEMS.map((item) => {
