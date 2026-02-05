@@ -367,7 +367,7 @@ class MeetingSummaryServiceImplTest {
                 when(meetingSummaryRepository.findById(summaryId)).thenReturn(Optional.of(summary));
 
                 // When
-                Result<?> result = sut.UpdateSummaryByAi(summaryId, "ai-title", "ai-md");
+                Result<?> result = sut.UpdateSummaryByAi(summaryId, "ai-md");
 
                 // Then
                 assertSuccess(result);
@@ -381,7 +381,7 @@ class MeetingSummaryServiceImplTest {
                 when(meetingSummaryRepository.findById(summaryId)).thenReturn(Optional.empty());
 
                 // When
-                Result<?> result = sut.UpdateSummaryByAi(summaryId, "ai-title", "ai-md");
+                Result<?> result = sut.UpdateSummaryByAi(summaryId, "ai-md");
 
                 // Then
                 assertFailNotFound(result, "summaryId", summaryId);

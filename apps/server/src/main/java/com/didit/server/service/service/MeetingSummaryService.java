@@ -59,7 +59,6 @@ public interface MeetingSummaryService {
      * Action: 회의록 ai워커가 수정
      * Input:
      * - long summaryId: 회의록이 속할 프로젝트 ID
-     * - String title: 수정한 제목
      * - String summary: 변경할 내용
      * Success:
      * - ok()
@@ -68,7 +67,7 @@ public interface MeetingSummaryService {
      * Failures:
      * - <404>: 존재하지 않는 summaryId
      */
-    Result UpdateSummaryByAi(long summaryId, String title, String summary);
+    Result UpdateSummaryByAi(long summaryId, String summary);
 
     /**
      * Action: 회의록 삭제

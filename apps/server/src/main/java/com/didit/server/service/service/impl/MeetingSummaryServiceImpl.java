@@ -91,15 +91,12 @@ public class MeetingSummaryServiceImpl implements MeetingSummaryService {
     }
 
     @Override
-    public Result UpdateSummaryByAi(long summaryId, String title, String summary) {
+    public Result UpdateSummaryByAi(long summaryId, String summary) {
         var findResult = meetingSummaryRepository.findById(summaryId);
         if (findResult.isEmpty()) {
             return Result.fail(new NotFoundError("summaryId", summaryId));
         }
         var entity = findResult.get();
-        if (title != null && !title.isEmpty()) {
-            entity.setTitle(title);
-        }
         if (summary != null && !summary.isEmpty() && !entity.getSummaryMd().equals(summary)) {
             entity.setSummaryMd(summary);
         }

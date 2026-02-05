@@ -75,12 +75,26 @@ const RecentMinutes = () => {
 
               {/* 제목 */}
               <h4 className="text-sm font-semibold text-[var(--text-bright)] mb-2 line-clamp-1 group-hover:text-[var(--color-green-primary)] transition-colors">
-                {minute.title}
+                {(() => {
+                  try {
+                    const parsed = JSON.parse(minute.summaryMd || '{}');
+                    return parsed.title || minute.title;
+                  } catch {
+                    return minute.title;
+                  }
+                })()}
               </h4>
 
               {/* 미리보기 (첫 번째 항목) */}
               <p className="text-xs text-[var(--text-tertiary)] line-clamp-2 mb-3">
-                {Array.isArray(minute.content) ? minute.content[0] : (minute.summary || '내용 없음')}
+                {(() => {
+                  try {
+                    const parsed = JSON.parse(minute.summaryMd || '{}');
+                    return parsed.discussion_points?.[0] || minute.summary || '내용 없음';
+                  } catch {
+                    return Array.isArray(minute.content) ? minute.content[0] : (minute.summary || '내용 없음');
+                  }
+                })()}
               </p>
 
               {/* 날짜 */}

@@ -54,10 +54,12 @@ const MeetingMinutesList = ({ projectId, onItemClick }) => {
                     minutesList.map((item) => {
                         // summaryMd에서 미리보기 텍스트 추출
                         let preview = '';
+                        let aiTitle = '';
                         try {
                             const parsed = JSON.parse(item.summaryMd || '{}');
                             const points = parsed.discussion_points || [];
                             preview = points.join(', ');
+                            aiTitle = parsed.title || '';
                         } catch {
                             preview = item.summaryMd || '';
                         }
@@ -70,7 +72,7 @@ const MeetingMinutesList = ({ projectId, onItemClick }) => {
                             >
                                 <div className="flex justify-between items-start mb-1">
                                     <h3 className="font-semibold text-sm text-[var(--text-primary)] group-hover:text-blue-600 transition-colors line-clamp-1">
-                                        {item.title}
+                                        {aiTitle || item.title}
                                     </h3>
                                 </div>
 
