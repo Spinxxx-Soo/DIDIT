@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { chatApi } from '@/api/features';
+import useMeetingStore from '@/store/useMeetingStore';
+import { toast } from '@/store/useToastStore';
 
 const EVENT_SOURCE_URL = "http://localhost:8080/sse/subscribe";
 const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
@@ -133,6 +135,58 @@ const useChatStore = create((set, get) => ({
                     messages: state.messages.filter(m => m.id !== deletedData.chatId)
                 }));
             } catch (e) { console.error(e); }
+        });
+
+        // 미디어 참가자 입장 이벤트
+        es.addEventListener('media_participant_joined', (event) => {
+            console.log('[SSE] media_participant_joined:', event.data);
+            try {
+                const data = JSON.parse(event.data);
+                const meetingStore = useMeetingStore.getState();
+                meetingStore.addParticipant({
+                    id: data.connectionId,
+                    name: data.user?.name || data.user?.githubLogin || '참가자',
+                    avatarUrl: data.user?.avatarUrl || null,
+                    stream: null,
+                    isSpeaking: false,
+                    isLocal: false,
+                });
+            } catch (e) { console.error('[SSE] media_participant_joined parse error:', e); }
+        });
+
+        // 미디어 참가자 퇴장 이벤트
+        es.addEventListener('media_participant_left', (event) => {
+            console.log('[SSE] media_participant_left:', event.data);
+            try {
+                const data = JSON.parse(event.data);
+                const meetingStore = useMeetingStore.getState();
+                meetingStore.removeParticipant(data.connectionId);
+            } catch (e) { console.error('[SSE] media_participant_left parse error:', e); }
+        });
+
+        // 녹화 시작 이벤트
+        es.addEventListener('media_recording_start', (event) => {
+            console.log('[SSE] media_recording_start:', event.data);
+            const meetingStore = useMeetingStore.getState();
+            meetingStore.setRecording(true);
+        });
+
+        // 녹화 종료 이벤트
+        es.addEventListener('media_recording_stop', (event) => {
+            console.log('[SSE] media_recording_stop:', event.data);
+            const meetingStore = useMeetingStore.getState();
+            meetingStore.setRecording(false);
+        });
+
+        // 미디어 에러 이벤트
+        es.addEventListener('media_error', (event) => {
+            console.log('[SSE] media_error:', event.data);
+            try {
+                const data = JSON.parse(event.data);
+                toast.error(data.errorResponse?.Message || '미디어 오류가 발생했습니다.');
+            } catch (e) {
+                toast.error('미디어 오류가 발생했습니다.');
+            }
         });
 
         es.onerror = (err) => {
