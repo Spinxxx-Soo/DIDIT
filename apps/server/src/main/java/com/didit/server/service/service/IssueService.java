@@ -91,4 +91,6 @@ public interface IssueService {
      * - <500>: 시스템 내부 오류 발생 시 ServerError 반환
      */
     Result<List<IssueEntity>> GetAllIssues(long userId, long projectId);
+
+    Result<IssueEntity> FindById(long issueId);
 }
