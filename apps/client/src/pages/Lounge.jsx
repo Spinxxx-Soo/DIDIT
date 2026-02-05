@@ -9,6 +9,7 @@ import RecentMinutes from '@/components/features/user/RecentMinutes';
 import IssueStatusChart from '@/components/features/user/IssueStatusChart';
 import PriorityDistribution from '@/components/features/user/PriorityDistribution';
 import useProjectStore from '@/store/useProjectStore';
+import useLoungeStore from '@/store/useLoungeStore';
 import { Calendar, FileText, BarChart3, LayoutGrid, ChevronRight, Github } from 'lucide-react';
 
 const SectionHeader = ({ icon, title, subtitle }) => (
@@ -81,7 +82,7 @@ const Lounge = () => {
     <div className="relative">
       {/* 플로팅 네비게이션 리모컨 */}
       <div
-        className="
+        className={`
           fixed right-6 top-1/2 -translate-y-1/2 z-40
           flex flex-col gap-2
           p-2
@@ -90,9 +91,9 @@ const Lounge = () => {
           rounded-2xl
           border border-white/50
           shadow-lg
-          animate-fade-in
-        "
-        style={{ animationDelay: '400ms' }}
+          transition-transform duration-500 ease-in-out
+          ${(useLoungeStore(state => state.activePanel) === 'issue' || useLoungeStore(state => state.activePanel) === 'issue_detail') ? 'translate-x-[200%]' : 'translate-x-0'}
+        `}
       >
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
