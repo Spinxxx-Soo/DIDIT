@@ -90,19 +90,16 @@ const WorkspaceLayout = () => {
         </aside>
 
         {/* 2열: 채널 사이드바 */}
-        {/* 2열: 채널 사이드바 - 이슈 패널 열리면 슬라이드 아웃 */}
         <aside
-          className={`
+          className="
+            w-[260px] 
             flex-shrink-0 
             flex 
             flex-col
             bg-[var(--bg-sidebar)]
             border-r 
             border-[var(--border-default)]
-            transition-all duration-300 ease-in-out
-            overflow-hidden
-            ${(activePanel === 'issue' || activePanel === 'issue_detail') ? 'w-0 opacity-0 border-none' : 'w-[260px] opacity-100'}
-          `}
+          "
         >
           <ChannelSidebar key={projectId} />
         </aside>
