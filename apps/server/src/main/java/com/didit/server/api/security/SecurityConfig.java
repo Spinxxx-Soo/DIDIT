@@ -59,8 +59,6 @@ public class SecurityConfig {
                                     response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_OK);
                                     response.getWriter().flush();
                                 })
-                        .deleteCookies("JSESSIONID")
-                        .logoutSuccessUrl("/")
                 );
         return http.build();
     }
