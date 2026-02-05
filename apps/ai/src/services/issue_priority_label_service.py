@@ -39,6 +39,8 @@ class IssuePriorityLabelService:
         user_id = task.get("userId")    # Java의 userId와 매칭
         title = task.get("title")
         body = task.get("body", "")
+        
+        logger.info(f" 모델이 받는 이슈 등록 - , 이슈ID: {issue_id}, 유저ID {user_id}, 제목:{title}, 내용:{body}")
 
         if not issue_id:
             logger.error("잘못된 task 수신: issueId가 없습니다.")
@@ -71,7 +73,7 @@ class IssuePriorityLabelService:
             json.dumps(result_data)
         )
 
-        logger.info(f"✅ 처리 완료: ID {issue_id} -> {priority}")
+        logger.info(f"✅ 처리 완료: 제목- {title} 아이디 {issue_id}-> {priority}")
         return result_data
 
     def close(self):

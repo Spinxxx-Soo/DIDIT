@@ -17,11 +17,10 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     
     # Redis 설정
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
-    REDIS_PASSWORD: str = ""
+    REDIS_HOST: str = "api.did-it.xyz"
+    REDIS_PORT: int = 8888
+    REDIS_PASSWORD: str = "ssafy"
     REDIS_TIMEOUT: int = 2  # 초 단위
-    REDIS_DB: int = 0  # Redis 데이터베이스 번호
     
     # Redis 큐 이름 설정 (백엔드 → AI 작업 요청)
     REDIS_QUEUE_ISSUE_SINGLE: str = "queue:issue:priority:single"  # 단일 이슈 라벨링 작업 큐

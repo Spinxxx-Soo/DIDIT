@@ -44,7 +44,7 @@ class IssuePriorityWorker:
             if result:
                 logger.info(
                     "라벨링 작업 완료: issue_id=%s, priority=%s",
-                    result.get("issue_id"),
+                    result.get("issueId"),
                     result.get("priority")
                 )
                 return True
