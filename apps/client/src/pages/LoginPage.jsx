@@ -14,7 +14,14 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(location.state?.from || '/mypage');
+      // sessionStorage에 저장된 returnUrl이 있으면 거기로 이동
+      const returnUrl = sessionStorage.getItem('auth_return_url');
+      if (returnUrl) {
+        sessionStorage.removeItem('auth_return_url');
+        navigate(returnUrl);
+      } else {
+        navigate(location.state?.from || '/mypage');
+      }
     }
   }, [isAuthenticated, navigate, location]);
 

@@ -43,8 +43,10 @@ const WorkspaceLayout = () => {
 
     if (projectId) {
       checkProjectAccess();
+      // 프로젝트 변경 시 우측 사이드바 닫기 (이전 프로젝트의 이슈/채팅 상태 잔재 방지)
+      closeSidebar();
     }
-  }, [projectId, navigate, allProjects, fetchAllProjects]);
+  }, [projectId, navigate, allProjects, fetchAllProjects, closeSidebar]);
 
   const handleChatClick = () => {
     setActivePanel(activePanel === 'chat' ? null : 'chat');
