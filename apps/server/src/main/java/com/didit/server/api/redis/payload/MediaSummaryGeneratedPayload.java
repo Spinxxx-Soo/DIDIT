@@ -1,8 +1,8 @@
 package com.didit.server.api.redis.payload;
 
 public record MediaSummaryGeneratedPayload(
-        Long summeryId,
-        String status,
-        String summary
-) {
+                Long summeryId,
+                String status,
+                String title,
+                String summary) {
 }
