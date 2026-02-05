@@ -14,7 +14,7 @@ const useAuthStore = create((set, get) => ({
   // ------------------------------------------------------------------
   // [1] 로그인 요청
   // ------------------------------------------------------------------
-  loginWithGithub: () => {
+  loginWithGithub: (returnUrl) => {
     if (IS_MOCK) {
       const mockUser = {
         userId: 1,
@@ -26,6 +26,9 @@ const useAuthStore = create((set, get) => ({
       alert("GitHub 로그인 성공! (Mock Mode)");
     } else {
       localStorage.removeItem('loggedOut');
+      if (returnUrl) {
+        sessionStorage.setItem('auth_return_url', returnUrl);
+      }
       // 백엔드로 이동 -> 백엔드에서 GitHub 로그인 -> 쿠키(JSESSIONID) 설정 -> 프론트로 리다이렉트
       window.location.href = authApi.LOGIN_URL;
     }

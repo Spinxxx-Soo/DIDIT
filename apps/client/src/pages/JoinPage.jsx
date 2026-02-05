@@ -10,7 +10,7 @@ const JoinPage = () => {
     const { inviteCode } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { isAuthenticated, user, isLoading: isAuthLoading } = useAuthStore();
+    const { isAuthenticated, user, isLoading: isAuthLoading, loginWithGithub } = useAuthStore();
 
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -18,6 +18,12 @@ const JoinPage = () => {
     const [joining, setJoining] = useState(false);
 
     useEffect(() => {
+        // [수정] 로그인하지 않은 사용자는 아예 로직을 타지 않고 바로 리다이렉트
+        if (!isAuthLoading && !isAuthenticated) {
+            loginWithGithub(location.pathname + location.search);
+            return;
+        }
+
         const fetchProjectInfo = async () => {
             // Mock: 만약 inviteCode가 'mock'을 포함하면 가짜 데이터 반환
             // (백엔드가 없거나 에러 날 때도 Fallback으로 처리)
@@ -39,8 +45,9 @@ const JoinPage = () => {
                 setProject(response?.data || response);
             } catch (err) {
                 console.error("Failed to load project info:", err);
+                // Fallback Logic Removed for strict auth, or keep for authenticated users on error?
+                // For now, if authenticated but error, show error or fallback.
 
-                // Fallback for demo: 백엔드 연결 실패 시에도 일단 보여주기 (User request: No Backend changes)
                 console.warn("Using mock data as fallback due to API error");
                 setProject({
                     id: 999,
@@ -48,20 +55,20 @@ const JoinPage = () => {
                     thumbnailUrl: null,
                     ownerId: 1
                 });
-                // setError("유효하지 않거나 만료된 초대 코드입니다."); // 주석 처리
             } finally {
                 setLoading(false);
             }
         };
 
-        if (inviteCode) {
+        if (inviteCode && isAuthenticated) {
             fetchProjectInfo();
         }
-    }, [inviteCode]);
+    }, [inviteCode, isAuthenticated, isAuthLoading, location, loginWithGithub]);
 
     const handleJoin = async () => {
         if (!isAuthenticated) {
-            navigate('/login', { state: { from: location } });
+            // 로그인 되어있지 않으면 현재 페이지를 returnUrl로 넘겨서 로그인 시도
+            loginWithGithub(location.pathname + location.search);
             return;
         }
 
@@ -91,7 +98,7 @@ const JoinPage = () => {
         }
     };
 
-    if (loading || isAuthLoading) {
+    if (loading || isAuthLoading || !isAuthenticated) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[var(--bg-main)]">
                 <Loader2 className="animate-spin text-[var(--color-primary)]" size={48} />
