@@ -1,66 +1,139 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { Rnd } from 'react-rnd';
-import { X, Calendar, List, CheckSquare, Download, Minus, Edit2, Save, RotateCcw } from 'lucide-react';
+import { X, Calendar, List, CheckSquare, Download, Edit2, Save, RotateCcw, Trash2 } from 'lucide-react';
 import { IconButton } from '@/components/common/Button/IconButton';
 import { Divider } from '@/components/common/Divider';
+import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
 import { meetingApi } from '@/api/meeting';
 
-const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary }) => {
+/**
+ * summaryMd JSON을 파싱하여 구조화된 데이터를 반환
+ * action_items는 string 또는 {text, checked} 형태 모두 처리
+ */
+const parseSummaryMd = (summaryMd) => {
+    try {
+        const parsed = JSON.parse(summaryMd || '{}');
+        return {
+            discussionPoints: parsed.discussion_points || [],
+            actionItems: (parsed.action_items || []).map((item, index) =>
+                typeof item === 'string'
+                    ? { id: index, text: item, checked: false }
+                    : { id: index, text: item.text, checked: !!item.checked }
+            ),
+        };
+    } catch {
+        return { discussionPoints: [], actionItems: [] };
+    }
+};
+
+/**
+ * 구조화된 데이터를 summaryMd JSON 문자열로 변환
+ */
+const buildSummaryMd = (discussionPoints, actionItems) => {
+    return JSON.stringify({
+        discussion_points: discussionPoints,
+        action_items: actionItems.map(item => ({ text: item.text, checked: item.checked })),
+    });
+};
+
+const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, projectId, onDelete }) => {
     const [summary, setSummary] = React.useState(initialSummary);
     const [isEditing, setIsEditing] = React.useState(false);
-    const [editForm, setEditForm] = React.useState(null);
+    const [editTitle, setEditTitle] = React.useState('');
+    const [editDiscussionPoints, setEditDiscussionPoints] = React.useState([]);
+    const [editActionItems, setEditActionItems] = React.useState([]);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+    const [isDeleting, setIsDeleting] = React.useState(false);
+
+    // summary 데이터에서 파싱된 구조화 데이터
+    const parsed = React.useMemo(() => parseSummaryMd(summary?.summaryMd), [summary?.summaryMd]);
 
     React.useEffect(() => {
         setSummary(initialSummary);
-        setEditForm(initialSummary);
     }, [initialSummary]);
 
     const handleEditClick = () => {
-        setEditForm(summary);
+        setEditTitle(summary.title);
+        setEditDiscussionPoints([...parsed.discussionPoints]);
+        setEditActionItems(parsed.actionItems.map(item => ({ ...item })));
         setIsEditing(true);
     };
 
     const handleCancelClick = () => {
         setIsEditing(false);
-        setEditForm(summary);
     };
 
     const handleSaveClick = async () => {
         try {
-            await meetingApi.updateMeetingSummary(summary.id, editForm);
-            setSummary(editForm);
+            const newSummaryMd = buildSummaryMd(editDiscussionPoints, editActionItems);
+            await meetingApi.updateMeetingSummary(projectId, summary.id, {
+                title: editTitle,
+                summary: newSummaryMd,
+            });
+            setSummary(prev => ({ ...prev, title: editTitle, summaryMd: newSummaryMd }));
             setIsEditing(false);
-            alert('저장되었습니다.');
         } catch (error) {
             console.error('저장 실패:', error);
             alert('저장 중 오류가 발생했습니다.');
         }
     };
 
-    const handleTitleChange = (e) => {
-        setEditForm(prev => ({ ...prev, title: e.target.value }));
-    };
-
-    const handleContentChange = (index, value) => {
-        const newContent = [...editForm.content];
-        newContent[index] = value;
-        setEditForm(prev => ({ ...prev, content: newContent }));
-    };
-
-    const handleActionItemTextChange = (id, value) => {
-        const newActionItems = editForm.actionItems.map(item =>
-            item.id === id ? { ...item, text: value } : item
+    // 체크박스 토글 시 즉시 저장 (편집 모드 아닐 때)
+    const handleActionItemCheckToggle = async (index) => {
+        const updatedItems = parsed.actionItems.map((item, i) =>
+            i === index ? { ...item, checked: !item.checked } : item
         );
-        setEditForm(prev => ({ ...prev, actionItems: newActionItems }));
+        const newSummaryMd = buildSummaryMd(parsed.discussionPoints, updatedItems);
+
+        // 낙관적 업데이트
+        setSummary(prev => ({ ...prev, summaryMd: newSummaryMd }));
+
+        try {
+            await meetingApi.updateMeetingSummary(projectId, summary.id, {
+                summary: newSummaryMd,
+            });
+        } catch (error) {
+            console.error('체크 상태 저장 실패:', error);
+            // 롤백
+            setSummary(prev => ({ ...prev, summaryMd: initialSummary.summaryMd }));
+        }
     };
 
-    const handleActionItemCheckChange = (id) => {
-        if (!isEditing) return;
-        const newActionItems = editForm.actionItems.map(item =>
-            item.id === id ? { ...item, checked: !item.checked } : item
+    const handleDeleteClick = async () => {
+        setIsDeleting(true);
+        try {
+            await meetingApi.deleteMeetingSummary(projectId, summary.id);
+            setIsDeleteModalOpen(false);
+            onDelete?.(summary.id);
+            onClose();
+        } catch (error) {
+            console.error('삭제 실패:', error);
+            alert('삭제 중 오류가 발생했습니다.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // 편집 모드 핸들러
+    const handleDiscussionPointChange = (index, value) => {
+        const updated = [...editDiscussionPoints];
+        updated[index] = value;
+        setEditDiscussionPoints(updated);
+    };
+
+    const handleEditActionItemTextChange = (index, value) => {
+        const updated = editActionItems.map((item, i) =>
+            i === index ? { ...item, text: value } : item
         );
-        setEditForm(prev => ({ ...prev, actionItems: newActionItems }));
+        setEditActionItems(updated);
+    };
+
+    const handleEditActionItemCheckChange = (index) => {
+        const updated = editActionItems.map((item, i) =>
+            i === index ? { ...item, checked: !item.checked } : item
+        );
+        setEditActionItems(updated);
     };
 
     if (!isOpen || !summary) return null;
@@ -75,17 +148,20 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary }) =>
                 hour: '2-digit',
                 minute: '2-digit',
             });
-        } catch (e) {
+        } catch {
             return dateString;
         }
     };
+
+    const displayDiscussionPoints = isEditing ? editDiscussionPoints : parsed.discussionPoints;
+    const displayActionItems = isEditing ? editActionItems : parsed.actionItems;
 
     return ReactDOM.createPortal(
         <div className="fixed inset-0 pointer-events-none z-[9999]">
             <Rnd
                 default={{
-                    x: window.innerWidth / 2 - 240, // Center horizontally
-                    y: window.innerHeight / 2 - 300, // Center vertically
+                    x: window.innerWidth / 2 - 240,
+                    y: window.innerHeight / 2 - 300,
                     width: 480,
                     height: 600,
                 }}
@@ -139,7 +215,14 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary }) =>
                             className="on-drag-cancel"
                             onClick={() => alert('PDF 다운로드 기능 준비중')}
                         />
-                        {/* 최소화 버튼 개념으로 닫기 */}
+                        <IconButton
+                            icon={<Trash2 size={16} />}
+                            variant="ghost"
+                            size="xs"
+                            title="삭제"
+                            className="on-drag-cancel text-red-500"
+                            onClick={() => setIsDeleteModalOpen(true)}
+                        />
                         <IconButton
                             icon={<X size={16} />}
                             variant="ghost"
@@ -157,8 +240,8 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary }) =>
                         {isEditing ? (
                             <input
                                 type="text"
-                                value={editForm.title}
-                                onChange={handleTitleChange}
+                                value={editTitle}
+                                onChange={(e) => setEditTitle(e.target.value)}
                                 className="w-full bg-white border border-gray-300 rounded px-2 py-1 text-2xl font-bold mb-1 focus:outline-blue-500"
                             />
                         ) : (
@@ -168,26 +251,26 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary }) =>
                         )}
                         <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
                             <Calendar size={12} />
-                            <span>{formatDate(summary.date)}</span>
+                            <span>{formatDate(summary.createdAt)}</span>
                         </div>
                     </div>
 
                     <Divider className="bg-gray-300" />
 
-                    {/* Summary Content */}
+                    {/* Discussion Points */}
                     <section>
                         <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)] mb-2">
                             <List size={16} className="text-green-500" />
                             주요 논의 사항
                         </h3>
                         <ul className="space-y-2 pl-1.5">
-                            {(isEditing ? editForm.content : summary.content) && (isEditing ? editForm.content : summary.content).map((item, index) => (
+                            {displayDiscussionPoints.map((item, index) => (
                                 <li key={index} className="flex gap-2.5 text-sm text-[var(--text-secondary)] leading-relaxed">
                                     <span className="text-green-500 mt-1.5 text-[10px]">●</span>
                                     {isEditing ? (
                                         <textarea
                                             value={item}
-                                            onChange={(e) => handleContentChange(index, e.target.value)}
+                                            onChange={(e) => handleDiscussionPointChange(index, e.target.value)}
                                             className="flex-1 bg-white border border-gray-300 rounded px-2 py-1 text-sm resize-none focus:outline-blue-500"
                                             rows={2}
                                         />
@@ -208,23 +291,22 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary }) =>
                             Action Items
                         </h3>
                         <div className="space-y-2">
-                            {(isEditing ? editForm.actionItems : summary.actionItems) && (isEditing ? editForm.actionItems : summary.actionItems).map((item) => (
+                            {displayActionItems.map((item, index) => (
                                 <div
-                                    key={item.id}
+                                    key={index}
                                     className="flex items-start gap-2.5 p-2.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-app)] hover:bg-[var(--bg-hover)] transition-colors"
                                 >
                                     <input
                                         type="checkbox"
                                         checked={item.checked}
-                                        onChange={() => handleActionItemCheckChange(item.id)}
-                                        disabled={!isEditing}
-                                        className="mt-0.5 w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:cursor-default"
+                                        onChange={() => isEditing ? handleEditActionItemCheckChange(index) : handleActionItemCheckToggle(index)}
+                                        className="mt-0.5 w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                     />
                                     {isEditing ? (
                                         <input
                                             type="text"
                                             value={item.text}
-                                            onChange={(e) => handleActionItemTextChange(item.id, e.target.value)}
+                                            onChange={(e) => handleEditActionItemTextChange(index, e.target.value)}
                                             className="flex-1 bg-transparent border-b border-gray-300 focus:border-blue-500 focus:outline-none text-sm px-1"
                                         />
                                     ) : (
@@ -237,10 +319,23 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary }) =>
                         </div>
                     </section>
                 </div>
-
-                {/* Resize Handle Customization */}
             </Rnd>
-        </div >,
+
+            {/* 삭제 확인 모달 */}
+            <div className="pointer-events-auto">
+                <ConfirmModal
+                    isOpen={isDeleteModalOpen}
+                    onClose={() => setIsDeleteModalOpen(false)}
+                    onConfirm={handleDeleteClick}
+                    title="회의록 삭제"
+                    message="이 회의록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+                    confirmText="삭제"
+                    cancelText="취소"
+                    confirmVariant="danger"
+                    isLoading={isDeleting}
+                />
+            </div>
+        </div>,
         document.body
     );
 };
