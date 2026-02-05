@@ -72,12 +72,13 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
   const messagesEndRef = useRef(null);
 
   // Priority별로 정렬
-  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  // const priorityOrder = { high: 0, medium: 1, low: 2 };
 
   const sortedIssues = useMemo(() => {
-    return [...(issues || [])].sort((a, b) =>
-      (priorityOrder[a?.priority] ?? 2) - (priorityOrder[b?.priority] ?? 2)
-    );
+    // return [...(issues || [])].sort((a, b) =>
+    //   (priorityOrder[a?.priority] ?? 2) - (priorityOrder[b?.priority] ?? 2)
+    // );
+    return issues || [];
   }, [issues]);
 
   // 이슈 목록 불러오기 + 실시간 동기화 (polling + visibility)
