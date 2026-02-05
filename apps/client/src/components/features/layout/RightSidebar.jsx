@@ -41,7 +41,7 @@ const STATUS_CONFIG = {
 
 const RightSidebar = ({ activePanel, onClose, channelId }) => {
   const { projectId } = useParams();
-  const { openIssueDetail, openCreateIssue, issues, fetchIssues } = useLoungeStore();
+  const { openIssueDetail, openCreateIssue, issues, fetchIssues, openIssueMode } = useLoungeStore();
   const { user } = useAuthStore();
   const { fetchParticipants } = useProjectStore();
   const [memberMap, setMemberMap] = useState({});
