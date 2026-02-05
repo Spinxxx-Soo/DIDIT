@@ -71,9 +71,19 @@ const IssueDetailPanel = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzedData, setAnalyzedData] = useState(null); // { issueId, priority, status }
   const eventSourceRef = useRef(null);
+  const sseTimeoutRef = useRef(null); // SSE 타임아웃 관리
+
+  // SSE 타임아웃 정리 함수
+  const clearSSETimeout = () => {
+    if (sseTimeoutRef.current) {
+      clearTimeout(sseTimeoutRef.current);
+      sseTimeoutRef.current = null;
+    }
+  };
 
   // SSE 연결 정리 함수
   const cleanupSSE = () => {
+    clearSSETimeout();
     if (eventSourceRef.current) {
       console.log('[SSE] AI 분석 SSE 연결 종료');
       eventSourceRef.current.close();
@@ -148,6 +158,7 @@ const IssueDetailPanel = () => {
 
         // 현재 분석 중인 이슈의 결과인지 확인
         if (data.issueId === issueId || data.issueId === String(issueId)) {
+          clearSSETimeout(); // 타임아웃 취소
           const priority = data.priority?.toLowerCase() || 'medium';
 
           setAnalyzedData(prev => ({
@@ -172,12 +183,21 @@ const IssueDetailPanel = () => {
     es.onerror = (err) => {
       console.error('[SSE] AI 분석 SSE 연결 오류:', err);
       cleanupSSE();
+      // SSE 오류 시 타임아웃 대기 없이 바로 기본값으로 완료 처리
+      setIsAnalyzing(false);
     };
+
+    // 30초 타임아웃 설정 - AI 응답이 없으면 기본 우선순위(MEDIUM)로 분석 완료 처리
+    sseTimeoutRef.current = setTimeout(() => {
+      console.log('[SSE] AI 분석 타임아웃 (30초) - 기본값으로 진행');
+      cleanupSSE();
+      setIsAnalyzing(false);
+      alert('⏱️ AI 분석 시간이 초과되었습니다. 기본 우선순위(Medium)로 설정되었습니다. 이슈를 등록하실 수 있습니다.');
+    }, 30000);
 
     return es;
   };
 
-  // AI 분석 핸들러
   const handleAnalyze = async () => {
     if (!formData.title.trim() || !formData.body.trim()) {
       alert('분석을 위해 제목과 내용을 모두 입력해주세요.');
@@ -196,10 +216,13 @@ const IssueDetailPanel = () => {
         .filter(id => id);
 
       // API 호출하여 분석 요청 (issueId 획득)
+      // 이슈 상태가 없으면 기본값 OPEN 사용
+      const statusToSend = formData.status ? formData.status.toUpperCase() : 'OPEN';
+
       const result = await analyzeIssueContent(currentProject.id, {
         title: formData.title,
         body: formData.body,
-        status: formData.status.toUpperCase(),
+        status: statusToSend,
         assigneeIds
       });
 
@@ -219,6 +242,12 @@ const IssueDetailPanel = () => {
   };
 
   const handleSave = async () => {
+    // 분석 중일 때는 저장 불가
+    if (isAnalyzing) {
+      alert('AI 분석이 진행 중입니다. 분석이 완료된 후 다시 시도해주세요.');
+      return;
+    }
+
     if (!formData.title.trim()) {
       alert('제목을 입력해주세요.');
       return;
@@ -230,28 +259,39 @@ const IssueDetailPanel = () => {
         return;
       }
 
-      // AI 분석 수행 여부 확인
+      // AI 분석 수행 여부 확인 - 분석 없이는 등록 불가
       if (!analyzedData) {
-        if (confirm('AI 분석을 진행하지 않았습니다. 분석을 먼저 실행하시겠습니까?\n(취소를 누르면 현재 설정대로 등록을 시도하지만, 정상 동작하지 않을 수 있습니다.)')) {
-          await handleAnalyze();
-          return;
-        }
-        alert('이슈 등록을 위해 AI 분석 단계가 필요합니다. 분석 버튼을 먼저 눌러주세요.');
+        alert('이슈 등록을 위해 AI 분석이 필요합니다. 먼저 "지금 분석하기" 버튼을 눌러주세요.');
         return;
       }
 
-      // 저장소 정보 파싱
+      // 저장소 정보 파싱 - 개선된 로직
       const rawUrl = currentProject.repoFullName || '';
-      const cleanPath = rawUrl.replace(/^https?:\/\/github\.com\//, '');
-      const parts = cleanPath.split('/');
+      let orgName = '';
+      let repoName = '';
 
-      if (parts.length < 2 || !parts[0] || !parts[1]) {
-        alert('GitHub 저장소 주소가 올바르지 않습니다.');
-        return;
+      if (rawUrl) {
+        // 1. .git 확장자 제거
+        let cleanUrl = rawUrl.replace(/\.git$/, '');
+
+        // 2. 프로토콜 (https://, http://) 및 github.com 도메인 제거
+        // 예: https://github.com/owner/repo -> owner/repo
+        cleanUrl = cleanUrl.replace(/^(https?:\/\/)?(www\.)?github\.com\//, '');
+
+        // 3. 앞뒤 슬래시 혹시 있으면 제거
+        cleanUrl = cleanUrl.replace(/^\/+|\/+$/g, '');
+
+        const parts = cleanUrl.split('/');
+        if (parts.length >= 2) {
+          orgName = parts[0];
+          repoName = parts[1];
+        }
       }
 
-      const orgName = parts[0];
-      const repoName = parts[1];
+      if (!orgName || !repoName) {
+        alert('GitHub 저장소 주소가 올바르지 않습니다. 프로젝트 설정에서 저장소 주소를 확인해주세요.');
+        return;
+      }
 
       const assigneeIds = formData.assignees
         .map(name => participants.find(p => p.name === name || p.nickname === name)?.id)
@@ -268,9 +308,18 @@ const IssueDetailPanel = () => {
           issuePriority: formData.priority.toUpperCase(), // AI가 추천하고 사용자가 수정한 Priority 사용
           assigneeIds,
         });
-        alert(`✅ 새 이슈가 등록되었습니다!`);
+        alert('✅ 새 이슈가 등록되었습니다! GitHub 저장소에도 이슈가 생성되었습니다.');
       } catch (e) {
-        alert('이슈 생성에 실패했습니다.');
+        console.error('이슈 생성 실패:', e);
+        // 에러 메시지 상세화
+        const errorMessage = e?.response?.data?.message || e?.message || '';
+        if (errorMessage.includes('Forbidden') || errorMessage.includes('403')) {
+          alert('❌ 이슈 생성에 실패했습니다.\n\n가능한 원인:\n• GitHub 계정 연동이 필요합니다\n• 저장소에 대한 쓰기 권한이 없습니다\n\n설정에서 GitHub 연동 상태를 확인해주세요.');
+        } else if (errorMessage.includes('Not Found') || errorMessage.includes('404')) {
+          alert('❌ 이슈 생성에 실패했습니다.\n\n저장소를 찾을 수 없습니다. GitHub 저장소 연동 정보를 확인해주세요.');
+        } else {
+          alert('❌ 이슈 생성에 실패했습니다.\n\n' + (errorMessage || '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'));
+        }
       }
     } else {
       updateIssue(selectedIssueId, {
@@ -470,7 +519,7 @@ const IssueDetailPanel = () => {
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-blue-700 flex items-center gap-1.5">
                 <Sparkles size={14} className="fill-blue-700" />
-                AI 우선순위 분석
+                AI 우선순위 분석 (필수)
               </span>
               {analyzedData ? (
                 <span className="text-xs text-green-600 font-bold">
@@ -488,7 +537,7 @@ const IssueDetailPanel = () => {
               )}
             </div>
             <p className="text-[11px] text-blue-600/80 leading-relaxed">
-              제목과 내용을 작성하고 분석 버튼을 누르면 AI가 적절한 우선순위를 추천해줍니다.
+              제목과 내용을 작성하고 분석 버튼을 눌러주세요. 인공지능이 분석을 마쳐야 이슈를 등록할 수 있습니다.
             </p>
           </div>
         )}
@@ -611,7 +660,7 @@ const IssueDetailPanel = () => {
                 variant="primary"
                 size="sm"
                 onClick={handleSave}
-                disabled={isLoading || isAnalyzing}
+                disabled={isLoading || isAnalyzing || (isCreateMode && !analyzedData)}
               >
                 {isLoading ? '저장 중...' : (isCreateMode ? '등록하기' : '저장하기')}
               </Button>
