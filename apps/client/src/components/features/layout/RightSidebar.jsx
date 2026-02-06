@@ -78,7 +78,9 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
     // return [...(issues || [])].sort((a, b) =>
     //   (priorityOrder[a?.priority] ?? 2) - (priorityOrder[b?.priority] ?? 2)
     // );
-    return issues || [];
+    return (issues || []).filter(issue =>
+      issue.status?.toLowerCase() === 'open'
+    );
   }, [issues]);
 
   // 이슈 목록 불러오기 (패널 열릴 때 한 번만)

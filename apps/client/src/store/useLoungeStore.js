@@ -188,13 +188,17 @@ const useLoungeStore = create((set, get) => ({
     }
 
     try {
-      const response = await loungeApi.syncGithubIssues(projectId);
+      await loungeApi.syncGithubIssues(projectId);
+
+      // [수정됨] GitHub 동기화 후 전체 이슈 목록(Open + Closed) 재조회
+      // syncGithubIssues는 Open 이슈만 반환하므로, 도넛 차트를 위해 전체 목록을 다시 불러옴
+      const response = await loungeApi.getIssues(projectId);
       const data = response?.data;
       const issueList = Array.isArray(data) ? data : [];
       const normalizedIssues = issueList.map(normalizeIssue);
       set({ issues: normalizedIssues, isLoading: false });
     } catch (error) {
-      console.error('GitHub 이슈 동기화 실패:', error);
+      console.error('GitHub 이슈 동기화 및 재조회 실패:', error);
       set({ error: error.message, isLoading: false });
     }
   },
