@@ -201,6 +201,23 @@ const IssueDetailPanel = () => {
     return es;
   };
 
+  // 임시 이슈 정리 함수 (분석만 하고 나가는 경우)
+  const cleanupDraft = async () => {
+    if (isCreateMode && analyzedData?.issueId) {
+      console.log('Clearing draft issue:', analyzedData.issueId);
+      try {
+        await deleteIssue(currentProject.id, analyzedData.issueId);
+      } catch (e) {
+        console.warn('Draft cleanup warning:', e);
+      }
+    }
+  };
+
+  const handleClose = async () => {
+    await cleanupDraft();
+    closeSidebar();
+  };
+
   const handleAnalyze = async () => {
     if (!formData.title.trim() || !formData.body.trim()) {
       alert('분석을 위해 제목과 내용을 모두 입력해주세요.');
@@ -292,17 +309,26 @@ const IssueDetailPanel = () => {
       }
 
       try {
+        // AI 분석을 통해 이미 이슈가 생성(Draft)된 경우라도, 
+        // GitHub 연동 및 정식 등록을 위해 '생성(POST)' API인 registerIssue를 호출해야 합니다.
+        // 백엔드 createIssue 로직이 기존 issueId를 받아 승격 처리하도록 설계되어 있습니다.
         await registerIssue(currentProject.id, {
           title: formData.title,
           body: formData.body,
-          orgName,
-          repoName,
-          issueId: analyzedData.issueId,
           issueStatus: formData.status.toUpperCase(),
           issuePriority: formData.priority.toUpperCase(),
           assigneeIds: formData.assigneeIds,
+          // GitHub 연동 정보 및 기존 Draft ID
+          orgName,
+          repoName,
+          issueId: analyzedData.issueId
         });
+
         alert('✅ 새 이슈가 등록되었습니다! GitHub 저장소에도 이슈가 생성되었습니다.');
+
+        // 목록으로 이동 (패널 닫기)
+        setActivePanel('issue');
+
       } catch (e) {
         console.error('이슈 생성 실패:', e);
         // 에러 메시지 상세화
@@ -320,8 +346,9 @@ const IssueDetailPanel = () => {
         await updateIssue(currentProject.id, selectedIssueId, {
           title: formData.title,
           body: formData.body,
-          status: formData.status.toUpperCase(),
-          priority: formData.priority.toUpperCase(),
+          // 중요: 백엔드 DTO 필드명에 맞춰 수정 (status -> issueStatus, priority -> issuePriority)
+          issueStatus: formData.status.toUpperCase(),
+          issuePriority: formData.priority.toUpperCase(),
           assigneeIds: formData.assigneeIds,
         });
         alert('이슈가 수정되었습니다.');
@@ -346,13 +373,14 @@ const IssueDetailPanel = () => {
     }
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (isCreateMode && (formData.title || formData.body)) {
       if (!confirm("작성 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
     }
     if (isEditing && !isCreateMode) {
       if (!confirm("수정 중인 내용이 사라집니다. 목록으로 가시겠습니까?")) return;
     }
+    await cleanupDraft();
     setActivePanel('issue');
   };
 
@@ -431,7 +459,7 @@ const IssueDetailPanel = () => {
           variant="ghost"
           size="sm"
           icon={<X size={18} />}
-          onClick={closeSidebar}
+          onClick={handleClose}
           title="닫기"
         />
       </div>

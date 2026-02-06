@@ -95,37 +95,45 @@ class MeetingSummaryWorker:
                 return False
             
             # 3. 결과를 Redis에 저장 (백업용)
-            summery_id = result.get('summeryId')
-            if summery_id:
-                result_key = f"{settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY}:{summery_id}"
-                self.redis.set_result(result_key, result, expire=3600)
-                logger.info(f"Redis에 저장 완료 (key: {result_key}, expire: 3600초)")
+            result_key = f"{settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY}:{result.get('summeryId')}"
+            logger.info(f"Redis에 저장할 결과: key={result_key}, result={result}")
+            self.redis.set_result(result_key, result, expire=3600)
+            logger.info(f"Redis에 저장 완료 (key: {result_key}, expire: 3600초)")
             
             # 4. Redis Pub/Sub 발행
+            # 백엔드가 기대하는 형식: {summeryId, status, summary(String)}
+            # 프론트엔드가 실제 내용을 파싱해서 필드별로 처리함
             import json
             summary_data = result.get("summary")
 
+            # summary가 Dict인 경우 JSON 문자열로 변환 (프론트엔드 JSON.parse 호환)
             if isinstance(summary_data, dict):
                 summary_json = json.dumps(summary_data, ensure_ascii=False)
             else:
                 summary_json = str(summary_data) if summary_data else ""
             
             pubsub_result = {
-                "summeryId": summery_id,
-                "status": result.get("status", "failed"),
+                "summeryId": result.get("summeryId"),
+                "status": result.get("status"),
                 "summary": summary_json
             }
             pubsub_message = json.dumps(pubsub_result, ensure_ascii=False)
+            
+            # Redis Pub/Sub으로 발행하기 전 로깅
+            logger.info(f"Redis Pub/Sub으로 발행할 데이터: channel={settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY}, data={pubsub_result}")
+            logger.info(f"Redis Pub/Sub 메시지 (JSON): {pubsub_message}")
+            
             subscribers = self.redis.client.publish(
                 settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY,
                 pubsub_message
             )
             
             logger.info(
-                "회의 요약 작업 완료 알림 전송: summeryId=%s, status=%s, subscribers=%d",
-                summery_id,
+                "회의 요약 작업 완료: summeryId=%s, status=%s, subscribers=%d, pubsub_result=%s",
+                result.get("summeryId"),
                 result.get("status"),
-                subscribers
+                subscribers,
+                pubsub_result
             )
             return True
             

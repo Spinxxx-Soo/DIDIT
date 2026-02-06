@@ -46,9 +46,7 @@ public class RecordingStopPoller {
             var id = Long.parseLong(recordingId);
             var stopResult = meetingMediaRecordingService.StopRecording(id);
             if (stopResult.isFailure()) {
-                long retryAt = System.currentTimeMillis() + RETRY_DELAY_MS;
-                redis.opsForZSet().add(STOP_SCHEDULED_ZSET, recordingId, (double) retryAt);
-                log.warn("StopRecording FAILED -> retry scheduled: recordingId={}, retryAt={}", recordingId, retryAt);
+                log.warn("StopRecording FAILED recordingId={}", recordingId);
                 continue;
             }
             log.info("StopRecording OK: recordingId={}", recordingId);

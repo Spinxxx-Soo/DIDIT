@@ -41,7 +41,7 @@ const STATUS_CONFIG = {
 
 const RightSidebar = ({ activePanel, onClose, channelId }) => {
   const { projectId } = useParams();
-  const { openIssueDetail, openCreateIssue, issues, fetchIssues, isLoading } = useLoungeStore();
+  const { openIssueDetail, openCreateIssue, issues, fetchIssues, syncGithubIssues, isLoading } = useLoungeStore();
   const { user } = useAuthStore();
   const { fetchParticipants } = useProjectStore();
   const [memberMap, setMemberMap] = useState({});
@@ -371,7 +371,7 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
                   variant="ghost"
                   size="sm"
                   icon={<RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />}
-                  onClick={() => fetchIssues(projectId)}
+                  onClick={() => syncGithubIssues(projectId)}
                   title="새로고침"
                   disabled={isLoading}
                 />

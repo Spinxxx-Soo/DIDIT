@@ -219,7 +219,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
             return;
         }
 
-        var event = new MediaRecordingStartEvent(meetingEntity.getId(), e.timestamp(), e.sessionId());
+        var event = new MediaRecordingStartEvent(meetingEntity.getId(), e.timestamp(), e.sessionId(), recordEntity.getId());
         publisher.publishEvent(event);
     }
 
@@ -247,7 +247,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         }
 
         var pushEvent = new MediaSummaryDownloadUrlPushEvent(createSummaryResult.getOrThrow(), findDownloadUrlResult.getOrThrow());
-        var event = new MediaRecordingStopEvent(meetingEntity.getId(), e.timestamp(), e.sessionId());
+        var event = new MediaRecordingStopEvent(meetingEntity.getId(), e.timestamp(), e.sessionId(), recordEntity.getId());
         publisher.publishEvent(pushEvent);
         publisher.publishEvent(event);
     }
