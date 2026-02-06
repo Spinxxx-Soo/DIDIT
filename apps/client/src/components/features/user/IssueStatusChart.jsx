@@ -7,11 +7,10 @@ import { useParams } from 'react-router-dom';
 import useLoungeStore from '@/store/useLoungeStore';
 import useProjectStore from '@/store/useProjectStore';
 import { ExternalLink } from 'lucide-react';
-import { loungeApi } from '@/api/lounge';
 
 const IssueStatusChart = () => {
     const { projectId } = useParams();
-    const { openIssueMode } = useLoungeStore();
+    const { openIssueMode, issues } = useLoungeStore();
     const { currentProject } = useProjectStore();
     const [statusData, setStatusData] = useState([
         { label: '진행 중', value: 0, color: '#3B82F6' },
@@ -22,27 +21,25 @@ const IssueStatusChart = () => {
     const isGithubConnected = !!currentProject?.repoFullName;
 
     useEffect(() => {
-        const fetchAndAggregate = async () => {
-            // GitHub 미연동 시 API 호출하지 않음
-            if (!projectId || !isGithubConnected) return;
-            try {
-                const response = await loungeApi.getIssues(projectId);
-                const issues = response.data || [];
+        // GitHub 미연동 시 집계하지 않음
+        if (!isGithubConnected) {
+            setStatusData([
+                { label: '진행 중', value: 0, color: '#3B82F6' },
+                { label: '완료', value: 0, color: '#10B981' },
+            ]);
+            return;
+        }
 
-                // 프론트엔드에서 상태별 집계
-                const openCount = issues.filter(issue => issue.status === 'OPEN').length;
-                const closedCount = issues.filter(issue => issue.status === 'CLOSED').length;
+        // [수정됨] useLoungeStore의 issues를 직접 사용하여 집계
+        // 이슈 생성/수정/삭제 시 자동으로 재집계됨
+        const openCount = issues.filter(issue => issue.status === 'open').length;
+        const closedCount = issues.filter(issue => issue.status === 'closed').length;
 
-                setStatusData([
-                    { label: '진행 중', value: openCount, color: '#3B82F6' },
-                    { label: '완료', value: closedCount, color: '#10B981' },
-                ]);
-            } catch (error) {
-                console.error('Failed to fetch issues:', error);
-            }
-        };
-        fetchAndAggregate();
-    }, [projectId, isGithubConnected]);
+        setStatusData([
+            { label: '진행 중', value: openCount, color: '#3B82F6' },
+            { label: '완료', value: closedCount, color: '#10B981' },
+        ]);
+    }, [issues, isGithubConnected]);
 
     const total = statusData.reduce((acc, item) => acc + item.value, 0);
 
