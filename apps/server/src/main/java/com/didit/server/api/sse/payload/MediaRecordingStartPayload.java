@@ -13,6 +13,7 @@ public class MediaRecordingStartPayload implements ChannelEventPayload{
     private long channelId;
     private LocalDateTime timestamp;
     private String sessionId;
+    private long recordId;
     @Override
     public long getChannelId() {
         return channelId;
