@@ -401,8 +401,9 @@ const useProjectStore = create((set, get) => ({
       return { success: true };
     } catch (error) {
       console.error('저장소 업데이트 실패:', error);
-      set({ error: '저장소 연결에 실패했습니다', isLoading: false });
-      return { success: false, error: error.message };
+      const errorMessage = error.response?.data?.message || '저장소 연결에 실패했습니다';
+      set({ error: errorMessage, isLoading: false });
+      return { success: false, error: errorMessage };
     }
   },
 
