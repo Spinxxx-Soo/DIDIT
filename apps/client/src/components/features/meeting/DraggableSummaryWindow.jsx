@@ -154,21 +154,36 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
                 useCORS: true,
                 backgroundColor: '#ffffff',
                 onclone: (clonedDoc) => {
-                    // html2canvas가 인식 못하는 oklch 색상을 안전한 색상으로 치환
+                    // html2canvas가 인식 못하는 oklch 색상을 브라우저 기본 resolver를 통해 HEX/RGB로 변환
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    const resolveColor = (color) => {
+                        if (!color || !color.includes('oklch')) return color;
+                        try {
+                            ctx.fillStyle = color;
+                            return ctx.fillStyle; // 브라우저가 hex 또는 rgb(a)로 변환해줌
+                        } catch (e) {
+                            return '#000000';
+                        }
+                    };
+
                     const elements = clonedDoc.querySelectorAll('*');
                     elements.forEach(el => {
                         const style = window.getComputedStyle(el);
-                        // 텍스트 색상 처리
-                        if (style.color.includes('oklch')) {
-                            el.style.color = '#1f2937'; // gray-800
-                        }
-                        // 배경색 처리
-                        if (style.backgroundColor.includes('oklch')) {
-                            el.style.backgroundColor = '#ffffff';
-                        }
-                        // 테두리 색상 처리
-                        if (style.borderColor.includes('oklch')) {
-                            el.style.borderColor = '#e5e7eb'; // gray-200
+
+                        // 주요 색상 속성 일괄 변환
+                        ['color', 'background-color', 'border-color', 'fill', 'stroke'].forEach(prop => {
+                            const val = style.getPropertyValue(prop);
+                            if (val && val.includes('oklch')) {
+                                el.style.setProperty(prop, resolveColor(val), 'important');
+                            }
+                        });
+
+                        // 그림자(box-shadow)에 oklch가 포함된 경우 html2canvas가 크래시되므로 제거 또는 변환
+                        const shadow = style.getPropertyValue('box-shadow');
+                        if (shadow && shadow.includes('oklch')) {
+                            el.style.setProperty('box-shadow', 'none', 'important');
                         }
                     });
                 }
