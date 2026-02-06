@@ -359,7 +359,7 @@ public class IssueServiceImpl implements IssueService {
                 String sortJsonPayload = objectMapper.writeValueAsString(sortRequest);
                 redisTemplate.opsForList().leftPush("queue:issue:priority:sort", sortJsonPayload);
             }
-            return Result.ok(resultEntities);
+            return Result.ok(allIssuesInProject);
 
         } catch (Exception e) {
             return Result.fail(new ServerError("SyncGithubIssues", projectId));
