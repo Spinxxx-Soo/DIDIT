@@ -5,6 +5,8 @@ import ScreenShare from './ScreenShare';
 import AudioContainer from './AudioContainer';
 import useMeetingStore from '@/store/useMeetingStore';
 import useOpenVidu from '@/hooks/useOpenVidu';
+import useAuthStore from '@/store/useAuthStore';
+import useChatStore from '@/store/useChatStore';
 import { meetingApi } from '@/api/meeting';
 import { projectApi } from '@/api/project';
 import ChatChannelView from '../chat/ChatChannelView';
@@ -28,6 +30,8 @@ const MeetingRoom = () => {
   } = useMeetingStore();
 
   const { joinSession } = useOpenVidu();
+  const { user } = useAuthStore();
+  const { connect, disconnect } = useChatStore();
 
   // 1. [NEW] 채널 모드 정보가 없을 경우 (새로고침 등) 조회
   useEffect(() => {
@@ -139,6 +143,19 @@ const MeetingRoom = () => {
       handleJoinMeeting();
     }
   }, [channelId, isInMeeting, isLoading, handleJoinMeeting, currentChannelMode]);
+
+  // [NEW] 채널 진입 시 자동으로 SSE 연결 (참가자 목록/미디어 이벤트 수신용)
+  useEffect(() => {
+    if (channelId && user && currentChannelMode === 'VOICE') {
+      console.log(`[MeetingRoom] Auto-connecting to channel SSE: ${channelId}`);
+      connect(channelId, user);
+    }
+    return () => {
+      // 회의실을 완전히 떠날 때만 연결 종료 (MeetingRoom 언마운트 시)
+      console.log(`[MeetingRoom] Disconnecting channel SSE: ${channelId}`);
+      disconnect();
+    };
+  }, [channelId, user, currentChannelMode, connect, disconnect]);
 
   // 페이지 떠날 때 정리 (새로고침/탭 닫기 포함)
   useEffect(() => {

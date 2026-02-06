@@ -11,6 +11,7 @@ const useChatStore = create((set, get) => ({
     isConnected: false,
     connectedChannelId: null, // 추가: 현재 연결된 채널 ID 추적
     eventSource: null,
+    connectionCount: 0, // [NEW] 연결 참조 카운트
     isLoading: false,
     error: null,
 
@@ -18,9 +19,10 @@ const useChatStore = create((set, get) => ({
     connect: (channelId, user) => {
         const { eventSource, isConnected, connectedChannelId } = get();
 
-        // A) 같은 채널에 이미 연결되어 있다면 패스
+        // A) 같은 채널에 이미 연결되어 있다면 카운트만 증가시키고 패스
         if (isConnected && connectedChannelId === channelId && eventSource) {
-            console.log('[connect] Already connected to same channel, skipping');
+            console.log('[connect] Already connected to same channel, incrementing count');
+            set(state => ({ connectionCount: state.connectionCount + 1 }));
             return;
         }
 
@@ -52,7 +54,7 @@ const useChatStore = create((set, get) => ({
             withCredentials: true
         });
 
-        set({ eventSource: es });
+        set({ eventSource: es, connectionCount: 1 });
 
         es.onopen = () => {
             console.log("[SSE] Connected!");
@@ -212,17 +214,20 @@ const useChatStore = create((set, get) => ({
         // Keep-alive check or Auto-reconnect logic could go here
     },
 
-    // 2. 연결 종료
+    // 2. 연결 종료 (참조 카운트 감소)
     disconnect: () => {
-        const { eventSource } = get();
+        const { eventSource, connectionCount } = get();
         if (eventSource) {
-            console.log("[SSE] Disconnecting...");
-            eventSource.close();
-            // 메시지는 비우지 않음 (UX: 재연결 시 보여주기 위함)
-            // 다만 connectedChannelId는 남겨두거나 비울 수 있는데,
-            // 완전히 '나가기' 개념이라면 비우는게 맞지만, 단순 탭 닫기면 남길 수도 있음.
-            // 여기서는 연결 상태만 끊는 것으로 처리.
-            set({ eventSource: null, isConnected: false });
+            const nextCount = Math.max(0, connectionCount - 1);
+            console.log(`[SSE] Disconnecting... (Remaining count: ${nextCount})`);
+
+            if (nextCount === 0) {
+                console.log("[SSE] No more subscribers, closing connection.");
+                eventSource.close();
+                set({ eventSource: null, isConnected: false, connectionCount: 0, connectedChannelId: null });
+            } else {
+                set({ connectionCount: nextCount });
+            }
         }
     },
 
