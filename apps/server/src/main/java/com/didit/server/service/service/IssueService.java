@@ -141,7 +141,7 @@ public interface IssueService {
      * - long projectId: GitHub 리포지토리 정보가 포함된 프로젝트 ID
      * - long userId: GitHub API 호출을 위한 인증 정보(AccessToken)를 보유한 사용자 ID
      * Success:
-     * - ok(List<IssueEntity>): 신규로 동기화되어 DB에 저장된 이슈 리스트 반환
+     * - ok(List<IssueEntity>): 신규로 동기화되어 DB에 저장된 모든 이슈 리스트 반환
      * Logic:
      * - GitHub API를 통해 가져온 이슈 중 로컬 DB에 존재하지 않는 이슈만 신규 저장 (중복 방지)
      * - 신규 저장된 각 이슈에 대해 개별 우선순위 분석 요청(queue:issue:priority:single)을 Redis 큐에 삽입
