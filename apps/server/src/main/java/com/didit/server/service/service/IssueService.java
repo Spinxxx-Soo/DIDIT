@@ -134,4 +134,22 @@ public interface IssueService {
     Result<Void> deleteIssue(long projectId, long userId, long issueId);
 
     Result<IssueEntity> FindById(long issueId);
+
+    /**
+     * Action: GitHub API로부터 프로젝트의 이슈 목록을 가져와 로컬 DB와 동기화하고, AI 우선순위 분석을 요청함
+     * Input:
+     * - long projectId: GitHub 리포지토리 정보가 포함된 프로젝트 ID
+     * - long userId: GitHub API 호출을 위한 인증 정보(AccessToken)를 보유한 사용자 ID
+     * Success:
+     * - ok(List<IssueEntity>): 신규로 동기화되어 DB에 저장된 이슈 리스트 반환
+     * Logic:
+     * - GitHub API를 통해 가져온 이슈 중 로컬 DB에 존재하지 않는 이슈만 신규 저장 (중복 방지)
+     * - 신규 저장된 각 이슈에 대해 개별 우선순위 분석 요청(queue:issue:priority:single)을 Redis 큐에 삽입
+     * - 프로젝트의 전체 이슈 목록을 바탕으로 전체 재정렬 요청(queue:issue:priority:sort)을 Redis 큐에 삽입
+     * Failures:
+     * - <404>: 요청된 프로젝트가 존재하지 않거나, GitHub API로부터 이슈를 불러오는 데 실패한 경우 NotFoundError 반환
+     * - <403>: 사용자의 GitHub 인증 정보(AccessToken)가 없는 경우 ForbiddenError 반환
+     * - <500>: JSON 직렬화 실패 또는 기타 시스템 내부 오류 발생 시 ServerError 반환
+     */
+    Result<List<IssueEntity>> getGithubIssues(long projectId, long userId);
 }
