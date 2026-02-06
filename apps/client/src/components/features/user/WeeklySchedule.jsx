@@ -50,6 +50,8 @@ const WeeklySchedule = () => {
         // [추가됨] 중복 검사를 위해 원본 시간 데이터(ISO String)도 저장
         rawStartedAt: item.startedAt,
         rawEndedAt: item.endedAt,
+        // [수정됨] mode 필드를 원본 그대로 저장하여 정확한 필터링이 가능하도록 함
+        mode: item.mode, // 'VOICE', 'CHAT' 등
         type: item.mode === 'CHAT' ? 'meeting' : 'planning',
       }));
 
@@ -75,9 +77,10 @@ const WeeklySchedule = () => {
       const isInDateRange = s.startDate <= dateStr && dateStr <= s.endDate;
       if (!isInDateRange) return false;
 
-      // SCHEDULED 상태인데 시작 시간이 지났으면 캘린더에서 숨김
-      // (이미 사이드바에 채널로 표시되고 있음)
-      if (s.type === 'meeting' && s.rawStartedAt) {
+      // [수정됨] 시작 시간이 지난 예약 채널(VOICE/CHAT)은 캘린더에서 숨김
+      // (채널 사이드바에만 표시되도록 함)
+      // mode가 'VOICE' 또는 'CHAT'인 경우 예약된 채널로 간주
+      if ((s.mode === 'VOICE' || s.mode === 'CHAT') && s.rawStartedAt) {
         const startTime = new Date(s.rawStartedAt);
         if (startTime <= now) {
           return false; // 시작 시간이 지난 예약 일정은 숨김

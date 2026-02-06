@@ -45,13 +45,22 @@ export const ScheduleDetailModal = ({ isOpen, onClose, schedule, onUpdate }) => 
         if (!confirm('정말로 이 일정을 삭제하시겠습니까?')) return;
 
         try {
+            // [수정됨] 채널 삭제 API 호출
             await projectApi.deleteChannel(schedule.id);
+
+            // [수정됨] 삭제 성공 후 캘린더 새로고침을 먼저 실행하고 완료될 때까지 대기
+            if (onUpdate) {
+                await onUpdate();
+            }
+
+            // [수정됨] 모든 작업이 완료된 후 모달을 닫고 성공 메시지 표시
             toast.success('일정이 삭제되었습니다.');
             onClose();
-            if (onUpdate) onUpdate();
         } catch (error) {
             console.error('삭제 실패:', error);
-            toast.error('일정 삭제에 실패했습니다.');
+            // [수정됨] 에러 메시지를 더 구체적으로 표시
+            const errorMessage = error.response?.data?.message || '일정 삭제에 실패했습니다.';
+            toast.error(errorMessage);
         }
     };
 
