@@ -74,12 +74,14 @@ const Lounge = () => {
     schedule: useRef(null),
   };
 
-  // [추가됨] Lounge 페이지 진입 시 이슈 목록 불러오기
+  // [수정됨] Lounge 페이지 진입 시 이슈 목록 불러오기
+  // fetchIssues를 dependency에서 제거하여 무한 루프 방지
   useEffect(() => {
     if (projectId && isGithubConnected) {
       fetchIssues(projectId);
     }
-  }, [projectId, isGithubConnected, fetchIssues]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, isGithubConnected]);
 
   const scrollToSection = (sectionId) => {
     sectionRefs[sectionId]?.current?.scrollIntoView({
