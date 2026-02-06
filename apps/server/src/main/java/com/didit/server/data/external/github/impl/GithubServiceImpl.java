@@ -1,7 +1,6 @@
 package com.didit.server.data.external.github.impl;
 
 import com.didit.server.api.response.GithubRepoResponse;
-import com.didit.server.data.entity.enums.IssuePriority;
 import com.didit.server.data.entity.enums.IssueStatus;
 import com.didit.server.data.external.github.GithubService;
 import com.didit.server.data.repository.ProjectRepository;

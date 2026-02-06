@@ -159,7 +159,7 @@ public class IssueServiceImpl implements IssueService {
             }
             var findAuth = userGithubAuthRepository.findById(userId).orElse(null);
             if (findAuth == null){
-                return Result.fail(new ForbiddenError(""));
+                return Result.fail(new ForbiddenError("인증 정보가 없습니다."));
             }
             var accessToken = findAuth.getAccessToken();
             String githubAuth = findAuth.getUser().getGithubLogin();
@@ -335,6 +335,17 @@ public class IssueServiceImpl implements IssueService {
                         .build();
 
                 IssueEntity saved = issueRepository.save(issueEntity);
+                List<GHUser> ghAssignees = ghIssue.getAssignees();
+                for (GHUser ghUser : ghAssignees) {
+                    userRepository.findByGithubLogin(ghUser.getLogin()).ifPresent(mappedUser -> {
+                        IssueAssigneeEntity assigneeEntity = IssueAssigneeEntity.builder()
+                                .issue(saved)
+                                .user(mappedUser)
+                                .build();
+                        saved.getAssignees().add(assigneeEntity);
+                    });
+                }
+
                 resultEntities.add(saved);
                 AiQueueRequest queueData = new AiQueueRequest(
                         userId,
