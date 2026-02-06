@@ -7,11 +7,13 @@ import { useParams } from 'react-router-dom';
 import { FileText, Calendar } from 'lucide-react';
 import DraggableSummaryWindow from '@/components/features/meeting/DraggableSummaryWindow';
 import { loungeApi } from '@/api/lounge';
+import useMeetingStore from '@/store/useMeetingStore';
 
 const RecentMinutes = () => {
   const { projectId } = useParams();
   const [minutes, setMinutes] = useState([]);
   const [openedMinute, setOpenedMinute] = useState(null);
+  const { generatedSummaryId } = useMeetingStore();
 
   useEffect(() => {
     const fetchMinutes = async () => {
@@ -28,7 +30,7 @@ const RecentMinutes = () => {
     };
 
     fetchMinutes();
-  }, [projectId]);
+  }, [projectId, generatedSummaryId]);
 
   return (
     <div className="w-full">
