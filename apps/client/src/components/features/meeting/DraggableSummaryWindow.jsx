@@ -8,6 +8,7 @@ import { IconButton } from '@/components/common/Button/IconButton';
 import { Divider } from '@/components/common/Divider';
 import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
 import { meetingApi } from '@/api/meeting';
+import useMeetingStore from '@/store/useMeetingStore';
 
 /**
  * summaryMd JSON을 파싱하여 구조화된 데이터를 반환
