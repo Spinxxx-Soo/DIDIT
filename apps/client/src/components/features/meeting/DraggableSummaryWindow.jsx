@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { Rnd } from 'react-rnd';
 import { X, Calendar, List, CheckSquare, Download, Edit2, Save, RotateCcw, Trash2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { IconButton } from '@/components/common/Button/IconButton';
 import { Divider } from '@/components/common/Divider';
 import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
@@ -48,6 +50,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
     const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
     const { triggerRefresh } = useMeetingStore();
+    const contentRef = React.useRef(null);
 
     // summary 데이터에서 파싱된 구조화 데이터
     const parsed = React.useMemo(() => parseSummaryMd(summary?.summaryMd), [summary?.summaryMd]);
@@ -141,6 +144,42 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
         setEditActionItems(updated);
     };
 
+    const handleDownloadPdf = async () => {
+        if (!contentRef.current) return;
+        try {
+            const element = contentRef.current;
+            const canvas = await html2canvas(element, {
+                scale: 2, // 해상도 높임
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgWidth = 210; // A4 가로 (mm)
+            const pageHeight = 297; // A4 세로 (mm)
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+
+            const fileName = `${parsed.title || summary.title || '회의록'}_${new Date().toISOString().split('T')[0]}.pdf`;
+            pdf.save(fileName);
+        } catch (error) {
+            console.error('PDF 생성 실패:', error);
+            alert('PDF 생성 중 오류가 발생했습니다.');
+        }
+    };
+
     if (!isOpen || !summary) return null;
 
     const formatDate = (dateString) => {
@@ -218,7 +257,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
                             size="xs"
                             title="다운로드"
                             className="on-drag-cancel"
-                            onClick={() => alert('PDF 다운로드 기능 준비중')}
+                            onClick={handleDownloadPdf}
                         />
                         <IconButton
                             icon={<Trash2 size={16} />}
@@ -239,7 +278,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
                 </div>
 
                 {/* Body (Scrollable) */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-white cursor-default">
+                <div ref={contentRef} className="flex-1 overflow-y-auto p-5 space-y-5 bg-white cursor-default">
                     {/* Title & Date */}
                     <div>
                         {isEditing ? (
