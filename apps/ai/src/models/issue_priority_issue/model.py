@@ -15,15 +15,45 @@ class IssuePriorityIssueModel:
     def __init__(self):
         logger.info("⏳ [VRAM 6GB 최적화] 모델 로딩 시작...")
         try:
+            # CUDA 사용 가능 여부 확인
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            logger.info(f"사용할 디바이스: {self.device}")
+            
             self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-            self.base_model = AutoModelForCausalLM.from_pretrained(
-                MODEL_ID,
-                quantization_config=BNB_CONFIG,
-                device_map={"": 0}, # 6GB 에러 방지용 강제 할당
-                max_memory=MAX_MEMORY,
-                trust_remote_code=True,
-                torch_dtype=torch.float16
-            )
+            
+            # CUDA가 있을 때만 quantization 사용
+            if self.device == "cuda":
+                logger.info("CUDA 사용 가능 - GPU 모드로 로드")
+                try:
+                    # device_map 없이 로드 후 수동으로 이동 (더 안전함)
+                    self.base_model = AutoModelForCausalLM.from_pretrained(
+                        MODEL_ID,
+                        quantization_config=BNB_CONFIG,
+                        trust_remote_code=True,
+                        torch_dtype=torch.float16
+                    )
+                    # 수동으로 GPU로 이동
+                    self.base_model = self.base_model.to(self.device)
+                    logger.info(f"모델을 {self.device}로 이동 완료")
+                except Exception as e:
+                    logger.warning(f"Quantization 로드 실패, quantization 없이 재시도: {e}")
+                    # quantization 없이 로드
+                    self.base_model = AutoModelForCausalLM.from_pretrained(
+                        MODEL_ID,
+                        trust_remote_code=True,
+                        torch_dtype=torch.float16
+                    )
+                    self.base_model = self.base_model.to(self.device)
+                    logger.info(f"모델을 {self.device}로 이동 완료 (quantization 없음)")
+            else:
+                # CPU 환경에서는 quantization 없이 로드
+                logger.warning("CUDA를 사용할 수 없어 CPU 모드로 로드합니다. 성능이 저하될 수 있습니다.")
+                self.base_model = AutoModelForCausalLM.from_pretrained(
+                    MODEL_ID,
+                    trust_remote_code=True,
+                    torch_dtype=torch.float32  # CPU는 float32 사용
+                )
+                self.base_model = self.base_model.to(self.device)
             
             if USE_LORA:
                 # 가중치 경로 확인
@@ -100,7 +130,7 @@ class IssuePriorityIssueModel:
             ### 중요도 점수:<|eot_id|><|start_header_id|>assistant<|end_header_id|>
             심각도 점수:"""
 
-        inputs = self.tokenizer(prompt, return_tensors="pt").to("cuda")
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
         input_length = inputs.input_ids.shape[1]
 
         with torch.no_grad():
