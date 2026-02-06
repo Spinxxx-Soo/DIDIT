@@ -24,7 +24,6 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
     private final MeetingUserService meetingUserService;
     private final MeetingMediaRecordingService meetingMediaRecordingService;
     private final MeetingSummaryService meetingSummaryService;
-    private final RecordingStopSchedulerService recordingStopSchedulerService;
 
     private void pubErrorEvent(long channelId, ResultError error) {
         publisher.publishEvent(new MediaErrorEvent(channelId, error.getResponse()));
@@ -176,6 +175,10 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         log.info("[OV] recordingStatusChanged sessionId={} recordingId={} status={} reason={} size={} duration={}",
                 e.sessionId(), e.id(), e.status(), e.reason(), e.size(), e.duration());
         // TODO: 녹화 상태 반영 (started/stopped/ready/failed)
+        if(e.status().equals("started") || e.status().equals("stopped")){
+            return;
+        }
+
         var findMeetingResult = meetingService.findBySessionId(e.sessionId());
         if (findMeetingResult.isFailure()) {
             log.error("[OV] onRecordingStatusChanged - Meeting Entity를 찾을수 없습니다 : {}", e.sessionId());
@@ -191,36 +194,7 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
         }
         var recordEntity = findRecordingResult.getOrThrow();
 
-        switch (e.status()) {
-            case "started" -> {
-                recordingStopSchedulerService.scheduleStopAfter1Hour(recordEntity.getId());
-                onRecordingStarted(e, meetingEntity, recordEntity);
-                return;
-            }
-            case "failed" -> {
-                onRecordingStopped(e, meetingEntity, recordEntity);
-                return;
-            }
-            case "stopped" -> {
-                onRecordingStopped(e, meetingEntity, recordEntity);
-                //todo redis pubsub
-                return;
-            }
-        }
-
-    }
-
-    private void onRecordingStarted(RecordingStatusChangedEvent e, MeetingEntity meetingEntity, MeetingRecordEntity recordEntity) {
-        var cmd = new UpdateRecordingCommand(TimeUtils.toLocalDateTime(e.timestamp()), null);
-        var updateResult = meetingMediaRecordingService.UpdateRecording(recordEntity.getId(), cmd);
-        if (updateResult.isFailure()) {
-            log.error("[OV] onRecordingStarted - 실패 : {}, {}", e.sessionId(), cmd);
-            pubErrorEvent(meetingEntity.getId(), updateResult.getSingleErrorOrThrow());
-            return;
-        }
-
-        var event = new MediaRecordingStartEvent(meetingEntity.getId(), e.timestamp(), e.sessionId(), recordEntity.getId());
-        publisher.publishEvent(event);
+        onRecordingStopped(e, meetingEntity, recordEntity);
     }
 
     private void onRecordingStopped(RecordingStatusChangedEvent e, MeetingEntity meetingEntity, MeetingRecordEntity recordEntity) {

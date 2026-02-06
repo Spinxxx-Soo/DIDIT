@@ -21,4 +21,6 @@ public interface IssueRepository extends JpaRepository<IssueEntity, Long> {
     boolean existsByGithubIssueId(long issueId);
 
     List<IssueEntity> findAllByProject_IdAndStatus(long projectId, IssueStatus status);
+
+    Optional<IssueEntity> findByGithubIssueId(long id);
 }
