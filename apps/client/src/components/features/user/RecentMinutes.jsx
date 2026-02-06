@@ -13,7 +13,7 @@ const RecentMinutes = () => {
   const { projectId } = useParams();
   const [minutes, setMinutes] = useState([]);
   const [openedMinute, setOpenedMinute] = useState(null);
-  const { generatedSummaryId } = useMeetingStore();
+  const { refreshTrigger } = useMeetingStore();
 
   useEffect(() => {
     const fetchMinutes = async () => {
@@ -30,7 +30,7 @@ const RecentMinutes = () => {
     };
 
     fetchMinutes();
-  }, [projectId, generatedSummaryId]);
+  }, [projectId, refreshTrigger]);
 
   return (
     <div className="w-full">
