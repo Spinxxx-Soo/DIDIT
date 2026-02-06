@@ -84,7 +84,7 @@ const useProjectSSE = (projectId) => {
                 const data = JSON.parse(event.data);
                 const meetingStore = useMeetingStore.getState();
                 meetingStore.setGenerating(false);
-                meetingStore.setGeneratedSummaryId(data.summeryId);
+                meetingStore.setGeneratedSummaryId(data.summaryId);
 
                 const { addToast } = useToastStore.getState();
                 addToast({ type: 'success', message: '회의록 생성이 완료되었습니다.' });

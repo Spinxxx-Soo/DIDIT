@@ -207,6 +207,14 @@ const useProjectStore = create((set, get) => ({
   // [3] 프로젝트 생성
   // ------------------------------------------------------------------
   createProject: async ({ name }) => {
+    // 생성 개수 제한 체크 (10개)
+    const { allProjects } = get();
+    if (allProjects.length >= 10) {
+      const errorMessage = '프로젝트 생성 개수 제한(10개)을 초과했습니다. 새로운 프로젝트를 생성하려면 기존 프로젝트를 삭제해주세요.';
+      set({ error: errorMessage, isLoading: false });
+      return { success: false, error: errorMessage };
+    }
+
     set({ isLoading: true, error: null });
 
     if (IS_MOCK) {
