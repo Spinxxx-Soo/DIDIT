@@ -152,7 +152,26 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
             const canvas = await html2canvas(element, {
                 scale: 2, // 해상도 높임
                 useCORS: true,
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
+                onclone: (clonedDoc) => {
+                    // html2canvas가 인식 못하는 oklch 색상을 안전한 색상으로 치환
+                    const elements = clonedDoc.querySelectorAll('*');
+                    elements.forEach(el => {
+                        const style = window.getComputedStyle(el);
+                        // 텍스트 색상 처리
+                        if (style.color.includes('oklch')) {
+                            el.style.color = '#1f2937'; // gray-800
+                        }
+                        // 배경색 처리
+                        if (style.backgroundColor.includes('oklch')) {
+                            el.style.backgroundColor = '#ffffff';
+                        }
+                        // 테두리 색상 처리
+                        if (style.borderColor.includes('oklch')) {
+                            el.style.borderColor = '#e5e7eb'; // gray-200
+                        }
+                    });
+                }
             });
 
             const imgData = canvas.toDataURL('image/png');
