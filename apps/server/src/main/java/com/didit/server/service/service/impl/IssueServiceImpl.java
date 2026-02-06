@@ -26,6 +26,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -318,21 +319,32 @@ public class IssueServiceImpl implements IssueService {
             }
             List<IssueEntity> resultEntities = new ArrayList<>();
             for (GHIssue ghIssue : issues.getOrThrow()){
+                Optional<IssueEntity> issue = issueRepository.findByGithubIssueId(ghIssue.getId());
+                IssueEntity issueEntity;
                 if(issueRepository.existsByGithubIssueId(ghIssue.getId())){
-                    continue;
+                    issueEntity = issue.get();
+                    issueEntity.setTitle(ghIssue.getTitle());
+                    issueEntity.setBody(ghIssue.getBody());
+                    if(ghIssue.getState() == GHIssueState.OPEN){
+                        issueEntity.setStatus(IssueStatus.OPEN);
+                    }else if(ghIssue.getState() == GHIssueState.CLOSED){
+                        issueEntity.setStatus(IssueStatus.CLOSED);
+                    }
                 }
-                var user = userRepository.findById(userId).orElse(null);
-                if(user == null) return Result.fail(new NotFoundError("userId", userId));
-                IssueEntity issueEntity = IssueEntity.builder()
-                        .project(project.get())
-                        .author(user)
-                        .githubIssueId(ghIssue.getId())
-                        .issueNo(ghIssue.getNumber())
-                        .title(ghIssue.getTitle())
-                        .body(ghIssue.getBody())
-                        .status(IssueStatus.OPEN)
-                        .priority(IssuePriority.MEDIUM)
-                        .build();
+                else{
+                    var user = userRepository.findById(userId).orElse(null);
+                    if(user == null) return Result.fail(new NotFoundError("userId", userId));
+                    issueEntity = IssueEntity.builder()
+                            .project(project.get())
+                            .author(user)
+                            .githubIssueId(ghIssue.getId())
+                            .issueNo(ghIssue.getNumber())
+                            .title(ghIssue.getTitle())
+                            .body(ghIssue.getBody())
+                            .status(IssueStatus.OPEN)
+                            .priority(IssuePriority.MEDIUM)
+                            .build();
+                }
 
                 IssueEntity saved = issueRepository.save(issueEntity);
                 List<GHUser> ghAssignees = ghIssue.getAssignees();
