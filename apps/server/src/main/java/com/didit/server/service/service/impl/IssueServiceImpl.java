@@ -317,7 +317,9 @@ public class IssueServiceImpl implements IssueService {
             if (issues.isFailure()){
                 return Result.fail(new NotFoundError("issues", issues));
             }
+
             List<IssueEntity> resultEntities = new ArrayList<>();
+
             for (GHIssue ghIssue : issues.getOrThrow()){
                 Optional<IssueEntity> issue = issueRepository.findByGithubIssueId(ghIssue.getId());
                 IssueEntity issueEntity;
@@ -350,11 +352,15 @@ public class IssueServiceImpl implements IssueService {
                 List<GHUser> ghAssignees = ghIssue.getAssignees();
                 for (GHUser ghUser : ghAssignees) {
                     userRepository.findByGithubLogin(ghUser.getLogin()).ifPresent(mappedUser -> {
-                        IssueAssigneeEntity assigneeEntity = IssueAssigneeEntity.builder()
-                                .issue(saved)
-                                .user(mappedUser)
-                                .build();
-                        saved.getAssignees().add(assigneeEntity);
+                        boolean exists = saved.getAssignees().stream()
+                                .anyMatch(a -> a.getUser().getId().equals(mappedUser.getId()));
+                        if (!exists) {
+                            IssueAssigneeEntity assigneeEntity = IssueAssigneeEntity.builder()
+                                    .issue(saved)
+                                    .user(mappedUser)
+                                    .build();
+                            saved.getAssignees().add(assigneeEntity);
+                        }
                     });
                 }
 
@@ -368,9 +374,13 @@ public class IssueServiceImpl implements IssueService {
                 redisTemplate.opsForList().leftPush("queue:issue:priority:single", jsonPayload);
             }
 
-            var allIssuesInProject = issueRepository.findAllByProject_IdAndStatus(projectId, IssueStatus.OPEN);
-            if (!allIssuesInProject.isEmpty()) {
-                List<AiSortRequest.AiIssueInfo> sortIssueInfos = allIssuesInProject.stream()
+            List<IssueEntity> openIssues = resultEntities.stream()
+                    .filter(i -> i.getStatus() == IssueStatus.OPEN)
+                    .toList();
+
+//            var allIssuesInProject = issueRepository.findAllByProject_IdAndStatus(projectId, IssueStatus.OPEN);
+            if (!openIssues.isEmpty()) {
+                List<AiSortRequest.AiIssueInfo> sortIssueInfos = openIssues.stream()
                         .map(issue -> new AiSortRequest.AiIssueInfo(
                                 issue.getId(),
                                 issue.getTitle(),
@@ -382,7 +392,7 @@ public class IssueServiceImpl implements IssueService {
                 String sortJsonPayload = objectMapper.writeValueAsString(sortRequest);
                 redisTemplate.opsForList().leftPush("queue:issue:priority:sort", sortJsonPayload);
             }
-            return Result.ok(allIssuesInProject);
+            return Result.ok(openIssues);
 
         } catch (Exception e) {
             return Result.fail(new ServerError("SyncGithubIssues", projectId));
