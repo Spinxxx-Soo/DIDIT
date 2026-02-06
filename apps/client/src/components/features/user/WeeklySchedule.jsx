@@ -174,7 +174,12 @@ const WeeklySchedule = () => {
       fetchSchedules();
     } catch (error) {
       console.error('Failed to save schedule:', error);
-      toast.error('일정 추가에 실패했습니다. (시간을 확인해주세요)');
+      // 403 Forbidden 에러인 경우 권한 메시지 표시
+      if (error.response?.status === 403) {
+        toast.error('채널을 예약할 권한이 없습니다.');
+      } else {
+        toast.error('일정 추가에 실패했습니다. (시간을 확인해주세요)');
+      }
     }
   };
 

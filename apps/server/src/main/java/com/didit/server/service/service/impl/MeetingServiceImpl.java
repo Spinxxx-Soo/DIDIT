@@ -4,7 +4,6 @@ import com.didit.server.data.entity.MeetingEntity;
 import com.didit.server.data.entity.MeetingRecordEntity;
 import com.didit.server.data.entity.enums.MeetingMode;
 import com.didit.server.data.entity.enums.MeetingStatus;
-import com.didit.server.data.entity.enums.ProjectUserRole;
 import com.didit.server.data.repository.*;
 import com.didit.server.service.command.BookMeetingCommand;
 import com.didit.server.service.service.MeetingService;
@@ -21,7 +20,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-
 @Service
 @RequiredArgsConstructor
 public class MeetingServiceImpl implements MeetingService {
@@ -34,19 +32,20 @@ public class MeetingServiceImpl implements MeetingService {
     private final MeetingRecordRepository meetingRecordRepository;
 
     @Override
-    public Result<Long> createMeeting(long projectId, long userId, String title, MeetingMode mode){
+    public Result<Long> createMeeting(long projectId, long userId, String title, MeetingMode mode) {
         try {
             var project = projectRepository.findById(projectId);
-            if (project.isEmpty()){
+            if (project.isEmpty()) {
                 return Result.fail(new NotFoundError("projectId", projectId));
             }
             var user = userRepository.findById(userId);
-            if (user.isEmpty()){
+            if (user.isEmpty()) {
                 return Result.fail(new NotFoundError("userId", userId));
             }
 
-            var projectUser = projectUserRepository.findByProject_IdAndUser_Id(project.get().getId(), user.get().getId());
-            if (projectUser.isEmpty()){
+            var projectUser = projectUserRepository.findByProject_IdAndUser_Id(project.get().getId(),
+                    user.get().getId());
+            if (projectUser.isEmpty()) {
                 return Result.fail(new ForbiddenError("채널을 생성할 권한이 없습니다."));
             }
 
@@ -68,16 +67,16 @@ public class MeetingServiceImpl implements MeetingService {
     @Override
     public Result<Long> bookMeeting(BookMeetingCommand cmd) {
         var project = projectRepository.findById(cmd.projectId());
-        if (project.isEmpty()){
+        if (project.isEmpty()) {
             return Result.fail(new NotFoundError("projectId", cmd.projectId()));
         }
         var user = userRepository.findById(cmd.userId());
-        if (user.isEmpty()){
+        if (user.isEmpty()) {
             return Result.fail(new NotFoundError("userId", cmd.userId()));
         }
 
         var projectUser = projectUserRepository.findByProject_IdAndUser_Id(project.get().getId(), user.get().getId());
-        if (projectUser.isEmpty() || projectUser.get().getRole() != ProjectUserRole.ADMIN){
+        if (projectUser.isEmpty() || projectUser.get().getRole() != ProjectUserRole.ADMIN) {
             return Result.fail(new ForbiddenError("채널을 예약할 권한이 없습니다."));
         }
 
@@ -97,7 +96,7 @@ public class MeetingServiceImpl implements MeetingService {
     @Override
     public Result UpdateMeeting(long meetingId, String title, LocalDateTime start, LocalDateTime due) {
         var meeting = meetingRepository.findById(meetingId);
-        if (meeting.isEmpty()){
+        if (meeting.isEmpty()) {
             return Result.fail(new NotFoundError("meetingId", meetingId));
         }
 
@@ -112,7 +111,7 @@ public class MeetingServiceImpl implements MeetingService {
     @Override
     public Result DeleteMeeting(long meetingId) {
         var meeting = meetingRepository.findById(meetingId);
-        if (meeting.isEmpty()){
+        if (meeting.isEmpty()) {
             return Result.fail(new NotFoundError("meetingId", meetingId));
         }
 
@@ -123,10 +122,11 @@ public class MeetingServiceImpl implements MeetingService {
     }
 
     @Override
-    public Result<List<MeetingEntity>> GetMeetingList(long projectId, MeetingStatus status, Long cursor, Pageable pageable){
+    public Result<List<MeetingEntity>> GetMeetingList(long projectId, MeetingStatus status, Long cursor,
+            Pageable pageable) {
         try {
             var project = projectRepository.findById(projectId);
-            if(project.isEmpty())
+            if (project.isEmpty())
                 return Result.fail(new NotFoundError("projectId", projectId));
 
             Long lastId = (cursor != null) ? cursor : 0L;
@@ -141,7 +141,7 @@ public class MeetingServiceImpl implements MeetingService {
     @Override
     public Result<List<MeetingEntity>> GetMeetingListByDate(long projectId, LocalDateTime start, LocalDateTime end) {
         var project = projectRepository.findById(projectId);
-        if(project.isEmpty())
+        if (project.isEmpty())
             return Result.fail(new NotFoundError("projectId", projectId));
 
         var list = meetingRepository.findByProjectIdAndStartedAtBetweenOrderByIdDesc(projectId, start, end);
@@ -151,7 +151,7 @@ public class MeetingServiceImpl implements MeetingService {
     @Override
     public Result<MeetingEntity> FindMeetingById(long meetingId) {
         var meeting = meetingRepository.findById(meetingId);
-        if (meeting.isEmpty()){
+        if (meeting.isEmpty()) {
             return Result.fail(new NotFoundError("meetingId", meetingId));
         }
 
@@ -165,7 +165,7 @@ public class MeetingServiceImpl implements MeetingService {
     }
 
     @Override
-    public Result<MeetingEntity> findBySessionId(String SessionId){
+    public Result<MeetingEntity> findBySessionId(String SessionId) {
         var findResult = meetingRepository.findBySessionId(SessionId);
         return findResult.map(Result::ok).orElseGet(() -> Result.fail(new NotFoundError("SessionId", SessionId)));
     }
