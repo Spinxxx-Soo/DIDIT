@@ -31,8 +31,9 @@ const parseSummaryMd = (summaryMd) => {
 /**
  * 구조화된 데이터를 summaryMd JSON 문자열로 변환
  */
-const buildSummaryMd = (discussionPoints, actionItems) => {
+const buildSummaryMd = (title, discussionPoints, actionItems) => {
     return JSON.stringify({
+        title: title,
         discussion_points: discussionPoints,
         action_items: actionItems.map(item => ({ text: item.text, checked: item.checked })),
     });
@@ -55,7 +56,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
     }, [initialSummary]);
 
     const handleEditClick = () => {
-        setEditTitle(summary.title);
+        setEditTitle(parsed.title || summary.title);
         setEditDiscussionPoints([...parsed.discussionPoints]);
         setEditActionItems(parsed.actionItems.map(item => ({ ...item })));
         setIsEditing(true);
@@ -67,7 +68,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
 
     const handleSaveClick = async () => {
         try {
-            const newSummaryMd = buildSummaryMd(editDiscussionPoints, editActionItems);
+            const newSummaryMd = buildSummaryMd(editTitle, editDiscussionPoints, editActionItems);
             await meetingApi.updateMeetingSummary(projectId, summary.id, {
                 title: editTitle,
                 summary: newSummaryMd,
@@ -85,7 +86,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
         const updatedItems = parsed.actionItems.map((item, i) =>
             i === index ? { ...item, checked: !item.checked } : item
         );
-        const newSummaryMd = buildSummaryMd(parsed.discussionPoints, updatedItems);
+        const newSummaryMd = buildSummaryMd(parsed.title, parsed.discussionPoints, updatedItems);
 
         // 낙관적 업데이트
         setSummary(prev => ({ ...prev, summaryMd: newSummaryMd }));
