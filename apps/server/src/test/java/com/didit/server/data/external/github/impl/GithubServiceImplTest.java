@@ -167,6 +167,10 @@ class GithubServiceImplTest {
                     .build();
             given(userGithubAuthRepository.findById(userId)).willReturn(Optional.of(auth));
 
+            GHUser owner = mock(GHUser.class);
+            given(ghRepository.getOwner()).willReturn(owner);
+            given(owner.getType()).willReturn("Organization");
+
             // When
             Result<GithubRepoResponse> result = githubService.validateGithubRepo(projectId, userId, orgName, repoName);
 
