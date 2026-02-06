@@ -39,14 +39,66 @@ class MeetingSummaryService:
             logger.warning(f"유효하지 않은 meeting_file (meetingID/filePath 확인 필요): {meeting_file}")
             return None
 
-        # 1) ffmpeg output wav 경로를 임시 디렉토리에 명시적으로 생성
-        base = os.path.splitext(os.path.basename(file_path))[0]
+        # URL인 경우 다운로드
+        is_url = file_path.startswith("http://") or file_path.startswith("https://")
         temp_dir = tempfile.gettempdir()
+        local_file_path = file_path
+        
+        if is_url:
+            logger.info(f"URL에서 파일 다운로드 시작: {file_path}")
+            try:
+                # URL에서 파일 확장자 추출
+                from urllib.parse import urlparse
+                parsed_url = urlparse(file_path)
+                file_ext = os.path.splitext(parsed_url.path)[1] or ".webm"
+                
+                # 임시 파일로 다운로드
+                local_file_path = os.path.join(temp_dir, f"{uuid.uuid4().hex}{file_ext}")
+                
+                logger.info(f"다운로드 대상 URL: {file_path}")
+                logger.info(f"저장 경로: {local_file_path}")
+                
+                response = requests.get(file_path, timeout=300, stream=True)  # 5분 타임아웃
+                response.raise_for_status()
+                
+                # 파일 크기 확인
+                total_size = int(response.headers.get('content-length', 0))
+                logger.info(f"다운로드할 파일 크기: {total_size} bytes")
+                
+                downloaded_size = 0
+                with open(local_file_path, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded_size += len(chunk)
+                
+                # 다운로드 완료 확인
+                if not os.path.exists(local_file_path):
+                    raise RuntimeError(f"다운로드 후 파일이 존재하지 않습니다: {local_file_path}")
+                
+                file_size = os.path.getsize(local_file_path)
+                logger.info(f"파일 다운로드 완료: {local_file_path} (크기: {file_size} bytes)")
+                
+                if file_size == 0:
+                    raise RuntimeError(f"다운로드된 파일 크기가 0입니다: {local_file_path}")
+                    
+            except Exception as e:
+                logger.error(f"파일 다운로드 실패: {e}", exc_info=True)
+                # 다운로드 실패한 임시 파일 정리
+                if local_file_path != file_path and os.path.exists(local_file_path):
+                    try:
+                        os.unlink(local_file_path)
+                    except:
+                        pass
+                raise RuntimeError(f"파일 다운로드 실패: {str(e)}")
+
+        # 1) ffmpeg output wav 경로를 임시 디렉토리에 명시적으로 생성
+        base = os.path.splitext(os.path.basename(local_file_path))[0]
         wav_path = os.path.join(temp_dir, f"{base}_{uuid.uuid4().hex}.wav")
 
         try:
             # 1) FFmpeg: webm -> wav
-            audio_file = self.process_with_ffmpeg(file_path, wav_path)
+            audio_file = self.process_with_ffmpeg(local_file_path, wav_path)
 
             # 2) Whisper STT
             transcript = self.transcribe(audio_file)
@@ -84,7 +136,16 @@ class MeetingSummaryService:
             return None
 
         finally:
-            # 임시 wav 파일 정리
+            # 임시 파일 정리
+            # 1. 다운로드한 원본 파일 삭제 (URL인 경우)
+            if is_url and local_file_path != file_path and os.path.exists(local_file_path):
+                try:
+                    os.unlink(local_file_path)
+                    logger.info(f"임시 다운로드 파일 삭제: {local_file_path}")
+                except Exception as e:
+                    logger.warning(f"임시 다운로드 파일 삭제 실패: {e}")
+            
+            # 2. 변환된 wav 파일 삭제
             if os.path.exists(wav_path):
                 try:
                     os.unlink(wav_path)
@@ -111,8 +172,9 @@ class MeetingSummaryService:
     # Helpers
     # ======================
     def process_with_ffmpeg(self, input_file: str, output_file: str) -> str:
-        is_url = input_file.startswith("http://") or input_file.startswith("https://") if input_file else False
-        if not input_file or (not is_url and not os.path.exists(input_file)):
+        if not input_file:
+            raise ValueError("input_file 경로가 비어 있습니다.")
+        if not os.path.exists(input_file):
             raise FileNotFoundError(f"입력 파일이 존재하지 않습니다: {input_file}")
         if not output_file:
             raise ValueError("output_file 경로가 비어 있습니다.")
