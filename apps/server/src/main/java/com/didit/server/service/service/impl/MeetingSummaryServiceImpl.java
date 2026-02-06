@@ -8,6 +8,7 @@ import com.didit.server.share.result.Result;
 import com.didit.server.share.result.impl.ForbiddenError;
 import com.didit.server.share.result.impl.NotFoundError;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -39,6 +40,18 @@ public class MeetingSummaryServiceImpl implements MeetingSummaryService {
     }
 
     @Override
+    public Result<List<MeetingSummaryEntity>> FindAllByProject(long projectId, int page) {
+        var findProjectResult = projectRepository.findById(projectId);
+        if (findProjectResult.isEmpty()) {
+            return Result.fail(new NotFoundError("projectId", projectId));
+        }
+        var pageable = PageRequest.of(page, 10);
+        var findResult = meetingSummaryRepository
+                .findByProject_IdAndPublishedAtIsNotNullOrderByPublishedAtDesc(projectId, pageable);
+        return Result.ok(findResult.getContent());
+    }
+
+    @Override
     public Result<Long> CreateSummary(long projectId, long meetingId) {
         var findProjectResult = projectRepository.findById(projectId);
         if (findProjectResult.isEmpty()) {
@@ -53,7 +66,6 @@ public class MeetingSummaryServiceImpl implements MeetingSummaryService {
                 .title(findMeetingResult.get().getTitle() + " - " + now.toString())
                 .project(findProjectResult.get())
                 .meeting(findMeetingResult.get())
-                .publishedAt(now)
                 .generatedAt(now)
                 .summaryMd("working in process..")
                 .summaryVersion(0)
@@ -100,7 +112,7 @@ public class MeetingSummaryServiceImpl implements MeetingSummaryService {
         if (summary != null && !summary.isEmpty() && !entity.getSummaryMd().equals(summary)) {
             entity.setSummaryMd(summary);
         }
-        entity.setGeneratedAt(LocalDateTime.now());
+        entity.setPublishedAt(LocalDateTime.now());
         meetingSummaryRepository.saveAndFlush(entity);
         return Result.ok();
     }

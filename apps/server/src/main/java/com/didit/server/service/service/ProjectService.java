@@ -27,6 +27,21 @@ public interface ProjectService {
      */
     public Result<List<ProjectEntity>> findProjectsByUserId(long userId);
 
+    /**
+     * Action: 유저 id를 통해 자신이 참가한 project들을 찾음
+     * Input:
+     *  - long userId
+     * Success:
+     *  - ok(List<ProjectEntity>) : (반환값 의미 / 값이 없으면 ok())
+     * Auth/Permission:
+     *  - (로그인 필요 / 본인의 것만)
+     * Persistence:
+     *  - (읽기)
+     * Failures:  // ★ 블랙박스 테스트의 핵심
+     *  - <404>: 찾을수 없는 userId
+     */
+    Result<List<ProjectEntity>> findProjectsByUserIdAndPage(long userId, int page);
+
 
     //[Feature][Rooms] 방 생성 + 생성 즉시 목록 반영 (POST /api/v1/rooms) #5
     /**
