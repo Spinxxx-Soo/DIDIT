@@ -96,6 +96,7 @@ class MeetingSummaryWorker:
             
             # 3. 결과를 Redis에 저장 (백업용)
             result_key = f"{settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY}:{result.get('summeryId')}"
+            logger.info(f"Redis에 저장할 결과: key={result_key}, result={result}")
             self.redis.set_result(result_key, result, expire=3600)
             logger.info(f"Redis에 저장 완료 (key: {result_key}, expire: 3600초)")
             
@@ -117,16 +118,22 @@ class MeetingSummaryWorker:
                 "summary": summary_json
             }
             pubsub_message = json.dumps(pubsub_result, ensure_ascii=False)
+            
+            # Redis Pub/Sub으로 발행하기 전 로깅
+            logger.info(f"Redis Pub/Sub으로 발행할 데이터: channel={settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY}, data={pubsub_result}")
+            logger.info(f"Redis Pub/Sub 메시지 (JSON): {pubsub_message}")
+            
             subscribers = self.redis.client.publish(
                 settings.REDIS_RESULT_TOPIC_MEETING_SUMMARY,
                 pubsub_message
             )
             
             logger.info(
-                "회의 요약 작업 완료: summeryId=%s, status=%s, subscribers=%d",
+                "회의 요약 작업 완료: summeryId=%s, status=%s, subscribers=%d, pubsub_result=%s",
                 result.get("summeryId"),
                 result.get("status"),
-                subscribers
+                subscribers,
+                pubsub_result
             )
             return True
             
