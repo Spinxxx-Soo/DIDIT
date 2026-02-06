@@ -112,7 +112,15 @@ public class IssueController {
     public ResponseEntity<?> getGithubIssue(@PathVariable long projectId,
                                             @AuthenticationPrincipal CustomOAuth2User user){
         long userId = user.getId();
+        var result = issueService.getGithubIssues(projectId, userId);
+        if (result.isFailure()) {
+            var err = result.getSingleErrorOrThrow().getResponse();
+            return new ResponseEntity<>(err, err.getStatusCode());
+        }
+        var entities = result.getOrThrow();
+        var responses = entities.stream().map(IssueResponse::fromEntity)
+                .toList();
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(responses);
     }
 }
