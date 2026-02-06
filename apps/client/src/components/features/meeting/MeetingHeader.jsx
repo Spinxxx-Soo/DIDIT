@@ -49,11 +49,11 @@ const MeetingHeader = () => {
         {isVoiceChannel && (
           <button
             onClick={handleToggleRecording}
-            disabled={isGenerating}
+            disabled={true}
             className={`px-4 py-2 rounded-md text-sm font-semibold text-white transition-colors ${isRecording
-              ? 'bg-[var(--color-error)] hover:bg-red-600'
-              : 'bg-[var(--color-green-primary)] hover:bg-emerald-600'
-              } ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+              ? 'bg-[var(--color-error)]'
+              : 'bg-[var(--color-green-primary)]'
+              } opacity-50 cursor-not-allowed`}
           >
             {isRecording ? '녹화종료' : '녹화시작'}
           </button>
