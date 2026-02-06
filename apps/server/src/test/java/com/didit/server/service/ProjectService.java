@@ -342,8 +342,7 @@ class ProjectServiceImplTest {
 
         var err = (ResultError) result.getErrors().getFirst();
 
-        // ✅ 네 ConflictError가 407로 고정
-        assertEquals(407, err.getCode());
+        assertEquals(409, err.getCode());
         assertNotNull(err.getMessage());
         assertFalse(err.getMessage().isBlank());
 
