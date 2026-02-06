@@ -10,7 +10,10 @@ import { TransferOwnershipModal } from './TransferOwnershipModal';
 import { CreateProjectModal } from './CreateProjectModal';
 import useProjectStore from '@/store/useProjectStore';
 import useAuthStore from '@/store/useAuthStore';
+import { toast } from '@/store/useToastStore';
 import { getProjectColor, getProjectInitial } from '@/utils/projectUtils';
+
+const PROJECT_LIMIT = 10;
 
 /**
  * ProjectManageModal - 프로젝트 관리 메인 모달
@@ -57,7 +60,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
   useEffect(() => {
     if (isOpen) {
       fetchAllProjects(); // 모달이 열릴 때 전체 목록을 서버에서 새로 가져옴
-    } 
+    }
     else {
       setEditingProjectId(null);
       setEditingName('');
@@ -171,7 +174,17 @@ export function ProjectManageModal({ isOpen, onClose }) {
     const result = await createProject(submitData);
     if (result.success) {
       setIsCreateModalOpen(false);
+    } else if (result.error) {
+      toast.error(result.error);
     }
+  };
+
+  const handleOpenCreateModal = () => {
+    if (allProjects.length >= PROJECT_LIMIT) {
+      toast.warning(`프로젝트 생성 개수 제한(${PROJECT_LIMIT}개)을 초과했습니다. 새로운 프로젝트를 생성하려면 기존 프로젝트를 삭제해주세요.`);
+      return;
+    }
+    setIsCreateModalOpen(true);
   };
 
   return (
@@ -288,7 +301,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
             variant="outline"
             padding='sm'
             isClickable
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={handleOpenCreateModal}
             className="border-dashed hover:border-[var(--color-green-primary)] hover:bg-[var(--success-bg)]"
           >
             <div className="flex items-center justify-center gap-3 py-0">

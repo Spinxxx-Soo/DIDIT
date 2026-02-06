@@ -156,6 +156,7 @@ class MeetingSummaryService:
             logger.exception(f"회의 요약 처리 실패 (meetingId={summary_id}): {e}")
             return None
 
+
         finally:
             # 임시 파일 정리
             # 1. 다운로드한 원본 파일 삭제 (URL인 경우)
