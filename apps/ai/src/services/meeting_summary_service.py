@@ -80,8 +80,16 @@ class MeetingSummaryService:
             }
 
         except Exception as e:
-            logger.exception(f"회의 요약 처리 실패 (meetingId={summary_id}): {e}")
-            return None
+            logger.exception(f"회의 요약 처리 실패 (summary_id={summary_id}): {e}")
+            return {
+                "summeryId": summary_id,
+                "status": "failed",
+                "summary": {
+                    "title": "요약 처리 실패",
+                    "discussion_points": ["오류가 발생하여 요약을 생성할 수 없습니다."],
+                    "action_items": [str(e)]
+                },
+            }
 
         finally:
             # 임시 wav 파일 정리

@@ -19,7 +19,8 @@ const RecentMinutes = () => {
       try {
         const response = await loungeApi.getRecentMinutes(projectId);
         if (Array.isArray(response.data)) {
-          setMinutes(response.data);
+          // 최신순으로 정렬은 이미 서버에서 되어있으므로 4개만 슬라이스
+          setMinutes(response.data.slice(0, 4));
         }
       } catch (error) {
         console.error('Failed to fetch recent minutes:', error);
@@ -57,7 +58,7 @@ const RecentMinutes = () => {
               "
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              {/* 아이콘 + 채널 */}
+              {/* 아이콘 */}
               <div className="flex items-center gap-2 mb-3">
                 <div className="
                   w-8 h-8
@@ -68,8 +69,8 @@ const RecentMinutes = () => {
                 ">
                   <FileText size={14} />
                 </div>
-                <span className="text-xs text-[var(--text-tertiary)]">
-                  {minute.channel || '공통'}
+                <span className="text-xs text-[var(--text-tertiary)] uppercase font-semibold tracking-wider">
+                  MEMO
                 </span>
               </div>
 
@@ -86,21 +87,21 @@ const RecentMinutes = () => {
               </h4>
 
               {/* 미리보기 (첫 번째 항목) */}
-              <p className="text-xs text-[var(--text-tertiary)] line-clamp-2 mb-3">
+              <p className="text-xs text-[var(--text-tertiary)] line-clamp-2 mb-3 h-8">
                 {(() => {
                   try {
                     const parsed = JSON.parse(minute.summaryMd || '{}');
-                    return parsed.discussion_points?.[0] || minute.summary || '내용 없음';
+                    return parsed.discussion_points?.[0] || '내용 없음';
                   } catch {
-                    return Array.isArray(minute.content) ? minute.content[0] : (minute.summary || '내용 없음');
+                    return '내용 없음';
                   }
                 })()}
               </p>
 
               {/* 날짜 */}
-              <div className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">
+              <div className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)] mt-auto">
                 <Calendar size={12} />
-                {new Date(minute.date).toLocaleDateString('ko-KR', {
+                {new Date(minute.createdAt).toLocaleDateString('ko-KR', {
                   month: 'long',
                   day: 'numeric'
                 })}
@@ -115,6 +116,11 @@ const RecentMinutes = () => {
         isOpen={!!openedMinute}
         onClose={() => setOpenedMinute(null)}
         summary={openedMinute}
+        projectId={projectId}
+        onDelete={() => {
+          setMinutes(prev => prev.filter(m => m.id !== openedMinute.id));
+          setOpenedMinute(null);
+        }}
       />
     </div>
   );
