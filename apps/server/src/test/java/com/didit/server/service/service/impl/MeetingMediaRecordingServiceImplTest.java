@@ -8,6 +8,7 @@ import com.didit.server.data.repository.MeetingRecordRepository;
 import com.didit.server.data.repository.MeetingRepository;
 import com.didit.server.data.repository.UserRepository;
 import com.didit.server.service.command.UpdateRecordingCommand;
+import com.didit.server.share.event.MediaRecordingStartEvent;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.ResultError;
 import com.didit.server.share.result.impl.NotFoundError;
@@ -21,6 +22,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -58,6 +61,9 @@ class MeetingMediaRecordingServiceImplTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private MeetingMediaRecordingServiceImpl sut;
 
@@ -80,12 +86,15 @@ class MeetingMediaRecordingServiceImplTest {
                 .set("id", userId)
                 .sample();
 
+        var event = fixture.giveMeBuilder(MediaRecordingStartEvent.class);
+
         Object recordingRef = mockOpenViduStartRecordingRef("recording-abc");
 
         when(meetingRepository.findById(meetingId)).thenReturn(Optional.of(meetingEntity));
         when(userRepository.findById(userId)).thenReturn(Optional.of(userEntity));
         when(openViduClient.startRecording(eq(sessionId), anyString()))
                 .thenReturn((Result) Result.ok(recordingRef));
+
 
         when(meetingRecordRepository.saveAndFlush(any(MeetingRecordEntity.class)))
                 .thenAnswer(invocation -> {
