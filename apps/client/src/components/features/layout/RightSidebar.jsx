@@ -41,7 +41,7 @@ const STATUS_CONFIG = {
 
 const RightSidebar = ({ activePanel, onClose, channelId }) => {
   const { projectId } = useParams();
-  const { openIssueDetail, openCreateIssue, issues, fetchIssues, isLoading } = useLoungeStore();
+  const { openIssueDetail, openCreateIssue, issues, fetchIssues, syncGithubIssues, isLoading } = useLoungeStore();
   const { user } = useAuthStore();
   const { fetchParticipants } = useProjectStore();
   const [memberMap, setMemberMap] = useState({});
@@ -81,7 +81,7 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
     return issues || [];
   }, [issues]);
 
-  // 이슈 목록 불러오기 + 실시간 동기화 (polling + visibility)
+  // 이슈 목록 불러오기 (패널 열릴 때 한 번만)
   useEffect(() => {
     if (!isIssueMode || !projectId) return;
 
@@ -90,26 +90,8 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
       openIssueMode(); // 목록 뷰로 리셋
     }
 
-    // 1. 패널 열릴 때 즉시 fetch
+    // 패널 열릴 때 한 번만 fetch
     fetchIssues(projectId);
-
-    // 2. 30초마다 polling (다른 사용자 변경사항 반영)
-    const interval = setInterval(() => {
-      fetchIssues(projectId);
-    }, 30000);
-
-    // 3. 탭 복귀 시 fetch
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        fetchIssues(projectId);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
   }, [isIssueMode, projectId, fetchIssues]);
 
   // 채팅 및 SSE 연결 관리
@@ -371,7 +353,7 @@ const RightSidebar = ({ activePanel, onClose, channelId }) => {
                   variant="ghost"
                   size="sm"
                   icon={<RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />}
-                  onClick={() => fetchIssues(projectId)}
+                  onClick={() => syncGithubIssues(projectId)}
                   title="새로고침"
                   disabled={isLoading}
                 />

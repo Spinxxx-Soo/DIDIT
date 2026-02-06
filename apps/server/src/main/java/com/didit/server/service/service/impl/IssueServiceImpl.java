@@ -3,10 +3,8 @@ package com.didit.server.service.service.impl;
 import com.didit.server.api.request.AiQueueRequest;
 import com.didit.server.api.request.AiSortRequest;
 import com.didit.server.api.response.AiResponse;
-import com.didit.server.api.response.IssueResponse;
 import com.didit.server.data.entity.IssueAssigneeEntity;
 import com.didit.server.data.entity.IssueEntity;
-import com.didit.server.data.entity.ProjectUserEntity;
 import com.didit.server.data.entity.UserEntity;
 import com.didit.server.data.entity.enums.IssuePriority;
 import com.didit.server.data.entity.enums.IssueStatus;
@@ -18,7 +16,6 @@ import com.didit.server.share.result.Result;
 import com.didit.server.share.result.impl.ForbiddenError;
 import com.didit.server.share.result.impl.NotFoundError;
 import com.didit.server.share.result.impl.ServerError;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +24,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -301,6 +297,72 @@ public class IssueServiceImpl implements IssueService {
             return Result.ok();
         } catch (Exception e) {
             return Result.fail(new ServerError("DeleteIssue", issueId));
+        }
+    }
+
+    @Override
+    @Transactional
+    public Result<List<IssueEntity>> getGithubIssues(long projectId, long userId){
+        try {
+            var project = projectRepository.findById(projectId);
+            if(project.isEmpty()){
+                return Result.fail(new NotFoundError("projectId", projectId));
+            }
+            var auth = userGithubAuthRepository.findById(userId).orElse(null);
+            if (auth == null) {
+                return Result.fail(new ForbiddenError("깃허브 인증 정보가 필요합니다."));
+            }
+            var issues = githubService.getGithubIssues(auth.getAccessToken(), project.get().getRepoFullName());
+            if (issues.isFailure()){
+                return Result.fail(new NotFoundError("issues", issues));
+            }
+            List<IssueEntity> resultEntities = new ArrayList<>();
+            for (GHIssue ghIssue : issues.getOrThrow()){
+                if(issueRepository.existsByGithubIssueId(ghIssue.getId())){
+                    continue;
+                }
+                var user = userRepository.findById(userId).orElse(null);
+                if(user == null) return Result.fail(new NotFoundError("userId", userId));
+                IssueEntity issueEntity = IssueEntity.builder()
+                        .project(project.get())
+                        .author(user)
+                        .githubIssueId(ghIssue.getId())
+                        .issueNo(ghIssue.getNumber())
+                        .title(ghIssue.getTitle())
+                        .body(ghIssue.getBody())
+                        .status(IssueStatus.OPEN)
+                        .priority(IssuePriority.MEDIUM)
+                        .build();
+
+                IssueEntity saved = issueRepository.save(issueEntity);
+                resultEntities.add(saved);
+                AiQueueRequest queueData = new AiQueueRequest(
+                        userId,
+                        issueEntity.getId(),
+                        issueEntity.getTitle(),
+                        issueEntity.getBody());
+                String jsonPayload = objectMapper.writeValueAsString(queueData);
+                redisTemplate.opsForList().leftPush("queue:issue:priority:single", jsonPayload);
+            }
+
+            var allIssuesInProject = issueRepository.findAllByProject_Id(projectId);
+            if (!allIssuesInProject.isEmpty()) {
+                List<AiSortRequest.AiIssueInfo> sortIssueInfos = allIssuesInProject.stream()
+                        .map(issue -> new AiSortRequest.AiIssueInfo(
+                                issue.getId(),
+                                issue.getTitle(),
+                                issue.getBody(),
+                                issue.getPriority() != null ? issue.getPriority().name() : "MEDIUM"))
+                        .toList();
+
+                AiSortRequest sortRequest = new AiSortRequest(userId, projectId, sortIssueInfos);
+                String sortJsonPayload = objectMapper.writeValueAsString(sortRequest);
+                redisTemplate.opsForList().leftPush("queue:issue:priority:sort", sortJsonPayload);
+            }
+            return Result.ok(resultEntities);
+
+        } catch (Exception e) {
+            return Result.fail(new ServerError("SyncGithubIssues", projectId));
         }
     }
 }

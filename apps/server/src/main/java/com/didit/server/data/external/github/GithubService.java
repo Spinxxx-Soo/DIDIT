@@ -81,4 +81,19 @@ public interface GithubService {
      * - <500>: GitHub API 호출 실패 또는 권한 부족 시 ServerError 반환
      */
     Result<Void> closeIssue(String accessToken, String repoFullName, int issueNo);
+
+    /**
+     * Action: GitHub 저장소에서 현재 열려 있는(OPEN) 모든 이슈 목록을 가져옴
+     * Input:
+     * - String accessToken: GitHub OAuth 인증을 위한 개인 액세스 토큰
+     * - String repoFullName: 대상 저장소의 전체 이름 (예: "owner/repository")
+     * Success:
+     * - ok(List<GHIssue>): 해당 저장소의 OPEN 상태 이슈 리스트 반환
+     * Logic:
+     * - OAuth 토큰을 사용하여 GitHub API 클라이언트를 빌드함
+     * - 지정된 저장소에 접근하여 'OPEN' 상태인 이슈들만 필터링하여 조회함
+     * Failures:
+     * - <500>: GitHub API 인증 실패, 저장소 권한 없음, 또는 네트워크 통신 장애 시 ServerError 반환
+     */
+    Result<List<GHIssue>> getGithubIssues(String accessToken, String repoFullName);
 }

@@ -65,6 +65,13 @@ export const loungeApi = {
     deleteIssue: (projectId, issueId) => api.delete(`/api/v1/projects/${projectId}/issues/${issueId}`),
 
     /**
+     * GitHub 이슈 동기화
+     * @param {number} projectId
+     * @returns {Promise<IssueResponse[]>}
+     */
+    syncGithubIssues: (projectId) => api.get(`/api/v1/projects/${projectId}/github/issues`),
+
+    /**
      * 최근 회의록 조회 (최대 4개) (Mock)
      */
     getRecentMinutes: (projectId) => {
