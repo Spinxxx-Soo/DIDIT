@@ -21,7 +21,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.kohsuke.github.*;
+import org.kohsuke.github.GHIssue;
+import org.kohsuke.github.GHIssueBuilder;
+import org.kohsuke.github.GHPermissionType;
+import org.kohsuke.github.GHRepository;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,8 +33,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -86,116 +87,6 @@ class IssueServiceImplTest {
     @BeforeEach
     void setUp() {
         lenient().when(redisTemplate.opsForList()).thenReturn(listOperations);
-    }
-
-    @Test
-    @DisplayName("GitHub 이슈 동기화 성공 - 신규 이슈 저장 및 AI 분석/정렬 큐 삽입 확인")
-    void getGithubIssues_Success() throws JsonProcessingException {
-        // Given
-        long projectId = 1L;
-        long userId = 10L;
-        String repoName = "owner/repo";
-        String token = "ghp_token";
-
-        ProjectEntity project = ProjectEntity.builder().id(projectId).repoFullName(repoName).build();
-        UserEntity user = UserEntity.builder().id(userId).build();
-        UserGithubAuthEntity auth = UserGithubAuthEntity.builder().accessToken(token).build();
-
-        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
-        given(userGithubAuthRepository.findById(userId)).willReturn(Optional.of(auth));
-        given(userRepository.findById(userId)).willReturn(Optional.of(user));
-
-        GHIssue ghIssue1 = mock(GHIssue.class);
-        given(ghIssue1.getId()).willReturn(101L);
-
-        GHIssue ghIssue2 = mock(GHIssue.class);
-        given(ghIssue2.getId()).willReturn(102L);
-        given(ghIssue2.getNumber()).willReturn(2);
-        given(ghIssue2.getTitle()).willReturn("Issue 2");
-
-        lenient().when(ghIssue2.getBody()).thenReturn("Body 2");
-
-        given(githubService.getGithubIssues(token, repoName)).willReturn(Result.ok(List.of(ghIssue1, ghIssue2)));
-
-        given(issueRepository.existsByGithubIssueId(101L)).willReturn(true);
-        given(issueRepository.existsByGithubIssueId(102L)).willReturn(false);
-
-        given(issueRepository.save(any(IssueEntity.class))).willAnswer(inv -> {
-            IssueEntity e = inv.getArgument(0);
-            e.setId(500L);
-            return e;
-        });
-
-        given(issueRepository.findAllByProject_Id(projectId)).willReturn(List.of(
-                IssueEntity.builder().id(500L).title("Issue 2").priority(IssuePriority.MEDIUM).build()
-        ));
-
-        given(objectMapper.writeValueAsString(any())).willReturn("{\"mock\":\"json\"}");
-
-        // When
-        Result<List<IssueEntity>> result = issueService.getGithubIssues(projectId, userId);
-
-        // Then
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOrThrow()).hasSize(1);
-
-        verify(listOperations, times(2)).leftPush(anyString(), anyString());
-        verify(issueRepository, times(1)).save(any(IssueEntity.class));
-    }
-
-    @Test
-    @DisplayName("GitHub 이슈 동기화 실패 - 깃허브 인증 정보가 없는 경우 ForbiddenError 반환")
-    void getGithubIssues_Fail_NoAuth() {
-        // Given
-        long projectId = 1L;
-        long userId = 10L;
-        given(projectRepository.findById(projectId)).willReturn(Optional.of(ProjectEntity.builder().build()));
-        given(userGithubAuthRepository.findById(userId)).willReturn(Optional.empty());
-
-        // When
-        Result<List<IssueEntity>> result = issueService.getGithubIssues(projectId, userId);
-
-        // Then
-        assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ForbiddenError.class);
-        verify(githubService, never()).getGithubIssues(anyString(), anyString());
-    }
-
-    @Test
-    @DisplayName("GitHub 이슈 동기화 실패 - GitHub 서비스 호출 중 에러 발생 시 NotFoundError 반환")
-    void getGithubIssues_Fail_GithubServiceError() {
-        // Given
-        long projectId = 1L;
-        long userId = 10L;
-        ProjectEntity project = ProjectEntity.builder().id(projectId).repoFullName("org/repo").build();
-        UserGithubAuthEntity auth = UserGithubAuthEntity.builder().accessToken("token").build();
-
-        given(projectRepository.findById(projectId)).willReturn(Optional.of(project));
-        given(userGithubAuthRepository.findById(userId)).willReturn(Optional.of(auth));
-        given(githubService.getGithubIssues(anyString(), anyString()))
-                .willReturn(Result.fail(new NotFoundError("GitHub", "API Error")));
-
-        // When
-        Result<List<IssueEntity>> result = issueService.getGithubIssues(projectId, userId);
-
-        // Then
-        assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(NotFoundError.class);
-    }
-
-    @Test
-    @DisplayName("GitHub 이슈 동기화 실패 - 예기치 못한 예외 발생 시 ServerError 반환")
-    void getGithubIssues_Fail_InternalError() {
-        // Given
-        long projectId = 1L;
-        given(projectRepository.findById(projectId)).willThrow(new RuntimeException("Unexpected DB Error"));
-
-        // When
-        Result<List<IssueEntity>> result = issueService.getGithubIssues(projectId, 10L);
-
-        // Then
-        assertThat(result.isFailure()).isTrue();
-        assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ServerError.class);
     }
 
     @Test

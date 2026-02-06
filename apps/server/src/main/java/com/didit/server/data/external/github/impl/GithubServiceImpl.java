@@ -140,16 +140,4 @@ public class GithubServiceImpl implements GithubService {
             return Result.fail(new ServerError("GitHubAPI", "이슈 닫기 중 오류가 발생했습니다."));
         }
     }
-
-    @Override
-    public Result<List<GHIssue>> getGithubIssues(String accessToken, String repoFullName) {
-        try {
-            GitHub gitHub = new GitHubBuilder().withOAuthToken(accessToken).build();
-            GHRepository repository = gitHub.getRepository(repoFullName);
-            List<GHIssue> issues = repository.getIssues(GHIssueState.OPEN);
-            return Result.ok(issues);
-        } catch (Exception e) {
-            return Result.fail(new ServerError("GitHubAPI", "이슈 목록 로드 실패"));
-        }
-    }
 }

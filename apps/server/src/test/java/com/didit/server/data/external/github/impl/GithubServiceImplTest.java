@@ -15,7 +15,6 @@ import com.didit.server.service.service.impl.ProjectServiceImpl;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.impl.ForbiddenError;
 import com.didit.server.share.result.impl.NotFoundError;
-import com.didit.server.share.result.impl.ServerError;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -313,57 +312,6 @@ class GithubServiceImplTest {
             // Then
             assertThat(result.isFailure()).isTrue();
             assertThat(result.getSingleErrorOrThrow().getMessage()).contains("이슈 닫기 중 오류");
-        }
-    }
-
-    @Test
-    @DisplayName("GitHub 이슈 목록 로드 성공 - OPEN 상태의 이슈 리스트를 반환한다.")
-    void getGithubIssues_Success() throws IOException {
-        // Given
-        String accessToken = "ghp_valid_token";
-        String repoFullName = "owner/repo";
-        List<GHIssue> mockIssues = List.of(ghIssue);
-
-        try (MockedConstruction<GitHubBuilder> ignored = mockConstruction(GitHubBuilder.class, (mock, context) -> {
-            given(mock.withOAuthToken(anyString())).willReturn(mock);
-            given(mock.build()).willReturn(mock(GitHub.class));
-
-            GitHub gitHubMock = mock.build();
-            given(gitHubMock.getRepository(repoFullName)).willReturn(ghRepository);
-        })) {
-            given(ghRepository.getIssues(GHIssueState.OPEN)).willReturn(mockIssues);
-
-            // When
-            Result<List<GHIssue>> result = githubService.getGithubIssues(accessToken, repoFullName);
-
-            // Then
-            assertThat(result.isSuccess()).isTrue();
-            assertThat(result.getOrThrow()).hasSize(1);
-            verify(ghRepository).getIssues(GHIssueState.OPEN);
-        }
-    }
-
-    @Test
-    @DisplayName("GitHub 이슈 목록 로드 실패 - API 호출 중 IOException 발생 시 ServerError를 반환한다.")
-    void getGithubIssues_Fail_GithubApiException() throws IOException {
-        // Given
-        String accessToken = "ghp_invalid_token";
-        String repoFullName = "owner/repo";
-
-        try (MockedConstruction<GitHubBuilder> ignored = mockConstruction(GitHubBuilder.class, (mock, context) -> {
-            given(mock.withOAuthToken(anyString())).willReturn(mock);
-            given(mock.build()).willReturn(mock(GitHub.class));
-
-            GitHub gitHubMock = mock.build();
-            given(gitHubMock.getRepository(repoFullName)).willThrow(new IOException("GitHub API Error"));
-        })) {
-            // When
-            Result<List<GHIssue>> result = githubService.getGithubIssues(accessToken, repoFullName);
-
-            // Then
-            assertThat(result.isFailure()).isTrue();
-            assertThat(result.getSingleErrorOrThrow()).isInstanceOf(ServerError.class);
-            assertThat(result.getSingleErrorOrThrow().getMessage()).contains("이슈 목록 로드 실패");
         }
     }
 }
