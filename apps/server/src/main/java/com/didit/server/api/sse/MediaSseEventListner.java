@@ -43,6 +43,7 @@ public class MediaSseEventListner {
                 .channelId(e.channelId())
                 .timestamp(TimeUtils.toLocalDateTime(e.timestamp()))
                 .sessionId(e.sessionId())
+                .recordId(e.recordId())
                 .build();
         sseHub.broadcast(payload);
     }
@@ -53,6 +54,7 @@ public class MediaSseEventListner {
                 .channelId(e.channelId())
                 .timestamp(TimeUtils.toLocalDateTime(e.timestamp()))
                 .sessionId(e.sessionId())
+                .recordId(e.recordId())
                 .build();
         sseHub.broadcast(payload);
     }

@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public record MediaRecordingStopEvent(
         long channelId,
         long timestamp,
-        String sessionId
+        String sessionId,
+        long recordId
 ) {
 }
