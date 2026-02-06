@@ -4,3 +4,25 @@ springdoc:
     enabled: false
   api-docs:
     enabled: false
+
+spring:
+  datasource:
+    hikari:
+      pool-name: didit-hikari
+      maximum-pool-size: 30
+      minimum-idle: 10
+
+      connection-timeout: 10000   # 10s: 풀 고갈을 빠르게 감지
+      validation-timeout: 5000
+
+      idle-timeout: 600000        # 10m
+      max-lifetime: 1740000       # 29m: wait_timeout 보다 짧게(일반적으로 안전)
+      keepalive-time: 0           # 로컬/동일 네트워크면 보통 불필요 (필요하면 300000)
+
+      register-mbeans: true
+      leak-detection-threshold: 20000  # 20초 이상 점유 시 스택트레이스 로그
+
+server:
+  tomcat:
+    threads:
+      max: 120
