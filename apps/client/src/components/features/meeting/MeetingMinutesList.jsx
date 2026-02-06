@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, ChevronRight, Calendar, Search, Loader2 } from 'lucide-react';
 import { meetingApi } from '@/api/meeting';
+import useMeetingStore from '@/store/useMeetingStore';
 
 const MeetingMinutesList = ({ projectId, onItemClick }) => {
     const [minutesList, setMinutesList] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const { generatedSummaryId } = useMeetingStore();
 
     useEffect(() => {
         if (projectId) {
             loadMinutes();
         }
-    }, [projectId]);
+    }, [projectId, generatedSummaryId]);
 
     const loadMinutes = async () => {
         setIsLoading(true);
