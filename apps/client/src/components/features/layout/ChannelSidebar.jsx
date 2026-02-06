@@ -433,12 +433,22 @@ const ChannelSidebar = () => {
                                   <input
                                     type="text"
                                     value={editingChannelName}
-                                    onChange={(e) => setEditingChannelName(e.target.value)}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (value.length <= 50) {
+                                        setEditingChannelName(value);
+                                      }
+                                    }}
                                     onKeyDown={handleEditKeyDown}
                                     onClick={(e) => e.stopPropagation()}
+                                    maxLength={50}
                                     autoFocus
-                                    className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-2 py-0.5 text-[13px] text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-green-primary)]"
+                                    className={`flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-2 py-0.5 text-[13px] text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-green-primary)] ${editingChannelName.length >= 50 ? 'border-amber-500' : ''
+                                      }`}
                                   />
+                                  <span className="text-xs text-gray-500 shrink-0">
+                                    {editingChannelName.length}/50
+                                  </span>
                                   <IconButton
                                     icon={<Check size={12} />}
                                     size="sm"
@@ -496,40 +506,52 @@ const ChannelSidebar = () => {
 
                     {/* 채널 생성 모드 UI */}
                     {channelMode === 'create' && (
-                      <li className="flex items-center gap-2 px-3 py-1.5">
-                        <button
-                          onClick={() => setNewChannelType(newChannelType === 'VOICE' ? 'CHAT' : 'VOICE')}
-                          className="text-[var(--color-green-primary)] hover:opacity-70 transition-opacity"
-                          title={newChannelType === 'VOICE' ? '음성 채널 (클릭하여 변경)' : '채팅 채널 (클릭하여 변경)'}
-                        >
-                          {newChannelType === 'VOICE' ? <Mic size={14} /> : <Hash size={14} />}
-                        </button>
-                        <input
-                          type="text"
-                          value={newChannelName}
-                          onChange={(e) => setNewChannelName(e.target.value)}
-                          onKeyDown={handleCreateKeyDown}
-                          placeholder="채널 이름"
-                          autoFocus
-                          className="flex-1 min-w-0 bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-2 py-0.5 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--color-green-primary)]"
-                        />
-                        <IconButton
-                          icon={<Check size={12} />}
-                          size="sm"
-                          variant="ghost"
-                          onClick={handleCreateChannel}
-                          disabled={!newChannelName.trim() || isCreating}
-                          className="text-[var(--color-green-primary)] w-6 h-6 min-w-6"
-                          title="생성"
-                        />
-                        <IconButton
-                          icon={<X size={12} />}
-                          size="sm"
-                          variant="ghost"
-                          onClick={exitMode}
-                          className="text-[var(--text-tertiary)] w-6 h-6 min-w-6"
-                          title="취소"
-                        />
+                      <li className="flex flex-col gap-1 px-3 py-1.5">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setNewChannelType(newChannelType === 'VOICE' ? 'CHAT' : 'VOICE')}
+                            className="text-[var(--color-green-primary)] hover:opacity-70 transition-opacity"
+                            title={newChannelType === 'VOICE' ? '음성 채널 (클릭하여 변경)' : '채팅 채널 (클릭하여 변경)'}
+                          >
+                            {newChannelType === 'VOICE' ? <Mic size={14} /> : <Hash size={14} />}
+                          </button>
+                          <input
+                            type="text"
+                            value={newChannelName}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value.length <= 50) {
+                                setNewChannelName(value);
+                              }
+                            }}
+                            onKeyDown={handleCreateKeyDown}
+                            placeholder="채널 이름"
+                            maxLength={50}
+                            autoFocus
+                            className={`flex-1 min-w-0 bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-2 py-0.5 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--color-green-primary)] ${newChannelName.length >= 50 ? 'border-amber-500' : ''
+                              }`}
+                          />
+                          <IconButton
+                            icon={<Check size={12} />}
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleCreateChannel}
+                            disabled={!newChannelName.trim() || isCreating}
+                            className="text-[var(--color-green-primary)] w-6 h-6 min-w-6"
+                            title="생성"
+                          />
+                          <IconButton
+                            icon={<X size={12} />}
+                            size="sm"
+                            variant="ghost"
+                            onClick={exitMode}
+                            className="text-[var(--text-tertiary)] w-6 h-6 min-w-6"
+                            title="취소"
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500 pl-6">
+                          {newChannelName.length}/50
+                        </span>
                       </li>
                     )}
                   </ul>
