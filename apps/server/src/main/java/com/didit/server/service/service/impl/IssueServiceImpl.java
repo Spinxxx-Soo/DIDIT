@@ -74,7 +74,7 @@ public class IssueServiceImpl implements IssueService {
             if (user.isEmpty()) {
                 return Result.fail(new NotFoundError("userId", userId));
             }
-            var issueList = issueRepository.findAllByProject_IdAndStatus(projectId, IssueStatus.OPEN);
+            var issueList = issueRepository.findAllByProject_Id(projectId);
 
             List<AiSortRequest.AiIssueInfo> issueInfos = issueList.stream().map(issue -> new AiSortRequest.AiIssueInfo(
                     issue.getId(),

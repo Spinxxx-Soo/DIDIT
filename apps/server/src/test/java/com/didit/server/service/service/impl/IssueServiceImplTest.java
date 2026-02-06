@@ -485,7 +485,7 @@ class IssueServiceImplTest {
                         .priority(IssuePriority.LOW)    // [추가]
                         .build()
         );
-        given(issueRepository.findAllByProject_IdAndStatus(anyLong(), any())).willReturn(issues);
+        given(issueRepository.findAllByProject_Id(anyLong())).willReturn(issues);
 
         String mockJson = "{\"userId\":1}";
         given(objectMapper.writeValueAsString(any())).willReturn(mockJson);
@@ -501,7 +501,7 @@ class IssueServiceImplTest {
         assertThat(result.isSuccess()).isTrue();
         assertThat(result.getOrThrow()).hasSize(2);
 
-        verify(issueRepository).findAllByProject_IdAndStatus(eq(projectId), eq(IssueStatus.OPEN));
+        verify(issueRepository).findAllByProject_Id(eq(projectId));
         verify(listOperations).leftPush(anyString(), eq(mockJson));
     }
 
@@ -557,7 +557,7 @@ class IssueServiceImplTest {
         given(userRepository.findById(userId)).willReturn(Optional.of(UserEntity.builder().build()));
 
         // DB 에러 시뮬레이션
-        given(issueRepository.findAllByProject_IdAndStatus(projectId, IssueStatus.OPEN)).willThrow(new RuntimeException("DB Connection Fail"));
+        given(issueRepository.findAllByProject_Id(projectId)).willThrow(new RuntimeException("DB Connection Fail"));
 
         // When
         Result<List<IssueEntity>> result = issueService.GetAllIssues(userId, projectId);
