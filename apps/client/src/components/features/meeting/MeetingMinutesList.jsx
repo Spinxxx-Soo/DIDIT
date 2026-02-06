@@ -6,13 +6,13 @@ import useMeetingStore from '@/store/useMeetingStore';
 const MeetingMinutesList = ({ projectId, onItemClick }) => {
     const [minutesList, setMinutesList] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const { generatedSummaryId } = useMeetingStore();
+    const { refreshTrigger } = useMeetingStore();
 
     useEffect(() => {
         if (projectId) {
             loadMinutes();
         }
-    }, [projectId, generatedSummaryId]);
+    }, [projectId, refreshTrigger]);
 
     const loadMinutes = async () => {
         setIsLoading(true);

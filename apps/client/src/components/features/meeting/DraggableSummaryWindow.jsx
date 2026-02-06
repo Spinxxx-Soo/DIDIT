@@ -47,6 +47,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
     const [editActionItems, setEditActionItems] = React.useState([]);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
+    const { triggerRefresh } = useMeetingStore();
 
     // summary 데이터에서 파싱된 구조화 데이터
     const parsed = React.useMemo(() => parseSummaryMd(summary?.summaryMd), [summary?.summaryMd]);
@@ -75,6 +76,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
             });
             setSummary(prev => ({ ...prev, title: editTitle, summaryMd: newSummaryMd }));
             setIsEditing(false);
+            triggerRefresh();
         } catch (error) {
             console.error('저장 실패:', error);
             alert('저장 중 오류가 발생했습니다.');
@@ -107,6 +109,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
         try {
             await meetingApi.deleteMeetingSummary(projectId, summary.id);
             setIsDeleteModalOpen(false);
+            triggerRefresh();
             onDelete?.(summary.id);
             onClose();
         } catch (error) {
