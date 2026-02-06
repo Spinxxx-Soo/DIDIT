@@ -205,10 +205,20 @@ const ChatChannelView = () => {
                                         <div className="flex flex-col items-end gap-2">
                                             <textarea
                                                 value={editContent}
-                                                onChange={(e) => setEditContent(e.target.value)}
-                                                className="p-2 text-sm border border-green-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 w-full min-w-[200px]"
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    if (value.length <= 300) {
+                                                        setEditContent(value);
+                                                    }
+                                                }}
+                                                maxLength={300}
+                                                className={`p-2 text-sm border border-green-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 w-full min-w-[200px] ${editContent.length >= 300 ? 'border-amber-500' : ''
+                                                    }`}
                                                 rows={3}
                                             />
+                                            <span className="text-xs text-gray-500 self-start">
+                                                {editContent.length}/300
+                                            </span>
                                             <div className="flex gap-1">
                                                 <button onClick={handleCancelEdit} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">취소</button>
                                                 <button onClick={() => handleSaveEdit(msg.id)} className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">저장</button>
@@ -242,11 +252,21 @@ const ChatChannelView = () => {
                     <div className="flex items-center gap-2 bg-gray-50 rounded-full px-4 py-2 border border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-100 transition-all">
                         <input
                             value={chatMessage}
-                            onChange={(e) => setChatMessage(e.target.value)}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                if (value.length <= 300) {
+                                    setChatMessage(value);
+                                }
+                            }}
                             onKeyDown={handleKeyDown}
                             placeholder="메시지를 입력하세요..."
-                            className="flex-1 bg-transparent border-none outline-none text-sm py-1"
+                            maxLength={300}
+                            className={`flex-1 bg-transparent border-none outline-none text-sm py-1 ${chatMessage.length >= 300 ? 'text-amber-600' : ''
+                                }`}
                         />
+                        <span className="text-xs text-gray-400 shrink-0">
+                            {chatMessage.length}/300
+                        </span>
                         <button
                             onClick={handleSendMessage}
                             disabled={!chatMessage.trim()}
