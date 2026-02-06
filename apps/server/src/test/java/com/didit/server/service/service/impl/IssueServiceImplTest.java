@@ -126,7 +126,7 @@ class IssueServiceImplTest {
             return e;
         });
 
-        given(issueRepository.findAllByProject_Id(projectId)).willReturn(List.of(
+        given(issueRepository.findAllByProject_IdAndStatus(projectId, IssueStatus.OPEN)).willReturn(List.of(
                 IssueEntity.builder().id(500L).title("Issue 2").priority(IssuePriority.MEDIUM).build()
         ));
 

@@ -345,7 +345,7 @@ public class IssueServiceImpl implements IssueService {
                 redisTemplate.opsForList().leftPush("queue:issue:priority:single", jsonPayload);
             }
 
-            var allIssuesInProject = issueRepository.findAllByProject_Id(projectId);
+            var allIssuesInProject = issueRepository.findAllByProject_IdAndStatus(projectId, IssueStatus.OPEN);
             if (!allIssuesInProject.isEmpty()) {
                 List<AiSortRequest.AiIssueInfo> sortIssueInfos = allIssuesInProject.stream()
                         .map(issue -> new AiSortRequest.AiIssueInfo(
