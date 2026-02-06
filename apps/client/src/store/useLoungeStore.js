@@ -176,6 +176,29 @@ const useLoungeStore = create((set, get) => ({
     }
   },
 
+  // GitHub 이슈 동기화
+  syncGithubIssues: async (projectId) => {
+    set({ isLoading: true, error: null });
+
+    if (IS_MOCK) {
+      await new Promise((r) => setTimeout(r, 500));
+      const normalizedIssues = MOCK_ISSUES.map(normalizeIssue);
+      set({ issues: normalizedIssues, isLoading: false });
+      return;
+    }
+
+    try {
+      const response = await loungeApi.syncGithubIssues(projectId);
+      const data = response?.data;
+      const issueList = Array.isArray(data) ? data : [];
+      const normalizedIssues = issueList.map(normalizeIssue);
+      set({ issues: normalizedIssues, isLoading: false });
+    } catch (error) {
+      console.error('GitHub 이슈 동기화 실패:', error);
+      set({ error: error.message, isLoading: false });
+    }
+  },
+
   // 1단계: 이슈 분석 (저장하지 않음)
   analyzeIssueContent: async (projectId, issueData) => {
     set({ isLoading: true, error: null });
