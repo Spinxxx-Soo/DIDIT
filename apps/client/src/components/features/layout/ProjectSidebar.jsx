@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, LogOut, Loader2 } from 'lucide-react';
+import { Plus, LogOut, Loader2, FolderCog } from 'lucide-react';
 
 import { IconButton } from '@/components/common/Button/IconButton';
 import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
@@ -98,15 +98,16 @@ const ProjectSidebar = () => {
           items-center 
           gap-3 
           w-full 
-          h-full 
+          h-full
           bg-[var(--bg-glass-strong)]
           backdrop-blur-xl
           py-4
+          overflow-hidden
         "
       >
         {/* === 1. 프로젝트 리스트 === */}
         {/* 수정: 아이콘 잘림 방지를 위해 py-3 추가 및 loading/error 처리 (Incoming Logic + HEAD Design) */}
-        <div className="flex flex-col gap-3 w-full items-center flex-1 overflow-y-auto min-h-0 scrollbar-hide px-3 py-3 overflow-x-visible">
+        <div className="flex flex-col gap-3 w-full items-center flex-1 overflow-y-auto scrollbar-hide px-3 py-3 overflow-x-visible">
           {isLoading ? (
             <div className="flex justify-center py-4">
               <Loader2 size={24} className="animate-spin text-[var(--color-green-primary)]" />
@@ -208,7 +209,7 @@ const ProjectSidebar = () => {
               onMouseLeave={handleMouseLeave}
             >
               <IconButton
-                icon={<Plus size={18} />}
+                icon={<FolderCog size={18} />}
                 variant="ghost"
                 size="md"
                 onClick={handleManageClick}
