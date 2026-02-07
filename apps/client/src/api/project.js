@@ -10,7 +10,7 @@ export const projectApi = {
    * 프로젝트 목록 조회
    * @returns {Promise<ProjectResponse[]>}
    */
-  getProjects: () => api.get('/api/v1/projects'),
+  getProjects: (params) => api.get('/api/v1/projects', { params }),
 
   /**
    * 프로젝트 상세 조회 (Added)
