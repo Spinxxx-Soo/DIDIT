@@ -79,6 +79,8 @@ const useProjectStore = create((set, get) => ({
   // State
   projects: [],
   allProjects: [], // 전체 프로젝트 목록 (사이드바용)
+  projectPage: 0,
+  hasMoreProjects: true,
   currentProject: null,
   isLoading: false,
   error: null,
@@ -157,20 +159,22 @@ const useProjectStore = create((set, get) => ({
   // [1-2] 전체 프로젝트 목록 조회 (사이드바용)
   // ------------------------------------------------------------------
   fetchAllProjects: async () => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, projectPage: 0, hasMoreProjects: true });
 
     if (IS_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 300));
-      set({ allProjects: MOCK_PROJECTS, isLoading: false });
+      set({ allProjects: MOCK_PROJECTS, isLoading: false, hasMoreProjects: false });
       return;
     }
 
     try {
-      // 사이드바용 전체 프로젝트 목록 (기본값: 0페이지 -> 10개)
-      // TODO: 필요 시 페이지네이션 추가 구현
-      const response = await projectApi.getProjects();
+      const response = await projectApi.getProjects({ page: 0, size: 10 });
       const projectsData = Array.isArray(response.data) ? response.data : [];
-      set({ allProjects: projectsData, isLoading: false });
+      set({
+        allProjects: projectsData,
+        isLoading: false,
+        hasMoreProjects: projectsData.length === 10
+      });
     } catch (error) {
       console.error('전체 프로젝트 목록 조회 실패:', error);
       set({
@@ -178,6 +182,32 @@ const useProjectStore = create((set, get) => ({
         error: '프로젝트 목록을 불러올 수 없습니다',
         isLoading: false
       });
+    }
+  },
+
+  /**
+   * 전체 프로젝트 목록 다음 페이지 조회
+   */
+  loadNextProjects: async () => {
+    const { projectPage, hasMoreProjects, allProjects, isLoading } = get();
+    if (isLoading || !hasMoreProjects) return;
+
+    const nextPage = projectPage + 1;
+    set({ isLoading: true });
+
+    try {
+      const response = await projectApi.getProjects({ page: nextPage, size: 10 });
+      const newProjects = Array.isArray(response.data) ? response.data : [];
+
+      set({
+        allProjects: [...allProjects, ...newProjects],
+        projectPage: nextPage,
+        hasMoreProjects: newProjects.length === 10,
+        isLoading: false
+      });
+    } catch (error) {
+      console.error('프로젝트 추가 로드 실패:', error);
+      set({ isLoading: false });
     }
   },
 
