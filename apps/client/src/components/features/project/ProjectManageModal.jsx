@@ -13,7 +13,7 @@ import useAuthStore from '@/store/useAuthStore';
 import { toast } from '@/store/useToastStore';
 import { getProjectColor, getProjectInitial } from '@/utils/projectUtils';
 
-const PROJECT_LIMIT = 10;
+// PROJECT_LIMIT 제거됨
 
 /**
  * ProjectManageModal - 프로젝트 관리 메인 모달
@@ -36,6 +36,8 @@ export function ProjectManageModal({ isOpen, onClose }) {
     validateProjectName,
     validateGithubRepo,
     isLoading,
+    hasMoreProjects,
+    loadNextProjects,
   } = useProjectStore();
 
   // 편집 상태
@@ -180,10 +182,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
   };
 
   const handleOpenCreateModal = () => {
-    if (allProjects.length >= PROJECT_LIMIT) {
-      toast.warning(`프로젝트 생성 개수 제한(${PROJECT_LIMIT}개)을 초과했습니다. 새로운 프로젝트를 생성하려면 기존 프로젝트를 삭제해주세요.`);
-      return;
-    }
+    // 제한 체크 제거됨
     setIsCreateModalOpen(true);
   };
 
@@ -292,6 +291,19 @@ export function ProjectManageModal({ isOpen, onClose }) {
                 </div>
               );
             })
+          )}
+
+          {/* 더 보기 버튼 추가 */}
+          {hasMoreProjects && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={loadNextProjects}
+              isLoading={isLoading}
+              className="w-full"
+            >
+              더 보기
+            </Button>
           )}
         </div>
 

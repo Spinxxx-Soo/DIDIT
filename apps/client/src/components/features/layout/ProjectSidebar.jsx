@@ -19,7 +19,7 @@ const ProjectSidebar = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const { logout } = useAuthStore();
-  const { allProjects, fetchAllProjects, error, isLoading } = useProjectStore();
+  const { allProjects, fetchAllProjects, loadNextProjects, hasMoreProjects, error, isLoading } = useProjectStore();
 
   // 회의 상태
   const { isInMeeting } = useMeetingStore();
@@ -164,6 +164,38 @@ const ProjectSidebar = () => {
           ) : (
             <div className="text-center px-3 py-4 text-[var(--text-tertiary)] text-xs">
               프로젝트가 없습니다
+            </div>
+          )}
+
+          {/* 더 보기 버튼 (아이콘 형태) */}
+          {hasMoreProjects && (
+            <div className="relative group animate-fade-in">
+              <button
+                onClick={loadNextProjects}
+                onMouseEnter={(e) => handleMouseEnter(e, '더 보기')}
+                onMouseLeave={handleMouseLeave}
+                disabled={isLoading}
+                className="
+                  w-11 h-11 
+                  flex items-center justify-center
+                  bg-[var(--bg-input)]
+                  text-[var(--text-tertiary)]
+                  rounded-[var(--radius-lg)]
+                  transition-all 
+                  duration-300 
+                  hover:scale-110
+                  hover:bg-[var(--bg-elevated)]
+                  hover:text-[var(--text-primary)]
+                  active:scale-95
+                  disabled:opacity-50
+                "
+              >
+                {isLoading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Plus size={18} />
+                )}
+              </button>
             </div>
           )}
         </div>
