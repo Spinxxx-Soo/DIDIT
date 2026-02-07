@@ -104,8 +104,8 @@ export const meetingApi = {
    * @param {number} projectId
    * @returns {Promise<MeetingSummaryResponse[]>}
    */
-  getMeetingSummaries: (projectId) =>
-    api.get(`/api/v1/projects/${projectId}/summary`),
+  getMeetingSummaries: (projectId, params) =>
+    api.get(`/api/v1/projects/${projectId}/summary`, { params }),
 
   /**
    * 회의록 수정 (프로젝트 멤버만)
