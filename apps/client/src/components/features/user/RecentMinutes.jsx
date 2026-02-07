@@ -26,7 +26,7 @@ const RecentMinutes = () => {
           size: 4
         });
         if (Array.isArray(response.data)) {
-          setMinutes(response.data);
+          setMinutes(response.data.slice(0, 4));
         }
       } catch (error) {
         console.error('Failed to fetch recent minutes:', error);
