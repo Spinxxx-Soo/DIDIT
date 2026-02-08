@@ -305,14 +305,14 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
                                 onClick={handleEditClick}
                             />
                         )}
-                        <IconButton
+                        {/* <IconButton
                             icon={<Download size={16} />}
                             variant="ghost"
                             size="xs"
                             title="다운로드"
                             className="on-drag-cancel"
                             onClick={handleDownloadPdf}
-                        />
+                        /> */}
                         <IconButton
                             icon={<Trash2 size={16} />}
                             variant="ghost"
