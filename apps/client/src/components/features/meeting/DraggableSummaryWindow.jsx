@@ -154,43 +154,56 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
                 useCORS: true,
                 backgroundColor: '#ffffff',
                 onclone: (clonedDoc) => {
-                    // html2canvas가 인식 못하는 oklch 색상을 브라우저 기본 resolver를 통해 HEX/RGB로 변환
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
 
+                    // 색상 변환 함수: oklch를 브라우저의 2D Canvas를 이용해 hex/rgb로 변환
                     const resolveOklch = (value) => {
                         if (!value || !value.includes('oklch')) return value;
-                        // oklch(...) 패턴을 찾아 각각 변환 (그라데이션, 그림자 등 대응)
+                        // oklch(...) 패턴을 찾아 변환. 여러 개가 있을 수 있으므로 전역 치환
                         return value.replace(/oklch\([^)]+\)/g, (match) => {
                             try {
                                 ctx.fillStyle = match;
-                                return ctx.fillStyle; // 브라우저가 hex 또는 rgb(a)로 변환해줌
+                                // ctx.fillStyle은 브라우저가 해석한 색상(rgb/hex)을 반환함
+                                return ctx.fillStyle !== '#000000' ? ctx.fillStyle : match;
                             } catch (e) {
-                                return 'rgba(0,0,0,0)';
+                                // 변환 실패 시 가독성을 위해 검정색 반환하지 않고 원본 유지 혹은 safe color
+                                return '#000000';
                             }
                         });
                     };
 
+                    // 1. <style> 태그 내부의 CSS 텍스트 전체에서 oklch 제거 (Tailwind v4 등 전역 스타일 대응)
+                    // html2canvas가 CSS를 파싱할 때 oklch 문법에서 에러가 나므로, 소스 차원에서 치환
+                    const styleTags = clonedDoc.querySelectorAll('style');
+                    styleTags.forEach(styleTag => {
+                        if (styleTag.innerHTML && styleTag.innerHTML.includes('oklch')) {
+                            styleTag.innerHTML = resolveOklch(styleTag.innerHTML);
+                        }
+                    });
+
+                    // 2. 개별 요소의 Computed Style 확인 및 인라인 스타일 강제 주입
+                    // 변수(var)로 정의된 색상이 최종적으로 oklch로 계산되는 경우를 커버
                     const elements = clonedDoc.querySelectorAll('*');
                     elements.forEach(el => {
                         const style = window.getComputedStyle(el);
-
-                        // 모든 스타일에 대해 oklch가 포함되어 있으면 변환하여 inline style로 주입
-                        // getComputedStyle의 모든 프로퍼티를 순회하며 oklch 탐색
-                        for (let i = 0; i < style.length; i++) {
-                            const prop = style[i];
-                            const val = style.getPropertyValue(prop);
-                            if (val && val.includes('oklch')) {
-                                // 디버깅: 어떤 속성이 oklch를 포함하는지 확인
-                                console.log(`[PDF Fix] Converting prop: ${prop}, value: ${val}`);
-                                const resolved = resolveOklch(val);
-                                el.style.setProperty(prop, resolved, 'important');
+                        // 성능을 위해 주요 색상 관련 속성만 우선 확인하되, 필요시 전체 순회
+                        // 여기서는 getComputedStyle의 모든 key를 순회하는 것이 가장 안전함 (이전 실패 보완)
+                        for (let key in style) {
+                            // key가 숫자 인덱스인 경우(0, 1, 2...)와 속성명인 경우가 섞여 있음.
+                            // 속성명(string)이고 값이 있는 경우만 체크
+                            if (isNaN(key) && typeof style[key] === 'string') {
+                                const val = style[key]; // style.getPropertyValue(key)와 유사
+                                if (val && val.includes('oklch')) {
+                                    const resolved = resolveOklch(val);
+                                    try {
+                                        el.style.setProperty(key, resolved, 'important');
+                                    } catch (err) {
+                                        // 일부 읽기 전용 속성 에러 무시
+                                    }
+                                }
                             }
                         }
-
-                        // ::before, ::after 같은 가상 요소는 JS로 직접 수정이 어려우므로 
-                        // 필요한 경우 스타일시트를 추가로 주입하는 방식이 필요하나, 
-                        // 현재 컴포넌트 구조상 가상 요소에 oklch를 쓰는 경우가 적어 패스
                     });
                 }
             });
