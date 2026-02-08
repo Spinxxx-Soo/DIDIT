@@ -53,7 +53,7 @@ const MeetingMinutesList = ({ projectId, onItemClick }) => {
 
     return (
         <div className="flex flex-col h-full">
-            {/* Search (Optional UI) */}
+            {/* Search (Optional UI)
             <div className="px-4 py-2 border-b border-gray-300 bg-[var(--bg-sidebar)]">
                 <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -63,7 +63,7 @@ const MeetingMinutesList = ({ projectId, onItemClick }) => {
                         className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-[var(--border-default)] rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
                     />
                 </div>
-            </div>
+            </div> */}
 
             {/* List */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[var(--bg-sidebar)]">
