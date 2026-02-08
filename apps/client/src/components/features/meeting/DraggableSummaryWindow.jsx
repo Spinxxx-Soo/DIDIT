@@ -158,33 +158,39 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
 
-                    const resolveColor = (color) => {
-                        if (!color || !color.includes('oklch')) return color;
-                        try {
-                            ctx.fillStyle = color;
-                            return ctx.fillStyle; // 브라우저가 hex 또는 rgb(a)로 변환해줌
-                        } catch (e) {
-                            return '#000000';
-                        }
+                    const resolveOklch = (value) => {
+                        if (!value || !value.includes('oklch')) return value;
+                        // oklch(...) 패턴을 찾아 각각 변환 (그라데이션, 그림자 등 대응)
+                        return value.replace(/oklch\([^)]+\)/g, (match) => {
+                            try {
+                                ctx.fillStyle = match;
+                                return ctx.fillStyle; // 브라우저가 hex 또는 rgb(a)로 변환해줌
+                            } catch (e) {
+                                return 'rgba(0,0,0,0)';
+                            }
+                        });
                     };
 
                     const elements = clonedDoc.querySelectorAll('*');
                     elements.forEach(el => {
                         const style = window.getComputedStyle(el);
 
-                        // 주요 색상 속성 일괄 변환
-                        ['color', 'background-color', 'border-color', 'fill', 'stroke'].forEach(prop => {
+                        // 모든 스타일에 대해 oklch가 포함되어 있으면 변환하여 inline style로 주입
+                        // getComputedStyle의 모든 프로퍼티를 순회하며 oklch 탐색
+                        for (let i = 0; i < style.length; i++) {
+                            const prop = style[i];
                             const val = style.getPropertyValue(prop);
                             if (val && val.includes('oklch')) {
-                                el.style.setProperty(prop, resolveColor(val), 'important');
+                                // 디버깅: 어떤 속성이 oklch를 포함하는지 확인
+                                console.log(`[PDF Fix] Converting prop: ${prop}, value: ${val}`);
+                                const resolved = resolveOklch(val);
+                                el.style.setProperty(prop, resolved, 'important');
                             }
-                        });
-
-                        // 그림자(box-shadow)에 oklch가 포함된 경우 html2canvas가 크래시되므로 제거 또는 변환
-                        const shadow = style.getPropertyValue('box-shadow');
-                        if (shadow && shadow.includes('oklch')) {
-                            el.style.setProperty('box-shadow', 'none', 'important');
                         }
+
+                        // ::before, ::after 같은 가상 요소는 JS로 직접 수정이 어려우므로 
+                        // 필요한 경우 스타일시트를 추가로 주입하는 방식이 필요하나, 
+                        // 현재 컴포넌트 구조상 가상 요소에 oklch를 쓰는 경우가 적어 패스
                     });
                 }
             });
