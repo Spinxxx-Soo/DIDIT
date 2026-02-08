@@ -81,6 +81,9 @@ public class GithubServiceImpl implements GithubService {
                 if (isAlreadyUsedByOther) {
                     return Result.fail(new ConflictError("이미 다른 프로젝트에 등록된 깃허브 레포지토리입니다."));
                 }
+                if(!repo.getOwner().getType().equals("Organization")){
+                    return Result.fail(new ConflictError("조직에 소속된 레파지토리가 아닙니다."));
+                }
                 return Result.ok(GithubRepoResponse.builder()
                         .repoId(repo.getId())
                         .repoName(repo.getFullName())

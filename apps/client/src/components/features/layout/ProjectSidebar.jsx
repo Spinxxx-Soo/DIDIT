@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, LogOut, Loader2 } from 'lucide-react';
+import { Plus, LogOut, Loader2, FolderCog } from 'lucide-react';
 
 import { IconButton } from '@/components/common/Button/IconButton';
 import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
@@ -19,7 +19,7 @@ const ProjectSidebar = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const { logout } = useAuthStore();
-  const { allProjects, fetchAllProjects, error, isLoading } = useProjectStore();
+  const { allProjects, fetchAllProjects, loadNextProjects, hasMoreProjects, error, isLoading } = useProjectStore();
 
   // 회의 상태
   const { isInMeeting } = useMeetingStore();
@@ -98,15 +98,16 @@ const ProjectSidebar = () => {
           items-center 
           gap-3 
           w-full 
-          h-full 
+          h-full
           bg-[var(--bg-glass-strong)]
           backdrop-blur-xl
           py-4
+          overflow-hidden
         "
       >
         {/* === 1. 프로젝트 리스트 === */}
         {/* 수정: 아이콘 잘림 방지를 위해 py-3 추가 및 loading/error 처리 (Incoming Logic + HEAD Design) */}
-        <div className="flex flex-col gap-3 w-full items-center flex-1 overflow-y-auto min-h-0 scrollbar-hide px-3 py-3 overflow-x-visible">
+        <div className="flex flex-col gap-3 w-full items-center flex-1 overflow-y-auto scrollbar-hide px-3 py-3 overflow-x-visible">
           {isLoading ? (
             <div className="flex justify-center py-4">
               <Loader2 size={24} className="animate-spin text-[var(--color-green-primary)]" />
@@ -166,6 +167,38 @@ const ProjectSidebar = () => {
               프로젝트가 없습니다
             </div>
           )}
+
+          {/* 더 보기 버튼 (아이콘 형태) */}
+          {hasMoreProjects && (
+            <div className="relative group animate-fade-in">
+              <button
+                onClick={loadNextProjects}
+                onMouseEnter={(e) => handleMouseEnter(e, '더 보기')}
+                onMouseLeave={handleMouseLeave}
+                disabled={isLoading}
+                className="
+                  w-11 h-11 
+                  flex items-center justify-center
+                  bg-[var(--bg-input)]
+                  text-[var(--text-tertiary)]
+                  rounded-[var(--radius-lg)]
+                  transition-all 
+                  duration-300 
+                  hover:scale-110
+                  hover:bg-[var(--bg-elevated)]
+                  hover:text-[var(--text-primary)]
+                  active:scale-95
+                  disabled:opacity-50
+                "
+              >
+                {isLoading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Plus size={18} />
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* === 2. 프로젝트 관리 버튼 === */}
@@ -176,7 +209,7 @@ const ProjectSidebar = () => {
               onMouseLeave={handleMouseLeave}
             >
               <IconButton
-                icon={<Plus size={18} />}
+                icon={<FolderCog size={18} />}
                 variant="ghost"
                 size="md"
                 onClick={handleManageClick}

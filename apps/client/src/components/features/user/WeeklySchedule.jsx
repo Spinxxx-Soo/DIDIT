@@ -177,7 +177,11 @@ const WeeklySchedule = () => {
       fetchSchedules();
     } catch (error) {
       console.error('Failed to save schedule:', error);
-      toast.error('일정 추가에 실패했습니다. (시간을 확인해주세요)');
+      if (error.response?.status === 403) {
+        toast.error('일정 등록 권한이 없습니다. (팀장만 가능)');
+      } else {
+        toast.error('일정 추가에 실패했습니다. (시간을 확인해주세요)');
+      }
     }
   };
 

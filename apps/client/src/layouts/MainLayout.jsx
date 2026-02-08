@@ -12,11 +12,11 @@ import ProjectSidebar from '../components/features/layout/ProjectSidebar';
  */
 const MainLayout = () => {
   return (
-    <div className="min-h-screen bg-[var(--bg-app)] flex flex-col">
+    <div className="h-screen bg-[var(--bg-app)] flex flex-col overflow-hidden">
       {/* 상단 네비게이션 */}
       <GNB variant="landing" />
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         {/* 프로젝트 사이드바 */}
         <aside
           className="

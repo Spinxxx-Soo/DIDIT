@@ -85,25 +85,17 @@ const useChatStore = create((set, get) => ({
 
 
                 set((state) => {
+                    // [Frontend-Only Fix] 내가 보낸 메시지는 SSE로 처리하지 않음 (ID가 없어서)
+                    // sendMessage 후 fetchRecentChats로 이미 진짜 ID를 가진 메시지를 가져왔으므로 중복 방지를 위해 무시
+                    if (newMessage.isMine) {
+                        return state;
+                    }
+
                     // 1. 이미 동일한 ID(서버 ID)가 있는지 확인
                     const isAlreadyExists = state.messages.some(m => m.id === newMessage.id);
                     if (isAlreadyExists) return state;
 
-                    // 2. 내가 보낸 메시지라면, 현재 목록에 'isTemp' 상태인 내 메시지가 있는지 확인
-                    if (newMessage.isMine) {
-                        const tempMsgIndex = state.messages.findLastIndex(
-                            m => m.isTemp && m.sender === newMessage.sender && m.content === newMessage.content
-                        );
-
-                        if (tempMsgIndex !== -1) {
-                            // 임시 메시지를 서버에서 온 진짜 메시지로 교체
-                            const newMessages = [...state.messages];
-                            newMessages[tempMsgIndex] = newMessage;
-                            return { messages: newMessages };
-                        }
-                    }
-
-                    // 3. 남이 보낸 거거나 교체할 대상이 없다면 새로 추가
+                    // 2. 남이 보낸 거라면 추가
                     return { messages: [...state.messages, newMessage] };
                 });
             } catch (err) {
@@ -232,8 +224,10 @@ const useChatStore = create((set, get) => ({
     },
 
     // 3. 이전 메시지 불러오기
-    fetchRecentChats: async (channelId, user) => {
-        set({ isLoading: true });
+    fetchRecentChats: async (channelId, user, options = {}) => {
+        if (!options.silent) {
+            set({ isLoading: true });
+        }
         const isMock = import.meta.env.VITE_USE_MOCK === 'true';
 
         try {
@@ -245,18 +239,17 @@ const useChatStore = create((set, get) => ({
             const response = await chatApi.getChats(channelId, { size: 50, sort: 'createdAt,asc' });
             const dataToMap = Array.isArray(response.data) ? response.data : (response.data.content || []);
 
-            // console.log('[fetchRecentChats] Raw Data:', dataToMap);
-
             const fetchedMessages = dataToMap.map(msg => ({
                 id: msg.id, // DB ID
-                content: msg.content || msg.message, // Fallback for safety
-                sender: msg.senderId || msg.userId, // Fallback for safety
+                content: msg.content || msg.message,
+                sender: msg.senderId || msg.userId,
                 time: new Date(msg.createdAt).toLocaleTimeString([], {
                     hour: '2-digit', minute: '2-digit'
                 }),
                 isMine: (msg.senderId || msg.userId) === user?.userId,
             }));
 
+            // [Frontend-Only Fix] Replace messages with authoritative data from server
             set({ messages: fetchedMessages, isLoading: false });
         } catch (error) {
             console.error("Failed to fetch chats:", error);
@@ -269,9 +262,7 @@ const useChatStore = create((set, get) => ({
         const isMock = import.meta.env.VITE_USE_MOCK === 'true';
 
         // 1. 임시 메시지 생성 (Optimistic UI)
-        // 임시 ID는 문자열로 구분하여 충돌 방지
         const tempId = `temp-${Date.now()}`;
-
         const tempMsg = {
             id: tempId,
             content: content,
@@ -290,16 +281,14 @@ const useChatStore = create((set, get) => ({
         set(state => ({ messages: [...state.messages, tempMsg] }));
 
         try {
-            // Spec: 200 OK (No Body)
             await chatApi.createChat(channelId, { content });
 
-            // 성공 시, SSE가 오면 자동으로 교체되므로 여기서는 별도 처리가 필요 없음.
-            // 다만, 혹시 SSE가 너무 늦거나 안 올 경우를 대비해 isTemp를 false로 바꿔주는 방어 로직만 유지할 수도 있으나,
-            // 현재 로직상 SSE가 와야 ID가 서버 시간으로 동기화되므로 그냥 둡니다.
+            // [Frontend-Only Fix] 성공 후 즉시 목록 갱신하여 진짜 ID(DB ID)를 가져옴
+            // SSE로 오는 메시지는 ID가 없어서 수정/삭제가 불가능하기 때문
+            await get().fetchRecentChats(channelId, user, { silent: true });
 
         } catch (error) {
             console.error("Message send failed:", error);
-            // 실패 시 제거
             set(state => ({ messages: state.messages.filter(m => m.id !== tempId) }));
             throw error;
         }

@@ -22,6 +22,7 @@ public interface MeetingSummaryService {
      * - <404>: 존재하지 않는 projectId
      */
     Result<List<MeetingSummaryEntity>> FindAllByProject(long projectId);
+    Result<List<MeetingSummaryEntity>> FindAllByProject(long projectId, int page);
 
     /**
      * Action: 회의록 생성

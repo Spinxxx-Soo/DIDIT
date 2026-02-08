@@ -79,6 +79,8 @@ const useProjectStore = create((set, get) => ({
   // State
   projects: [],
   allProjects: [], // 전체 프로젝트 목록 (사이드바용)
+  projectPage: 0,
+  hasMoreProjects: true,
   currentProject: null,
   isLoading: false,
   error: null,
@@ -157,18 +159,22 @@ const useProjectStore = create((set, get) => ({
   // [1-2] 전체 프로젝트 목록 조회 (사이드바용)
   // ------------------------------------------------------------------
   fetchAllProjects: async () => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, projectPage: 0, hasMoreProjects: true });
 
     if (IS_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 300));
-      set({ allProjects: MOCK_PROJECTS, isLoading: false });
+      set({ allProjects: MOCK_PROJECTS, isLoading: false, hasMoreProjects: false });
       return;
     }
 
     try {
-      const response = await projectApi.getProjects();
+      const response = await projectApi.getProjects({ page: 0, size: 10 });
       const projectsData = Array.isArray(response.data) ? response.data : [];
-      set({ allProjects: projectsData, isLoading: false });
+      set({
+        allProjects: projectsData,
+        isLoading: false,
+        hasMoreProjects: projectsData.length === 10
+      });
     } catch (error) {
       console.error('전체 프로젝트 목록 조회 실패:', error);
       set({
@@ -176,6 +182,32 @@ const useProjectStore = create((set, get) => ({
         error: '프로젝트 목록을 불러올 수 없습니다',
         isLoading: false
       });
+    }
+  },
+
+  /**
+   * 전체 프로젝트 목록 다음 페이지 조회
+   */
+  loadNextProjects: async () => {
+    const { projectPage, hasMoreProjects, allProjects, isLoading } = get();
+    if (isLoading || !hasMoreProjects) return;
+
+    const nextPage = projectPage + 1;
+    set({ isLoading: true });
+
+    try {
+      const response = await projectApi.getProjects({ page: nextPage, size: 10 });
+      const newProjects = Array.isArray(response.data) ? response.data : [];
+
+      set({
+        allProjects: [...allProjects, ...newProjects],
+        projectPage: nextPage,
+        hasMoreProjects: newProjects.length === 10,
+        isLoading: false
+      });
+    } catch (error) {
+      console.error('프로젝트 추가 로드 실패:', error);
+      set({ isLoading: false });
     }
   },
 
@@ -208,12 +240,9 @@ const useProjectStore = create((set, get) => ({
   // ------------------------------------------------------------------
   createProject: async ({ name }) => {
     // 생성 개수 제한 체크 (10개)
-    const { allProjects } = get();
-    if (allProjects.length >= 10) {
-      const errorMessage = '프로젝트 생성 개수 제한(10개)을 초과했습니다. 새로운 프로젝트를 생성하려면 기존 프로젝트를 삭제해주세요.';
-      set({ error: errorMessage, isLoading: false });
-      return { success: false, error: errorMessage };
-    }
+    // 생성 개수 제한 체크 (10개) - 제거됨
+    // const { allProjects } = get();
+    // if (allProjects.length >= 10) { ... }
 
     set({ isLoading: true, error: null });
 
@@ -401,8 +430,9 @@ const useProjectStore = create((set, get) => ({
       return { success: true };
     } catch (error) {
       console.error('저장소 업데이트 실패:', error);
-      set({ error: '저장소 연결에 실패했습니다', isLoading: false });
-      return { success: false, error: error.message };
+      const errorMessage = error.response?.data?.message || '저장소 연결에 실패했습니다';
+      set({ error: errorMessage, isLoading: false });
+      return { success: false, error: errorMessage };
     }
   },
 
