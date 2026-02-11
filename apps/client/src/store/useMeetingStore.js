@@ -24,6 +24,7 @@ const useMeetingStore = create((set, get) => ({
   recordId: null,
   isGenerating: false,
   generatedSummaryId: null,
+  refreshTrigger: 0,
 
   // 참가자 목록
   participants: [],
@@ -197,6 +198,11 @@ const useMeetingStore = create((set, get) => ({
   },
   setGeneratedSummaryId: (generatedSummaryId) => {
     set({ generatedSummaryId });
+    // 신규 생성 시에도 목록 갱신 트리거
+    set((state) => ({ refreshTrigger: state.refreshTrigger + 1 }));
+  },
+  triggerRefresh: () => {
+    set((state) => ({ refreshTrigger: state.refreshTrigger + 1 }));
   },
 
   // ------------------------------------------------------------------

@@ -10,7 +10,10 @@ import { TransferOwnershipModal } from './TransferOwnershipModal';
 import { CreateProjectModal } from './CreateProjectModal';
 import useProjectStore from '@/store/useProjectStore';
 import useAuthStore from '@/store/useAuthStore';
+import { toast } from '@/store/useToastStore';
 import { getProjectColor, getProjectInitial } from '@/utils/projectUtils';
+
+// PROJECT_LIMIT 제거됨
 
 /**
  * ProjectManageModal - 프로젝트 관리 메인 모달
@@ -33,6 +36,8 @@ export function ProjectManageModal({ isOpen, onClose }) {
     validateProjectName,
     validateGithubRepo,
     isLoading,
+    hasMoreProjects,
+    loadNextProjects,
   } = useProjectStore();
 
   // 편집 상태
@@ -57,7 +62,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
   useEffect(() => {
     if (isOpen) {
       fetchAllProjects(); // 모달이 열릴 때 전체 목록을 서버에서 새로 가져옴
-    } 
+    }
     else {
       setEditingProjectId(null);
       setEditingName('');
@@ -171,7 +176,14 @@ export function ProjectManageModal({ isOpen, onClose }) {
     const result = await createProject(submitData);
     if (result.success) {
       setIsCreateModalOpen(false);
+    } else if (result.error) {
+      toast.error(result.error);
     }
+  };
+
+  const handleOpenCreateModal = () => {
+    // 제한 체크 제거됨
+    setIsCreateModalOpen(true);
   };
 
   return (
@@ -280,6 +292,19 @@ export function ProjectManageModal({ isOpen, onClose }) {
               );
             })
           )}
+
+          {/* 더 보기 버튼 추가 */}
+          {hasMoreProjects && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={loadNextProjects}
+              isLoading={isLoading}
+              className="w-full"
+            >
+              더 보기
+            </Button>
+          )}
         </div>
 
         {/* 새 프로젝트 만들기 버튼 추가 */}
@@ -288,7 +313,7 @@ export function ProjectManageModal({ isOpen, onClose }) {
             variant="outline"
             padding='sm'
             isClickable
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={handleOpenCreateModal}
             className="border-dashed hover:border-[var(--color-green-primary)] hover:bg-[var(--success-bg)]"
           >
             <div className="flex items-center justify-center gap-3 py-0">

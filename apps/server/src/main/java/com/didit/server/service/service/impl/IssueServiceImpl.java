@@ -26,6 +26,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -159,7 +160,7 @@ public class IssueServiceImpl implements IssueService {
             }
             var findAuth = userGithubAuthRepository.findById(userId).orElse(null);
             if (findAuth == null){
-                return Result.fail(new ForbiddenError(""));
+                return Result.fail(new ForbiddenError("인증 정보가 없습니다."));
             }
             var accessToken = findAuth.getAccessToken();
             String githubAuth = findAuth.getUser().getGithubLogin();
@@ -316,25 +317,53 @@ public class IssueServiceImpl implements IssueService {
             if (issues.isFailure()){
                 return Result.fail(new NotFoundError("issues", issues));
             }
+
             List<IssueEntity> resultEntities = new ArrayList<>();
+
             for (GHIssue ghIssue : issues.getOrThrow()){
+                Optional<IssueEntity> issue = issueRepository.findByGithubIssueId(ghIssue.getId());
+                IssueEntity issueEntity;
                 if(issueRepository.existsByGithubIssueId(ghIssue.getId())){
-                    continue;
+                    issueEntity = issue.get();
+                    issueEntity.setTitle(ghIssue.getTitle());
+                    issueEntity.setBody(ghIssue.getBody());
+                    if(ghIssue.getState() == GHIssueState.OPEN){
+                        issueEntity.setStatus(IssueStatus.OPEN);
+                    }else if(ghIssue.getState() == GHIssueState.CLOSED){
+                        issueEntity.setStatus(IssueStatus.CLOSED);
+                    }
                 }
-                var user = userRepository.findById(userId).orElse(null);
-                if(user == null) return Result.fail(new NotFoundError("userId", userId));
-                IssueEntity issueEntity = IssueEntity.builder()
-                        .project(project.get())
-                        .author(user)
-                        .githubIssueId(ghIssue.getId())
-                        .issueNo(ghIssue.getNumber())
-                        .title(ghIssue.getTitle())
-                        .body(ghIssue.getBody())
-                        .status(IssueStatus.OPEN)
-                        .priority(IssuePriority.MEDIUM)
-                        .build();
+                else{
+                    var user = userRepository.findById(userId).orElse(null);
+                    if(user == null) return Result.fail(new NotFoundError("userId", userId));
+                    issueEntity = IssueEntity.builder()
+                            .project(project.get())
+                            .author(user)
+                            .githubIssueId(ghIssue.getId())
+                            .issueNo(ghIssue.getNumber())
+                            .title(ghIssue.getTitle())
+                            .body(ghIssue.getBody())
+                            .status(IssueStatus.OPEN)
+                            .priority(IssuePriority.MEDIUM)
+                            .build();
+                }
 
                 IssueEntity saved = issueRepository.save(issueEntity);
+                List<GHUser> ghAssignees = ghIssue.getAssignees();
+                for (GHUser ghUser : ghAssignees) {
+                    userRepository.findByGithubLogin(ghUser.getLogin()).ifPresent(mappedUser -> {
+                        boolean exists = saved.getAssignees().stream()
+                                .anyMatch(a -> a.getUser().getId().equals(mappedUser.getId()));
+                        if (!exists) {
+                            IssueAssigneeEntity assigneeEntity = IssueAssigneeEntity.builder()
+                                    .issue(saved)
+                                    .user(mappedUser)
+                                    .build();
+                            saved.getAssignees().add(assigneeEntity);
+                        }
+                    });
+                }
+
                 resultEntities.add(saved);
                 AiQueueRequest queueData = new AiQueueRequest(
                         userId,
@@ -345,9 +374,13 @@ public class IssueServiceImpl implements IssueService {
                 redisTemplate.opsForList().leftPush("queue:issue:priority:single", jsonPayload);
             }
 
-            var allIssuesInProject = issueRepository.findAllByProject_Id(projectId);
-            if (!allIssuesInProject.isEmpty()) {
-                List<AiSortRequest.AiIssueInfo> sortIssueInfos = allIssuesInProject.stream()
+            List<IssueEntity> openIssues = resultEntities.stream()
+                    .filter(i -> i.getStatus() == IssueStatus.OPEN)
+                    .toList();
+
+//            var allIssuesInProject = issueRepository.findAllByProject_IdAndStatus(projectId, IssueStatus.OPEN);
+            if (!openIssues.isEmpty()) {
+                List<AiSortRequest.AiIssueInfo> sortIssueInfos = openIssues.stream()
                         .map(issue -> new AiSortRequest.AiIssueInfo(
                                 issue.getId(),
                                 issue.getTitle(),
@@ -359,7 +392,7 @@ public class IssueServiceImpl implements IssueService {
                 String sortJsonPayload = objectMapper.writeValueAsString(sortRequest);
                 redisTemplate.opsForList().leftPush("queue:issue:priority:sort", sortJsonPayload);
             }
-            return Result.ok(resultEntities);
+            return Result.ok(openIssues);
 
         } catch (Exception e) {
             return Result.fail(new ServerError("SyncGithubIssues", projectId));

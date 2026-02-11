@@ -28,8 +28,11 @@ const IssueTracker = () => {
     }
   }, [projectId, fetchIssues]);
 
-  const totalPages = Math.ceil(issues.length / ITEMS_PER_PAGE);
-  const currentIssues = issues.slice(
+  // [수정됨] 이슈 목록에는 OPEN 상태만 표시 (도넛 차트는 모든 이슈 사용)
+  const openIssues = issues.filter(issue => issue.status === 'open');
+
+  const totalPages = Math.ceil(openIssues.length / ITEMS_PER_PAGE);
+  const currentIssues = openIssues.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -75,7 +78,7 @@ const IssueTracker = () => {
   }
 
   // 이슈가 없는 경우
-  if (issues.length === 0) {
+  if (openIssues.length === 0) {
     return (
       <div className="w-full flex justify-center items-center py-8">
         <span className="text-sm text-[var(--text-tertiary)]">등록된 이슈가 없습니다.</span>

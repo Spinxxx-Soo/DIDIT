@@ -471,17 +471,31 @@ const IssueDetailPanel = () => {
           <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
             제목 <span className="text-[var(--color-error)]">*</span>
           </label>
+          {/* Title */}
+          {/* isEditing이지만 체크박스 선택하지 않은 이슈는 수정 불가 */}
           {isEditing ? (
             <Input
               placeholder="이슈 제목을 입력하세요"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value.length <= 50) {
+                  setFormData({ ...formData, title: value });
+                }
+              }}
+              maxLength={50}
               size="md"
               autoFocus={isCreateMode}
+              className={formData.title.length >= 50 ? 'border-amber-500' : ''}
             />
           ) : (
-            <div className="text-lg font-semibold text-[var(--text-bright)] break-words">
-              {formData.title}
+            <div className="text-lg font-bold text-[var(--text-primary)]">
+              {formData.title || '제목 없음'}
+            </div>
+          )}
+          {isEditing && (
+            <div className="text-xs text-gray-500 mt-1">
+              {formData.title.length}/50
             </div>
           )}
         </div>
@@ -645,16 +659,35 @@ const IssueDetailPanel = () => {
           <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
             내용
           </label>
+          {/* Body */}
           {isEditing ? (
-            <textarea
-              rows={10}
-              placeholder="이슈 내용을 자세히 적어주세요."
-              value={formData.body}
-              onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-              className="w-full px-4 py-3 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--color-green-primary)] focus:ring-3 focus:ring-[var(--color-green-primary)]/20 resize-none"
-            />
+            <>
+              <textarea
+                rows={10}
+                placeholder="이슈 내용을 자세히 적어주세요."
+                value={formData.body}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value.length <= 300) {
+                    setFormData({ ...formData, body: value });
+                  }
+                }}
+                maxLength={300}
+                className={`
+                    w-full rounded-[var(--radius-lg)] border border-[var(--border-default)]
+                    bg-[var(--bg-input)] px-4 py-3 text-[14px] text-[var(--text-primary)]
+                    placeholder:text-[var(--text-tertiary)]
+                    focus:outline-none focus:border-[var(--color-green-primary)] focus:ring-1 focus:ring-[var(--color-green-primary)]
+                    resize-none
+                    ${formData.body.length >= 300 ? 'border-amber-500' : ''}
+                  `}
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                {formData.body.length}/300
+              </div>
+            </>
           ) : (
-            <div className="bg-[var(--bg-app)] p-4 rounded-[var(--radius-lg)] text-sm text-[var(--text-primary)] min-h-[200px] whitespace-pre-wrap border border-[var(--border-default)]">
+            <div className="text-[14px] text-[var(--text-primary)] whitespace-pre-wrap">
               {formData.body || '내용이 없습니다.'}
             </div>
           )}

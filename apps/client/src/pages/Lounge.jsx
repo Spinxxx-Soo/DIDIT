@@ -2,7 +2,7 @@
  * Apple-Style Lounge Page
  * Jira-inspired dashboard with floating navigation
  */
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import WeeklySchedule from '@/components/features/user/WeeklySchedule';
 import RecentMinutes from '@/components/features/user/RecentMinutes';
 // import StatCards from '@/components/features/user/StatCards';
@@ -11,6 +11,7 @@ import PriorityDistribution from '@/components/features/user/PriorityDistributio
 import useProjectStore from '@/store/useProjectStore';
 import useLoungeStore from '@/store/useLoungeStore';
 import { Calendar, FileText, BarChart3, LayoutGrid, ChevronRight, Github } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 
 const SectionHeader = ({ icon, title, subtitle }) => (
   <div className="flex items-center gap-4 mb-6">
@@ -61,8 +62,9 @@ const NAV_ITEMS = [
 ];
 
 const Lounge = () => {
+  const { projectId } = useParams();
   const { currentProject } = useProjectStore();
-  const { activePanel } = useLoungeStore();
+  const { activePanel, fetchIssues } = useLoungeStore();
   const isGithubConnected = !!currentProject?.repoFullName;
 
   const sectionRefs = {
@@ -71,6 +73,15 @@ const Lounge = () => {
     minutes: useRef(null),
     schedule: useRef(null),
   };
+
+  // [수정됨] Lounge 페이지 진입 시 이슈 목록 불러오기
+  // fetchIssues를 dependency에서 제거하여 무한 루프 방지
+  useEffect(() => {
+    if (projectId && isGithubConnected) {
+      fetchIssues(projectId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, isGithubConnected]);
 
   const scrollToSection = (sectionId) => {
     sectionRefs[sectionId]?.current?.scrollIntoView({

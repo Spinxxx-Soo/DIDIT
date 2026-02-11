@@ -7,11 +7,15 @@ import com.didit.server.data.repository.MeetingRepository;
 import com.didit.server.data.repository.UserRepository;
 import com.didit.server.service.command.UpdateRecordingCommand;
 import com.didit.server.service.service.MeetingMediaRecordingService;
+import com.didit.server.share.event.MediaRecordingStartEvent;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.impl.NotFoundError;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import java.sql.Time;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -22,6 +26,7 @@ public class MeetingMediaRecordingServiceImpl implements MeetingMediaRecordingSe
     private final MeetingRecordRepository meetingRecordRepository;
     private final OpenViduClient openViduClient;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher publisher;
 
     @Override
     public Result<Long> StartRecording(Long meetingId, Long userId) {
@@ -36,7 +41,6 @@ public class MeetingMediaRecordingServiceImpl implements MeetingMediaRecordingSe
         if(startResult.isFailure()){
             return Result.fail(startResult.getErrors());
         }
-
         var recordingRef = startResult.getOrThrow();
         var user = userRepository.findById(userId);
         if (user.isEmpty()) {
@@ -50,10 +54,18 @@ public class MeetingMediaRecordingServiceImpl implements MeetingMediaRecordingSe
                 .createdBy(userEntity)
                 .recordingSessionId(recordingRef.getRecordingId())
                 .recordingName(recordingName)
+                .startAt(LocalDateTime.now())
                 .build();
 
         var result = meetingRecordRepository.saveAndFlush(recordEntity);
 
+        var event = new MediaRecordingStartEvent(
+                meetingEntity.getId(),
+                Instant.now().getEpochSecond(),
+                meetingEntity.getSessionId(),
+                recordEntity.getId());
+
+        publisher.publishEvent(event);
         return Result.ok(result.getId());
     }
 

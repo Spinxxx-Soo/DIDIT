@@ -162,14 +162,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public boolean checkMembership(long channelId, long userId) {
-        Long projectId = channelId;
-
-        var meeting = meetingRepository.findById(channelId);
-        if (meeting.isPresent()) {
-            projectId = meeting.get().getProject().getId();
-        }
-
-        return projectUserRepository.existsByProject_IdAndUser_IdAndStatus(projectId, userId, ProjectUserStatus.ACTIVE);
+        return projectUserRepository.existsByMeeting_IdAndUser_IdAndStatus(channelId, userId, ProjectUserStatus.ACTIVE);
     }
 
     @Override

@@ -2,10 +2,13 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { Rnd } from 'react-rnd';
 import { X, Calendar, List, CheckSquare, Download, Edit2, Save, RotateCcw, Trash2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { IconButton } from '@/components/common/Button/IconButton';
 import { Divider } from '@/components/common/Divider';
 import { ConfirmModal } from '@/components/common/Modal/ConfirmModal';
 import { meetingApi } from '@/api/meeting';
+import useMeetingStore from '@/store/useMeetingStore';
 
 /**
  * summaryMd JSON을 파싱하여 구조화된 데이터를 반환
@@ -31,8 +34,9 @@ const parseSummaryMd = (summaryMd) => {
 /**
  * 구조화된 데이터를 summaryMd JSON 문자열로 변환
  */
-const buildSummaryMd = (discussionPoints, actionItems) => {
+const buildSummaryMd = (title, discussionPoints, actionItems) => {
     return JSON.stringify({
+        title: title,
         discussion_points: discussionPoints,
         action_items: actionItems.map(item => ({ text: item.text, checked: item.checked })),
     });
@@ -46,6 +50,8 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
     const [editActionItems, setEditActionItems] = React.useState([]);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
+    const { triggerRefresh } = useMeetingStore();
+    const contentRef = React.useRef(null);
 
     // summary 데이터에서 파싱된 구조화 데이터
     const parsed = React.useMemo(() => parseSummaryMd(summary?.summaryMd), [summary?.summaryMd]);
@@ -55,7 +61,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
     }, [initialSummary]);
 
     const handleEditClick = () => {
-        setEditTitle(summary.title);
+        setEditTitle(parsed.title || summary.title);
         setEditDiscussionPoints([...parsed.discussionPoints]);
         setEditActionItems(parsed.actionItems.map(item => ({ ...item })));
         setIsEditing(true);
@@ -67,13 +73,14 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
 
     const handleSaveClick = async () => {
         try {
-            const newSummaryMd = buildSummaryMd(editDiscussionPoints, editActionItems);
+            const newSummaryMd = buildSummaryMd(editTitle, editDiscussionPoints, editActionItems);
             await meetingApi.updateMeetingSummary(projectId, summary.id, {
                 title: editTitle,
                 summary: newSummaryMd,
             });
             setSummary(prev => ({ ...prev, title: editTitle, summaryMd: newSummaryMd }));
             setIsEditing(false);
+            triggerRefresh();
         } catch (error) {
             console.error('저장 실패:', error);
             alert('저장 중 오류가 발생했습니다.');
@@ -85,7 +92,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
         const updatedItems = parsed.actionItems.map((item, i) =>
             i === index ? { ...item, checked: !item.checked } : item
         );
-        const newSummaryMd = buildSummaryMd(parsed.discussionPoints, updatedItems);
+        const newSummaryMd = buildSummaryMd(parsed.title, parsed.discussionPoints, updatedItems);
 
         // 낙관적 업데이트
         setSummary(prev => ({ ...prev, summaryMd: newSummaryMd }));
@@ -106,6 +113,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
         try {
             await meetingApi.deleteMeetingSummary(projectId, summary.id);
             setIsDeleteModalOpen(false);
+            triggerRefresh();
             onDelete?.(summary.id);
             onClose();
         } catch (error) {
@@ -135,6 +143,95 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
             i === index ? { ...item, checked: !item.checked } : item
         );
         setEditActionItems(updated);
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!contentRef.current) return;
+        try {
+            const element = contentRef.current;
+            const canvas = await html2canvas(element, {
+                scale: 2, // 해상도 높임
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                onclone: (clonedDoc) => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    // 색상 변환 함수: oklch를 브라우저의 2D Canvas를 이용해 hex/rgb로 변환
+                    const resolveOklch = (value) => {
+                        if (!value || !value.includes('oklch')) return value;
+                        // oklch(...) 패턴을 찾아 변환. 여러 개가 있을 수 있으므로 전역 치환
+                        return value.replace(/oklch\([^)]+\)/g, (match) => {
+                            try {
+                                ctx.fillStyle = match;
+                                // ctx.fillStyle은 브라우저가 해석한 색상(rgb/hex)을 반환함
+                                return ctx.fillStyle !== '#000000' ? ctx.fillStyle : match;
+                            } catch (e) {
+                                // 변환 실패 시 가독성을 위해 검정색 반환하지 않고 원본 유지 혹은 safe color
+                                return '#000000';
+                            }
+                        });
+                    };
+
+                    // 1. <style> 태그 내부의 CSS 텍스트 전체에서 oklch 제거 (Tailwind v4 등 전역 스타일 대응)
+                    // html2canvas가 CSS를 파싱할 때 oklch 문법에서 에러가 나므로, 소스 차원에서 치환
+                    const styleTags = clonedDoc.querySelectorAll('style');
+                    styleTags.forEach(styleTag => {
+                        if (styleTag.innerHTML && styleTag.innerHTML.includes('oklch')) {
+                            styleTag.innerHTML = resolveOklch(styleTag.innerHTML);
+                        }
+                    });
+
+                    // 2. 개별 요소의 Computed Style 확인 및 인라인 스타일 강제 주입
+                    // 변수(var)로 정의된 색상이 최종적으로 oklch로 계산되는 경우를 커버
+                    const elements = clonedDoc.querySelectorAll('*');
+                    elements.forEach(el => {
+                        const style = window.getComputedStyle(el);
+                        // 성능을 위해 주요 색상 관련 속성만 우선 확인하되, 필요시 전체 순회
+                        // 여기서는 getComputedStyle의 모든 key를 순회하는 것이 가장 안전함 (이전 실패 보완)
+                        for (let key in style) {
+                            // key가 숫자 인덱스인 경우(0, 1, 2...)와 속성명인 경우가 섞여 있음.
+                            // 속성명(string)이고 값이 있는 경우만 체크
+                            if (isNaN(key) && typeof style[key] === 'string') {
+                                const val = style[key]; // style.getPropertyValue(key)와 유사
+                                if (val && val.includes('oklch')) {
+                                    const resolved = resolveOklch(val);
+                                    try {
+                                        el.style.setProperty(key, resolved, 'important');
+                                    } catch (err) {
+                                        // 일부 읽기 전용 속성 에러 무시
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgWidth = 210; // A4 가로 (mm)
+            const pageHeight = 297; // A4 세로 (mm)
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+
+            const fileName = `${parsed.title || summary.title || '회의록'}_${new Date().toISOString().split('T')[0]}.pdf`;
+            pdf.save(fileName);
+        } catch (error) {
+            console.error('PDF 생성 실패:', error);
+            alert('PDF 생성 중 오류가 발생했습니다.');
+        }
     };
 
     if (!isOpen || !summary) return null;
@@ -208,14 +305,14 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
                                 onClick={handleEditClick}
                             />
                         )}
-                        <IconButton
+                        {/* <IconButton
                             icon={<Download size={16} />}
                             variant="ghost"
                             size="xs"
                             title="다운로드"
                             className="on-drag-cancel"
-                            onClick={() => alert('PDF 다운로드 기능 준비중')}
-                        />
+                            onClick={handleDownloadPdf}
+                        /> */}
                         <IconButton
                             icon={<Trash2 size={16} />}
                             variant="ghost"
@@ -235,7 +332,7 @@ const DraggableSummaryWindow = ({ isOpen, onClose, summary: initialSummary, proj
                 </div>
 
                 {/* Body (Scrollable) */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-white cursor-default">
+                <div ref={contentRef} className="flex-1 overflow-y-auto p-5 space-y-5 bg-white cursor-default">
                     {/* Title & Date */}
                     <div>
                         {isEditing ? (

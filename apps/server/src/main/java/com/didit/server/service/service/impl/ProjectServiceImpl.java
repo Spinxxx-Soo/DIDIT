@@ -9,7 +9,8 @@ import com.didit.server.service.service.ProjectService;
 import com.didit.server.share.result.Result;
 import com.didit.server.share.result.impl.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,17 @@ public class ProjectServiceImpl implements ProjectService {
                 .filter(pu -> pu.getStatus() != ProjectUserStatus.LEFT)
                 .map(ProjectUserEntity::getProject).toList();
         return Result.ok(projects);
+    }
+
+    @Override
+    public Result<List<ProjectEntity>> findProjectsByUserIdAndPage(long userId, int page) {
+        var user = _UserRepository.findById(userId);
+        if(user.isEmpty()){
+            return Result.fail(new NotFoundError("userId", userId));
+        }
+        var pageable = PageRequest.of(page, 10);
+        var projects = _ProjectUserRepository.findProjectsByUser_Id(userId, pageable);
+        return Result.ok(projects.getContent());
     }
 
     @Override

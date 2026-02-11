@@ -2,6 +2,7 @@ package com.didit.server.data.repository;
 
 import com.didit.server.data.entity.IssueEntity;
 import com.didit.server.data.entity.enums.IssueStatus;
+import com.didit.server.data.entity.enums.ProjectUserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -18,4 +19,8 @@ public interface IssueRepository extends JpaRepository<IssueEntity, Long> {
     List<IssueEntity> findAllByProject_Id(Long projectId);
 
     boolean existsByGithubIssueId(long issueId);
+
+    List<IssueEntity> findAllByProject_IdAndStatus(long projectId, IssueStatus status);
+
+    Optional<IssueEntity> findByGithubIssueId(long id);
 }

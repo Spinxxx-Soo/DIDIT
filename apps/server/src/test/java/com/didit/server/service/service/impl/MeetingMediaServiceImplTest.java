@@ -492,7 +492,7 @@ class MeetingMediaServiceImplTest {
 
         // Then
         assertFailureContract(result);
-        assertSingleErrorCodeAndMessageContains(result, 407, "연결되어있지 않은 커넥션");
+        assertSingleErrorCodeAndMessageContains(result, 409, "연결되어있지 않은 커넥션");
         verifyNoInteractions(openViduClient);
     }
 
@@ -613,7 +613,7 @@ class MeetingMediaServiceImplTest {
 
         // Then
         assertFailureContract(result);
-        assertSingleErrorCodeAndMessageContains(result, 407, "연결되어있지 않은 커넥션");
+        assertSingleErrorCodeAndMessageContains(result, 409, "연결되어있지 않은 커넥션");
         verify(openViduClient, never()).closeConnection(anyString(), anyString());
     }
 

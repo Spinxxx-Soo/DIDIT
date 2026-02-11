@@ -1,6 +1,8 @@
 package com.didit.server.data.repository;
 
 import com.didit.server.data.entity.MeetingSummaryEntity;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -25,6 +27,11 @@ public interface MeetingSummaryRepository extends JpaRepository<MeetingSummaryEn
 
     // project 단위로 최신부터
     List<MeetingSummaryEntity> findByProject_IdOrderByCreatedAtDesc(Long projectId);
+
+    Slice<MeetingSummaryEntity> findByProject_IdAndPublishedAtIsNotNullOrderByPublishedAtDesc(
+            Long projectId,
+            Pageable pageable
+    );
 
     // meeting 단위로 버전 내림차순
     List<MeetingSummaryEntity> findByProject_IdAndMeeting_IdOrderBySummaryVersionDesc(

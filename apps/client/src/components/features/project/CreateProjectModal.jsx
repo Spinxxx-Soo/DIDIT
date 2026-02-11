@@ -293,16 +293,32 @@ export function CreateProjectModal({
         </div>
 
         {/* 프로젝트 이름 */}
-        <Input
-          label="프로젝트 이름"
-          placeholder="멋진 프로젝트의 이름을 지어주세요!"
-          value={projectName}
-          onChange={handleNameChange}
-          isRequired
-          isError={!!nameError}
-          errorMessage={nameError}
-          disabled={isLoading}
-        />
+        <div>
+          <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">프로젝트 이름</label>
+          <Input
+            type="text"
+            placeholder="멋진 프로젝트의 이름을 지어주세요!"
+            value={projectName}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value.length <= 50) {
+                setProjectName(value);
+                if (nameError) { // Preserve original error clearing logic
+                  setNameError('');
+                }
+              }
+            }}
+            maxLength={50}
+            className={projectName.length >= 50 ? 'border-amber-500' : ''}
+            isRequired
+            isError={!!nameError}
+            errorMessage={nameError}
+            disabled={isLoading}
+          />
+          <div className="text-xs text-gray-500 mt-1">
+            {projectName.length}/50
+          </div>
+        </div>
 
         {/* GitHub 저장소 연결 - 생성 시점에 projectId가 없어 validate API 호출 불가로 제거 */}
         {/* 프로젝트 생성 후 워크스페이스에서 연결 가능 */}

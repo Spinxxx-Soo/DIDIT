@@ -40,10 +40,11 @@ public class ProjectController {
 
     //[Feature][Rooms] 방 목록 조회 + 사이드바 연동 (GET /api/v1/rooms)
     @GetMapping()
-    public ResponseEntity<?> findProjects(@AuthenticationPrincipal CustomOAuth2User user) {
+    public ResponseEntity<?> findProjects(@AuthenticationPrincipal CustomOAuth2User user,
+                                          @RequestParam(defaultValue = "0") Integer page) {
         var userId = user.getId();
-
-        var findResult = _ProjectService.findProjectsByUserId(userId);
+        int pageNum = page == null ? 0 : page;
+        var findResult = _ProjectService.findProjectsByUserIdAndPage(userId, pageNum);
         if (findResult.isFailure()) {
             var err = findResult.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
@@ -395,14 +396,16 @@ public class ProjectController {
 
     @GetMapping("/{projectId}/summary")
     public ResponseEntity<?> GetSummaries(@PathVariable long projectId,
-                                          @AuthenticationPrincipal CustomOAuth2User user) {
+                                          @AuthenticationPrincipal CustomOAuth2User user,
+                                          @RequestParam(defaultValue = "0") Integer page) {
+        int pageNum = page == null ? 0 : page;
         var result = _ProjectService.FindProjectUser(user.getId(), projectId);
         if (result.isFailure()) {
             var err = result.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());
         }
 
-        var findResult = _MeetingSummaryService.FindAllByProject(projectId);
+        var findResult = _MeetingSummaryService.FindAllByProject(projectId, pageNum);
         if (findResult.isFailure()) {
             var err = findResult.getSingleErrorOrThrow().getResponse();
             return new ResponseEntity<>(err, err.getStatusCode());

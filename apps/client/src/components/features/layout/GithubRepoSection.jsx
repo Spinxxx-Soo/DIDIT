@@ -182,8 +182,9 @@ export function GithubRepoSection({
           placeholder="organization/repository"
           value={repoInput}
           onChange={handleInputChange}
-          isError={!!repoError}
+          isError={!!repoError || repoInput.length >= 200}
           disabled={githubStatus === GITHUB_STATUS.LOADING}
+          maxLength={200}
           className={`
             w-[200px]
             ${githubStatus === GITHUB_STATUS.SUCCESS ? 'border-[var(--color-green-primary)] pr-8' : ''}
@@ -195,6 +196,9 @@ export function GithubRepoSection({
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--color-green-primary)]"
           />
         )}
+        <div className={`absolute -bottom-5 right-0 text-[10px] ${repoInput.length >= 200 ? 'text-[var(--color-error)]' : 'text-[var(--text-tertiary)]'}`}>
+          {repoInput.length}/200
+        </div>
       </div>
 
       {githubStatus === GITHUB_STATUS.SUCCESS ? (
