@@ -256,11 +256,151 @@ class MeetingSummaryService:
             raise ValueError("empty_transcript")
         return text
 
-    def summarize(self, text: str) -> str:
-        summary = self.model.generate_summary(text)
+    def summarize(self, text: str, project_id: int = None, meeting_id: int = None) -> str:
+        """
+        텍스트를 요약합니다. RAG가 활성화된 경우 관련 과거 회의록을 검색하여 컨텍스트로 활용합니다.
+        
+        Args:
+            text: 요약할 텍스트 (STT 결과)
+            project_id: 프로젝트 ID (RAG 검색용, 선택사항)
+            meeting_id: 회의 ID (현재 회의 제외용, 선택사항)
+        """
+        # RAG 검색 (활성화된 경우)
+        rag_context = None
+        if self.rag_enabled and project_id:
+            try:
+                rag_context = self._search_relevant_chunks(text, project_id, meeting_id)
+            except Exception as e:
+                logger.warning(f"RAG 검색 실패 (요약은 계속 진행): {e}", exc_info=True)
+        
+        # [TODO: model.generate_summary 메서드에 rag_context 파라미터 추가 필요]
+        # model.py의 generate_summary 메서드가 rag_context를 받을 수 있도록 수정해주세요
+        # 예: summary = self.model.generate_summary(text, rag_context=rag_context)
+        if rag_context:
+            # RAG 컨텍스트가 있는 경우
+            logger.info("RAG 컨텍스트를 활용하여 요약 생성")
+            # TODO: model.generate_summary(text, rag_context=rag_context) 형태로 변경 필요
+            summary = self.model.generate_summary(text)
+        else:
+            summary = self.model.generate_summary(text)
+        
         if not summary:
             raise ValueError("empty_summary")
         return summary
+    
+    def _store_to_rag(self, transcript: str, project_id: int, meeting_id: int) -> bool:
+        """
+        STT 텍스트를 RAG에 저장합니다.
+        
+        Args:
+            transcript: STT 변환된 텍스트
+            project_id: 프로젝트 ID
+            meeting_id: 회의 ID
+            
+        Returns:
+            저장 성공 여부
+        """
+        if not self.rag_enabled or not self.text_chunker or not self.embedding_service or not self.vector_store:
+            logger.warning("RAG 기능이 비활성화되어 있어 저장을 건너뜁니다.")
+            return False
+        
+        try:
+            # [TODO: RAG 모듈의 실제 메서드명 확인 필요]
+            # 다른 분이 만드신 RAG 모듈의 메서드명에 맞게 수정해주세요
+            
+            # 1. 텍스트 청킹
+            chunks = self.text_chunker.split_text(transcript)
+            if not chunks:
+                logger.warning("청크가 생성되지 않았습니다.")
+                return False
+            
+            # 2. 임베딩 생성
+            chunk_texts = [chunk["text"] for chunk in chunks]
+            embeddings = self.embedding_service.encode(chunk_texts)
+            
+            # 3. 벡터 DB에 저장
+            success = self.vector_store.store_chunks(
+                project_id=project_id,
+                meeting_id=meeting_id,
+                chunks=chunks,
+                embeddings=embeddings
+            )
+            
+            if success:
+                logger.info(f"RAG 저장 완료: 프로젝트={project_id}, 회의={meeting_id}, 청크 수={len(chunks)}")
+            else:
+                logger.error(f"RAG 저장 실패: 프로젝트={project_id}, 회의={meeting_id}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"RAG 저장 중 오류 발생: {e}", exc_info=True)
+            return False
+    
+    def _search_relevant_chunks(
+        self,
+        transcript: str,
+        project_id: int,
+        meeting_id: int = None,
+        top_k: int = 5
+    ) -> Optional[str]:
+        """
+        관련 과거 회의록을 검색합니다.
+        
+        Args:
+            transcript: 현재 회의록 텍스트
+            project_id: 프로젝트 ID
+            meeting_id: 현재 회의 ID (제외용, 선택사항)
+            top_k: 반환할 최대 결과 수
+            
+        Returns:
+            관련 문서 컨텍스트 문자열 (없으면 None)
+        """
+        if not self.rag_enabled or not self.embedding_service or not self.vector_store:
+            return None
+        
+        try:
+            # [TODO: RAG 모듈의 실제 메서드명 확인 필요]
+            # 다른 분이 만드신 RAG 모듈의 메서드명에 맞게 수정해주세요
+            
+            # 현재 회의록의 앞부분을 쿼리로 사용 (처음 500자)
+            query_text = transcript[:500] if len(transcript) > 500 else transcript
+            
+            # 쿼리 임베딩 생성
+            query_embedding = self.embedding_service.encode_single(query_text)
+            
+            # 벡터 검색
+            results = self.vector_store.search(
+                project_id=project_id,
+                query_embedding=query_embedding,
+                top_k=top_k,
+                exclude_meeting_id=meeting_id,
+                similarity_threshold=float(os.getenv("RAG_SIMILARITY_THRESHOLD", "0.7"))
+            )
+            
+            if not results:
+                logger.info("관련 과거 회의록을 찾지 못했습니다.")
+                return None
+            
+            # 컨텍스트 문자열 구성
+            # [TODO: results의 실제 구조 확인 필요]
+            # 다른 분이 만드신 RAG 모듈의 반환 형식에 맞게 수정해주세요
+            context_parts = []
+            for i, result in enumerate(results, 1):
+                # 예: result가 {"text": str, "similarity": float} 형식이라고 가정
+                similarity = result.get("similarity", 0.0)
+                text = result.get("text", "")
+                context_parts.append(
+                    f"[과거 회의록 {i}] (유사도: {similarity:.2f})\n{text}"
+                )
+            
+            context = "\n\n".join(context_parts)
+            logger.info(f"RAG 검색 완료: {len(results)}개 관련 문서 발견")
+            return context
+            
+        except Exception as e:
+            logger.error(f"RAG 검색 중 오류 발생: {e}", exc_info=True)
+            return None
 
     # ======================
     # Helpers
