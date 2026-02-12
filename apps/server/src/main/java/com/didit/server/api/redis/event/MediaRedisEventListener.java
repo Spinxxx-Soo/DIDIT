@@ -21,6 +21,8 @@ public class MediaRedisEventListener {
         var payload = MediaSummaryDownloadUrlPushPayload.builder()
                 .summaryId(e.summaryId())
                 .downloadUrl(e.downloadUrl())
+                .projectId(e.projectId())
+                .meetingId(e.meetingId())
                 .build();
         redisHub.push(payload);
     }
