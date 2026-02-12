@@ -80,12 +80,17 @@ class MeetingSummaryWorker:
             if not task:
                 return False
             
-            # meeting_file 형식: {"meetingID": 123, "filePath": "/mnt/shared/meetings/123.webm"}
+            # meeting_file 형식: {"summaryId": 123, "downloadUrl": "...", "projectId": 456, "meetingId": 789}
             meeting_file = task.get("meeting_file") or task
             
             if not meeting_file:
                 logger.error("잘못된 task (meeting_file 없음): %s", task)
                 return False
+            
+            # projectId와 meetingId 로깅 (RAG용)
+            project_id = meeting_file.get("projectId")
+            meeting_id = meeting_file.get("meetingId")
+            logger.info(f"작업 처리 시작: summaryId={meeting_file.get('summaryId')}, projectId={project_id}, meetingId={meeting_id}")
             
             # 2. Service를 통한 비즈니스 로직 처리
             result = self.summary_service.process_meeting_summary_model(meeting_file)

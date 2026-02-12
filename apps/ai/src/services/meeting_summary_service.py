@@ -268,10 +268,8 @@ class MeetingSummaryService:
         # model.py의 generate_summary 메서드가 rag_context를 받을 수 있도록 수정해주세요
         # 예: summary = self.model.generate_summary(text, rag_context=rag_context)
         if rag_context:
-            # RAG 컨텍스트가 있는 경우 (임시로 text에 추가, 실제로는 model.generate_summary 수정 필요)
             logger.info("RAG 컨텍스트를 활용하여 요약 생성")
-            # TODO: model.generate_summary(text, rag_context=rag_context) 형태로 변경
-            summary = self.model.generate_summary(text)
+            summary = self.model.generate_summary(text, rag_context=rag_context)
         else:
             summary = self.model.generate_summary(text)
         
@@ -279,6 +277,10 @@ class MeetingSummaryService:
             raise ValueError("empty_summary")
         return summary
     
+    # ======================
+    # RAG
+    # ======================   
+
     def _store_to_rag(self, transcript: str, project_id: int, meeting_id: int) -> bool:
         """
         STT 텍스트를 RAG에 저장합니다.
@@ -331,7 +333,11 @@ class MeetingSummaryService:
         except Exception as e:
             logger.error(f"RAG 저장 중 오류 발생: {e}", exc_info=True)
             return False
-    
+
+    # ======================
+    # RAG -> chunking
+    # ======================
+
     def _search_relevant_chunks(
         self,
         transcript: str,
