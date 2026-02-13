@@ -220,7 +220,12 @@ public class LoggingOpenViduWebhookHandler implements OpenViduWebhookHandler {
             return;
         }
 
-        var pushEvent = new MediaSummaryDownloadUrlPushEvent(createSummaryResult.getOrThrow(), findDownloadUrlResult.getOrThrow());
+        var pushEvent = new MediaSummaryDownloadUrlPushEvent(
+                createSummaryResult.getOrThrow(),
+                findDownloadUrlResult.getOrThrow(),
+                meetingEntity.getProject().getId(),
+                meetingEntity.getId()
+        );
         var event = new MediaRecordingStopEvent(meetingEntity.getId(), e.timestamp(), e.sessionId(), recordEntity.getId());
         publisher.publishEvent(pushEvent);
         publisher.publishEvent(event);

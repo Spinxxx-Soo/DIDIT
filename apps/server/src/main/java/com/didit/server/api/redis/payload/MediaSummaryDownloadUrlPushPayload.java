@@ -13,4 +13,6 @@ public class MediaSummaryDownloadUrlPushPayload implements RedisPushPayload {
     }
     private Long summaryId;
     private String downloadUrl;
+    private Long projectId;
+    private Long meetingId;
 }

@@ -21,9 +21,7 @@ from models.common.logger import get_logger
 
 logger = get_logger(__name__)
 
-# [TODO: RAG 모듈 import 경로 확인 필요]
-# 다른 분이 만드신 RAG 모듈의 실제 import 경로로 변경해주세요
-# 예시: from models.rag import TextChunker, EmbeddingService, VectorStore
+# RAG 모듈 import
 try:
     from models.rag import TextChunker, EmbeddingService, VectorStore
     RAG_AVAILABLE = True
@@ -56,7 +54,7 @@ class MeetingSummaryService:
         
         self.model = MeetingSummaryModel()
         
-        # [TODO: RAG 기능 활성화 여부 설정]
+        # RAG 기능 활성화 여부 설정
         # 환경 변수 RAG_ENABLED=true로 설정하면 RAG 기능 활성화
         # RAG 모듈이 없으면 자동으로 비활성화됨
         self.rag_enabled = (
@@ -66,8 +64,6 @@ class MeetingSummaryService:
         
         if self.rag_enabled:
             logger.info("RAG 기능 활성화됨")
-            # [TODO: RAG 모듈 초기화 파라미터 확인 필요]
-            # 다른 분이 만드신 RAG 모듈의 초기화 방식에 맞게 수정해주세요
             try:
                 self.text_chunker = TextChunker(
                     chunk_size=int(os.getenv("RAG_CHUNK_SIZE", "500")),
@@ -103,12 +99,8 @@ class MeetingSummaryService:
             
         summary_id = meeting_file.get("summaryId")
         file_path = meeting_file.get("downloadUrl")
-        
-        # [TODO: 서버에서 전달되는 데이터 구조 확인 필요]
-        # meeting_file에 projectId와 meetingId가 포함되어 있는지 확인하고,
-        # 없다면 서버 코드(LoggingOpenViduWebhookHandler 등)에서 전달하도록 수정 필요
-        project_id = meeting_file.get("projectId")  # 서버에서 전달 필요
-        meeting_id = meeting_file.get("meetingId")   # 서버에서 전달 필요
+        project_id = meeting_file.get("projectId")
+        meeting_id = meeting_file.get("meetingId")
 
         if not summary_id or not file_path:
             logger.warning(f"유효하지 않은 meeting_file (meetingID/filePath 확인 필요): {meeting_file}")
@@ -179,8 +171,6 @@ class MeetingSummaryService:
             transcript = self.transcribe(audio_file)
 
             # 3) RAG 저장 (활성화된 경우)
-            # [TODO: project_id와 meeting_id가 없으면 RAG 저장 스킵]
-            # 서버에서 이 값들을 전달하도록 수정하면 자동으로 저장됩니다
             if self.rag_enabled and project_id and meeting_id:
                 try:
                     self._store_to_rag(transcript, project_id, meeting_id)
@@ -264,14 +254,8 @@ class MeetingSummaryService:
             except Exception as e:
                 logger.warning(f"RAG 검색 실패 (요약은 계속 진행): {e}", exc_info=True)
         
-        # [TODO: model.generate_summary 메서드에 rag_context 파라미터 추가 필요]
-        # model.py의 generate_summary 메서드가 rag_context를 받을 수 있도록 수정해주세요
-        # 예: summary = self.model.generate_summary(text, rag_context=rag_context)
-        if rag_context:
-            logger.info("RAG 컨텍스트를 활용하여 요약 생성")
-            summary = self.model.generate_summary(text, rag_context=rag_context)
-        else:
-            summary = self.model.generate_summary(text)
+        # 요약 생성 (RAG 컨텍스트 포함)
+        summary = self.model.generate_summary(text, rag_context=rag_context)
         
         if not summary:
             raise ValueError("empty_summary")
@@ -298,24 +282,17 @@ class MeetingSummaryService:
             return False
         
         try:
-            # [TODO: RAG 모듈의 실제 메서드명 확인 필요]
-            # 다른 분이 만드신 RAG 모듈의 메서드명에 맞게 수정해주세요
-            
             # 1. 텍스트 청킹
-            # 예: chunks = self.text_chunker.split_text(transcript)
             chunks = self.text_chunker.split_text(transcript)
             if not chunks:
                 logger.warning("청크가 생성되지 않았습니다.")
                 return False
             
             # 2. 임베딩 생성
-            # 예: chunk_texts = [chunk["text"] for chunk in chunks]
-            #     embeddings = self.embedding_service.encode(chunk_texts)
             chunk_texts = [chunk["text"] for chunk in chunks]
             embeddings = self.embedding_service.encode(chunk_texts)
             
             # 3. 벡터 DB에 저장
-            # 예: success = self.vector_store.store_chunks(...)
             success = self.vector_store.store_chunks(
                 project_id=project_id,
                 meeting_id=meeting_id,
@@ -361,18 +338,13 @@ class MeetingSummaryService:
             return None
         
         try:
-            # [TODO: RAG 모듈의 실제 메서드명 확인 필요]
-            # 다른 분이 만드신 RAG 모듈의 메서드명에 맞게 수정해주세요
-            
             # 현재 회의록의 앞부분을 쿼리로 사용 (처음 500자)
             query_text = transcript[:500] if len(transcript) > 500 else transcript
             
             # 쿼리 임베딩 생성
-            # 예: query_embedding = self.embedding_service.encode_single(query_text)
             query_embedding = self.embedding_service.encode_single(query_text)
             
             # 벡터 검색
-            # 예: results = self.vector_store.search(...)
             results = self.vector_store.search(
                 project_id=project_id,
                 query_embedding=query_embedding,
@@ -386,11 +358,10 @@ class MeetingSummaryService:
                 return None
             
             # 컨텍스트 문자열 구성
-            # [TODO: results의 실제 구조 확인 필요]
-            # 다른 분이 만드신 RAG 모듈의 반환 형식에 맞게 수정해주세요
+            # VectorStore.search()는 List[Dict[str, Any]]를 반환
+            # 각 result는 {"text": str, "similarity": float} 형식으로 가정
             context_parts = []
             for i, result in enumerate(results, 1):
-                # 예: result가 {"text": str, "similarity": float} 형식이라고 가정
                 similarity = result.get("similarity", 0.0)
                 text = result.get("text", "")
                 context_parts.append(
