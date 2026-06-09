@@ -1,7 +1,3 @@
-
-
-https://github.com/user-attachments/assets/37f86b97-e8d2-4b68-8f1f-e8bfd72e9bad
-
 <div align="center">
 
 <!-- logo -->
