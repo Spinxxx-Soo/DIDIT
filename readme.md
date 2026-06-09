@@ -9,7 +9,7 @@
 [<img src="https://img.shields.io/badge/-project-blue?style=flat&logo=google-chrome&logoColor=white" />](https://api.did-it.xyz)
 [<img src="https://img.shields.io/badge/release-v0.1.0-yellow?style=flat&logo=google-chrome&logoColor=white" />]()
 <br/>
-[<img src="https://img.shields.io/badge/프로젝트 기간-2026.02~2026.03-green?style=flat&logo=&logoColor=white" />]()
+[<img src="https://img.shields.io/badge/프로젝트 기간-2026.01~2026.02-green?style=flat&logo=&logoColor=white" />]()
 
 </div>
 
@@ -36,7 +36,6 @@ flowchart LR
     Server -->|SSE| Client
 ```
 
-모노레포 구조: `apps/client` · `apps/server` · `apps/ai` · `infra/docker-compose`
 
 <br />
 
@@ -48,24 +47,6 @@ AI 레이어는 **Redis 큐 기반 비동기 워커** 패턴으로 동작합니�
 - **이슈 우선순위**: Llama-3 4bit Few-shot 라벨링 + HF 한국어 분류 모델 재정렬
 - **회의 요약**: ffmpeg 오디오 변환 → Whisper STT → Gemini 2.5 Flash JSON 요약
 
-### AI 모듈
-
-| 기능 | 모델/기술 | 핵심 파일 |
-|:---:|:---|:---|
-| 이슈 단일 우선순위 라벨링 | `unsloth/llama-3-8b-bnb-4bit` (4bit, Few-shot) | `apps/ai/src/models/issue_priority_issue/model.py` |
-| 이슈 목록 재정렬 | `spinxxxx/git-issues-priority-ko` + 키워드 규칙 | `apps/ai/src/models/issue_priority_commit/model.py` |
-| 회의 요약 | Whisper STT + Gemini 2.5 Flash | `apps/ai/src/services/meeting_summary_service.py` |
-
-### Redis 큐 / 토픽
-
-| 방향 | 큐/토픽 | 용도 |
-|:---:|:---|:---|
-| Server → AI | `queue:issue:priority:single` | 단일 이슈 라벨링 |
-| Server → AI | `queue:issue:priority:sort` | 이슈 목록 재정렬 |
-| Server → AI | `queue:meeting:summary` | 회의 요약 |
-| AI → Server | `issue:priority:result_topic` | 단일 분석 완료 알림 (Pub/Sub) |
-| AI → Server | `meeting:summary:result:{meetingId}` | 요약 결과 저장 (Key) |
-
 ### AI 아키텍처
 
 ![AI 아키텍처](./assets/didit-ai-architecture.png)
@@ -76,24 +57,11 @@ AI 레이어는 **Redis 큐 기반 비동기 워커** 패턴으로 동작합니�
 
 <div align="center">
 
-./assets/didit-demo.mp4
+https://github.com/Spinxxx-Soo/DIDIT/raw/docs/readme/assets/didit-demo.mp4
 
 Didit 주요 기능 데모 — 로그인 · 라운지 · AI 이슈 분석 · 화상 회의 · 회의록 요약
 
 </div>
-
-<br />
-
-**AI 관련 주요 엔드포인트**
-
-| 서비스 | 메서드 | 경로 | 설명 |
-|:---:|:---:|:---|:---|
-| Server | POST | `/projects/{id}/issue/analyze` | 이슈 AI 우선순위 분석 요청 |
-| Server | POST | `/projects/{id}/issue/sort` | 이슈 목록 AI 재정렬 요청 |
-| AI | GET | `/health` | 헬스체크 |
-| AI | GET | `/health/redis` | Redis 연결 상태 확인 |
-
-> 추론은 HTTP가 아닌 Redis 큐 워커가 비동기로 처리합니다.
 
 <br />
 
@@ -172,10 +140,3 @@ Didit 주요 기능 데모 — 로그인 · 라운지 · AI 이슈 분석 · 화
     - LLM 추론 지연으로 동기 API 응답 불가 → Redis Queue 폴링 워커 + Pub/Sub으로 분석 완료 시 SSE 브로드캐스트 연동
 
 <br />
-
-<!-- assets 폴더에 추가할 파일 목록
-  ./assets/didit-readme.png            - README 헤더 로고
-  ./assets/didit-architecture.png      - 전체 시스템 아키텍처 다이어그램
-  ./assets/didit-ai-architecture.png   - AI 레이어 아키텍처 다이어그램
-  ./assets/didit-demo.mp4              - 서비스 소개 동영상 (10MB 이하, mp4)
--->
