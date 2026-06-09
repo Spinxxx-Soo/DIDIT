@@ -57,7 +57,7 @@ AI 레이어는 **Redis 큐 기반 비동기 워커** 패턴으로 동작합니�
 
 <div align="center">
 
-https://github.com/Spinxxx-Soo/DIDIT/raw/docs/readme/assets/didit-demo.mp4
+![Didit 서비스 소개](./assets/didit-demo.mp4)
 
 Didit 주요 기능 데모 — 로그인 · 라운지 · AI 이슈 분석 · 화상 회의 · 회의록 요약
 
