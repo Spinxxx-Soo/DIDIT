@@ -28,15 +28,6 @@
 
 ![프로젝트 아키텍처](./assets/didit-architecture.png)
 
-```mermaid
-flowchart LR
-    Client[apps/client React] -->|REST/SSE| Server[apps/server Spring Boot]
-    Server -->|Redis Queue| AI[apps/ai Python Workers]
-    AI -->|Pub/Sub / Key| Server
-    Server -->|SSE| Client
-```
-
-
 <br />
 
 ## 🤖 AI 기능 상세
