@@ -124,7 +124,6 @@ Didit 주요 기능 데모 — 로그인 · 라운지 · AI 이슈 분석 · 화
 저는 이 프로젝트에서 **AI 파트**를 맡아 아래를 구현했습니다.
 
 - Redis 큐 기반 **비동기 AI 워커** 아키텍처 설계·구현
-- **Llama-3 4bit** Few-shot 이슈 우선순위 라벨링 (VRAM 6GB 최적화)
 - **HF 한국어 분류 모델** + 규칙 기반 하이브리드 이슈 재정렬
 - **Whisper STT → Gemini** 회의 요약 파이프라인 (ffmpeg 오디오 전처리 포함)
 - Spring Boot ↔ AI 간 Redis Queue / Pub/Sub 연동 스키마 정의
@@ -133,8 +132,6 @@ Didit 주요 기능 데모 — 로그인 · 라운지 · AI 이슈 분석 · 화
 
 ## 🤔 기술적 이슈와 해결 과정
 
-- **VRAM 6GB 제약**
-    - Llama-3 8B 로드 시 OOM 발생 → 4bit 양자화(`BitsAndBytesConfig`)와 `device_map` / `max_memory` 튜닝으로 6GB GPU에서 추론 가능하도록 최적화
 - **이슈 재정렬 정확도**
     - 단순 ML 점수만으로는 도메인 키워드(버그, 개선 등) 반영이 부족 → 모델 점수 + 키워드 부스트/패널티 규칙 하이브리드 적용
 - **비동기 AI 처리와 실시간 UI**
