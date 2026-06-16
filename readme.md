@@ -1,7 +1,7 @@
 <div align="center">
 
 <!-- logo -->
-<img src="./assets/didit-readme.png" width="320"/>
+<img src="./assets/DIDIT!%20-%20READ.ME.png" width="320"/>
 
 ### Didit - AI 기반 팀 협업 플랫폼
 
